@@ -1,0 +1,12 @@
+.snakemake/
+alignment/
+qual_ctrl/
+coverage/
+fastq/*
+logs/
+
+
+
+config.yaml
+
+!fastq/.gitkeep
