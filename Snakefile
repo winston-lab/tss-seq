@@ -5,24 +5,18 @@ configfile: "config.yaml"
 CONTROL = config["control"]
 CONDITION = config["condition"]
 
-
 #if using python >3.5:
 #SAMPLES = {**CONTROL, **CONDITION}
 SAMPLES = CONTROL.copy()
 SAMPLES.update(config["condition"])
 
-
-
-
 localrules: all,
-
-#requirements
 
 rule all:
     input:
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}", sample=SAMPLES),
-        expand("coverage/{sample}.counts.minus.bedgraph", sample=SAMPLES)
+        expand("coverage/libsizenorm/{sample}.libsizenorm.minus.bedgraph", sample=SAMPLES)
 
 rule fastqc_raw:
     input: 
@@ -61,6 +55,7 @@ rule remove_3p_barcode_and_qual_trim:
     shell: """
         (cutadapt -u -6 --nextseq-trim={params.trim_qual} -m 18 -o {output} {input}) &> {log}
         """
+
 rule remove_molec_barcode:
     input:
         "fastq/cleaned/{sample}-trim.fastq"
@@ -148,22 +143,38 @@ rule get_coverage:
     input:
         "alignment/{sample}-unique.bam"
     output:
-        SCplmin = "coverage/scer/{sample}.SC.counts.plmin.bedgraph",
-        SCpl = "coverage/scer/{sample}.SC.counts.plus.bedgraph",
-        SCmin = "coverage/scer/{sample}.SC.counts.minus.bedgraph",
-        SPpl = "coverage/{sample}.counts.plus.bedgraph",
-        SPmin = "coverage/{sample}.counts.minus.bedgraph"
+        SCplmin = "coverage/counts/scer/{sample}.SC.counts.plmin.bedgraph",
+        SCpl = "coverage/counts/scer/{sample}.SC.counts.plus.bedgraph",
+        SCmin = "coverage/counts/scer/{sample}.SC.counts.minus.bedgraph",
+        SPplmin = "coverage/counts/{sample}.counts.plmin.bedgraph",
+        SPpl = "coverage/counts/{sample}.counts.plus.bedgraph",
+        SPmin = "coverage/counts/{sample}.counts.minus.bedgraph"
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
         (genomeCoverageBed -bga -5 -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCplmin}) &> {log};
         (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCpl}) &>> {log};
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCmin}) &>> {log};
+        (genomeCoverageBed -bga -5 -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPplmin}) &>> {log};
         (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPpl}) &>> {log};
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPmin}) &>> {log};
         """
 
-
-
-
-
+rule normalize:
+    input:
+        SPpl = "coverage/counts/{sample}.counts.plus.bedgraph",
+        SPmin = "coverage/counts/{sample}.counts.minus.bedgraph",
+        SPplmin = "coverage/counts/{sample}.counts.plmin.bedgraph",
+        SCplmin = "coverage/counts/scer/{sample}.SC.counts.plmin.bedgraph"
+    output:
+        spikePlus = "coverage/spikenorm/{sample}.spikenorm.plus.bedgraph",
+        spikeMinus = "coverage/spikenorm/{sample}.spikenorm.minus.bedgraph",
+        libnormPlus = "coverage/libsizenorm/{sample}.libsizenorm.plus.bedgraph",
+        libnormMinus = "coverage/libsizenorm/{sample}.libsizenorm.minus.bedgraph"
+    log: "logs/normalize/normalize-{sample}.log"
+    shell: """
+        (scripts/libsizenorm.awk {input.SCplmin} {input.SPpl} > {output.spikePlus}) &> {log} 
+        (scripts/libsizenorm.awk {input.SCplmin} {input.SPmin} > {output.spikeMinus}) &>> {log}
+        (scripts/libsizenorm.awk {input.SPplmin} {input.SPpl} > {output.libnormPlus}) &>> {log}
+        (scripts/libsizenorm.awk {input.SPplmin} {input.SPmin} > {output.libnormMinus}) &>> {log}
+        """
 
