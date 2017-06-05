@@ -3,10 +3,13 @@ alignment/
 qual_ctrl/
 coverage/
 fastq/*
-logs/
-
+logs/*
+logs/cluster/*
 
 
 config.yaml
 
 !fastq/.gitkeep
+!logs/.gitkeep
+!logs/cluster/
+!logs/cluster/.gitkeep

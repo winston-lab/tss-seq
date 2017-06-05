@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os.path
 
 configfile: "config.yaml"
 
@@ -10,23 +11,31 @@ CONDITION = config["condition"]
 SAMPLES = CONTROL.copy()
 SAMPLES.update(config["condition"])
 
+FNAMES = list(map(lambda path : os.path.basename(path).split('.')[0] , list(SAMPLES.values())))
+
+
+
 localrules: all,
 
 rule all:
     input:
+        #expand("qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.zip", sample=SAMPLES, fname = SAMPLES[sample]),
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
-        expand("qual_ctrl/fastqc/cleaned/{sample}", sample=SAMPLES),
+        expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         expand("coverage/libsizenorm/{sample}.libsizenorm.minus.bedgraph", sample=SAMPLES)
 
 rule fastqc_raw:
     input: 
         lambda wildcards: SAMPLES[wildcards.sample]
     output:
+        #html = "qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.html",
+        #folder = "qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.zip",
         "qual_ctrl/fastqc/raw/{sample}"
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
     shell: """
-        mkdir {output}
+        #mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample} 
+        mkdir -p {output} 
         (fastqc -o {output} --noextract -t {threads} {input}) &> {log}
         """
 
@@ -74,11 +83,13 @@ rule fastqc_cleaned:
     input:
         "fastq/cleaned/{sample}-clean.fastq.gz"
     output:
-        "qual_ctrl/fastqc/cleaned/{sample}"
+        html = "qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.html",
+        folder  = "qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip"
+    threads : config["threads"]
     log: "logs/fastqc/cleaned/fastqc-cleaned-{sample}.log"
     shell: """
-        mkdir {output}
-        (fastqc -o {output} --noextract -t {threads} {input}) &> {log}
+        mkdir -p qual_ctrl/fastqc/cleaned/{wildcards.sample}
+        (fastqc -o qual_ctrl/fastqc/cleaned/{wildcards.sample} --noextract -t {threads} {input}) &> {log}
         """
 
 rule bowtie2_build:
@@ -90,8 +101,7 @@ rule bowtie2_build:
     params:
         name = config["combinedgenome"]["name"]
     shell: """
-        bowtie2-build {input.fasta} {params.name}
-        mv *.bt2 ../genome/bowtie2_indexes
+        bowtie2-build {input.fasta} ../genome/bowtie2_indexes/{params.name} 
         """
 
 rule align:
@@ -132,16 +142,26 @@ rule select_unique_mappers:
     input:
         "alignment/{sample}/accepted_hits.bam"
     output:
-        "alignment/{sample}-unique.bam"
+        temp("alignment/{sample}-unique.bam")
     threads: config["threads"]
     log: "logs/select_unique_mappers/select_unique_mappers-{sample}.log"
     shell: """
         (samtools view -b -h -q 50 -@ {threads} {input} | samtools sort -@ {threads} - > {output}) &> {log}
         """   
 
-rule get_coverage:
+rule remove_PCR_duplicates:
     input:
         "alignment/{sample}-unique.bam"
+    output:
+        "alignment/{sample}-noPCRdup.bam"
+    log: "logs/remove_PCR_duplicates/removePCRduplicates-{sample}.log"
+    shell: """
+        (python scripts/removePCRdupsFromBAM.py {input} {output}) &> {log}
+        """
+
+rule get_coverage:
+    input:
+        "alignment/{sample}-noPCRdup.bam"
     output:
         SCplmin = "coverage/counts/scer/{sample}.SC.counts.plmin.bedgraph",
         SCpl = "coverage/counts/scer/{sample}.SC.counts.plus.bedgraph",

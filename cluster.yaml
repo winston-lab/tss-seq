@@ -1,0 +1,67 @@
+__default__:
+    queue : "short"
+    time : "11:50"
+    n : 1
+    name : "{rule}.{wildcards}"
+    log : "logs/cluster/{rule}.{wildcards}.log"
+    err : "logs/cluster/{rule}.{wildcards}.err"
+
+fastqc_raw:
+    time : "2:00"
+    n : 4
+    mem : 2000
+
+remove_adapter:
+    time : "2:00"
+    mem : 1000
+
+remove_3p_barcode_and_qual_trim:
+    time : "2:00"
+    mem : 1000
+
+remove_molec_barcode:
+    time : "6:00"
+    n : 4
+    mem : 2000
+
+fastqc_cleaned:
+    time : "2:00"
+    n : 4
+    mem : 2000
+
+bowtie2_build:
+    time : "2:00"
+    mem : 2000
+
+align:
+    time : "11:50"
+    n : 4
+    mem : 2000
+
+select_unique_mappers:
+    time : "2:00"
+    n : 4
+    mem : 2000
+
+remove_PCR_duplicates:
+    time : "8:00"
+    mem : 4000
+
+get_coverage:
+    time : "2:00"
+    mem : 2000
+
+normalize:
+    time : "2:00"
+    mem : 2000
+
+
+
+
+
+
+
+
+
+
+
