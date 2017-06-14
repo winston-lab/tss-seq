@@ -1,35 +1,39 @@
 #!/usr/bin/env python
-import os.path
+import os
 
 configfile: "config.yaml"
 
-CONTROL = config["control"]
-CONDITION = config["condition"]
+CONTROL = config["samples"]["control"]
+CONDITION = config["samples"]["condition"]
 
 #if using python >3.5:
 #SAMPLES = {**CONTROL, **CONDITION}
 SAMPLES = CONTROL.copy()
-SAMPLES.update(config["condition"])
-
-FNAMES = list(map(lambda path : os.path.basename(path).split('.')[0] , list(SAMPLES.values())))
-
+SAMPLES.update(CONDITION)
+#SAMPLES = config["samples"]
 
 
 localrules: all,
+            make_stranded_genome,
+            make_stranded_bedgraph,
+            make_stranded_annotations,
+            make_bigwig_for_deeptools,
+            gzip_deeptools_table,
+            melt_matrix,
+            cat_matrices
 
 rule all:
     input:
-        #expand("qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.zip", sample=SAMPLES, fname = SAMPLES[sample]),
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
-        expand("coverage/libsizenorm/{sample}.libsizenorm.minus.bedgraph", sample=SAMPLES)
+        expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
+        expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
 
 rule fastqc_raw:
     input: 
-        lambda wildcards: SAMPLES[wildcards.sample]
+        lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
     output:
-        #html = "qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.html",
-        #folder = "qual_ctrl/fastqc/raw/{sample}/{fname}_fastqc.zip",
         "qual_ctrl/fastqc/raw/{sample}"
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
@@ -43,7 +47,7 @@ rule fastqc_raw:
 #reads shorter than 18 are thrown out, as the first 6 bases are the molecular barcode and 12-mer is around the theoretical minimum length to map uniquely to the combined Sc+Sp genome (~26 Mb)
 rule remove_adapter:
     input:
-        lambda wildcards: SAMPLES[wildcards.sample]
+        lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
     output:
         temp("fastq/cleaned/{sample}-noadapter.fastq.gz")
     params:
@@ -163,12 +167,12 @@ rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
     output:
-        SCplmin = "coverage/counts/scer/{sample}.SC.counts.plmin.bedgraph",
-        SCpl = "coverage/counts/scer/{sample}.SC.counts.plus.bedgraph",
-        SCmin = "coverage/counts/scer/{sample}.SC.counts.minus.bedgraph",
-        SPplmin = "coverage/counts/{sample}.counts.plmin.bedgraph",
-        SPpl = "coverage/counts/{sample}.counts.plus.bedgraph",
-        SPmin = "coverage/counts/{sample}.counts.minus.bedgraph"
+        SCplmin = "coverage/counts/scer/{sample}-tss-SC-counts-plmin.bedgraph",
+        SCpl = "coverage/counts/scer/{sample}-tss-SC-counts-plus.bedgraph",
+        SCmin = "coverage/counts/scer/{sample}-tss-SC-counts-minus.bedgraph",
+        SPplmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        SPpl = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
+        SPmin = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
         (genomeCoverageBed -bga -5 -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCplmin}) &> {log};
@@ -181,15 +185,15 @@ rule get_coverage:
 
 rule normalize:
     input:
-        SPpl = "coverage/counts/{sample}.counts.plus.bedgraph",
-        SPmin = "coverage/counts/{sample}.counts.minus.bedgraph",
-        SPplmin = "coverage/counts/{sample}.counts.plmin.bedgraph",
-        SCplmin = "coverage/counts/scer/{sample}.SC.counts.plmin.bedgraph"
+        SPpl = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
+        SPmin = "coverage/counts/{sample}-tss-counts-minus.bedgraph",
+        SPplmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        SCplmin = "coverage/counts/scer/{sample}-tss-SC-counts-plmin.bedgraph"
     output:
-        spikePlus = "coverage/spikenorm/{sample}.spikenorm.plus.bedgraph",
-        spikeMinus = "coverage/spikenorm/{sample}.spikenorm.minus.bedgraph",
-        libnormPlus = "coverage/libsizenorm/{sample}.libsizenorm.plus.bedgraph",
-        libnormMinus = "coverage/libsizenorm/{sample}.libsizenorm.minus.bedgraph"
+        spikePlus = "coverage/spikenorm/{sample}-tss-spikenorm-plus.bedgraph",
+        spikeMinus = "coverage/spikenorm/{sample}-tss-spikenorm-minus.bedgraph",
+        libnormPlus = "coverage/libsizenorm/{sample}-tss-libsizenorm-plus.bedgraph",
+        libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
         (scripts/libsizenorm.awk {input.SCplmin} {input.SPpl} > {output.spikePlus}) &> {log} 
@@ -198,3 +202,143 @@ rule normalize:
         (scripts/libsizenorm.awk {input.SPplmin} {input.SPmin} > {output.libnormMinus}) &>> {log}
         """
 
+#make 'stranded' genome for datavis purposes
+rule make_stranded_genome:
+    input:
+        config["genome"]["chrsizes"]
+    output:
+        os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+    log: "logs/make_stranded_genome.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input} > {output}) &> {log}
+        """
+
+rule make_stranded_bedgraph:
+    input:
+        plus = "coverage/{norm}/{sample}-tss-{norm}-plus.bedgraph",        
+        minus = "coverage/{norm}/{sample}-tss-{norm}-minus.bedgraph"        
+    output:
+        sense = temp("coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"),
+        antisense = temp("coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"),
+        
+    log : "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
+        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log} 
+        rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp 
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &>> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
+        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.antisense}) &>> {log} 
+        rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp 
+        """
+
+rule make_stranded_annotations:
+    input:
+        lambda wildcards : config["annotations"][wildcards.annotation]["path"]
+    output:
+        "../genome/annotations/stranded/{annotation}-STRANDED.bed"
+    log : "logs/make_stranded_annotations/make_stranded_annotations-{annotation}.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $1"-plus", $2, $3, $4, $5, $6}} $6=="-"{{print $1"-minus", $2, $3, $4, $5, $6}}' {input} > {output}) &> {log}
+        """
+
+rule make_bigwig_for_deeptools:
+    input:
+        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
+        chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+    output:
+        "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw",
+    log : "logs/make_bigwig_for_deeptools/make_bigwig_for_deeptools-{sample}-{norm}-{strand}.log"
+    shell: """
+        (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
+        """
+
+rule bigwig_compare:
+    input:
+        condition = "coverage/{norm}/bw/{condition}-tss-{norm}-{strand}.bw",
+        control = "coverage/{norm}/bw/{control}-tss-{norm}-{strand}.bw"
+    output:
+        "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
+    log: "logs/bigwig_compare/bigwig_compare-{condition}-v-{control}-{norm}-{strand}.log"
+    threads: config["threads"]
+    shell: """
+        (bigwigCompare -b1 {input.condition} -b2 {input.control} --pseudocount 0.1 --ratio log2 --binSize 1 -p {threads} -o {output}) &> {log}
+        """
+
+rule deeptools_matrix:
+    input:
+        annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
+        bw = "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw"
+    output:
+        dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
+        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv")
+    params:
+        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
+        upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards: config["annotations"][wildcards.annotation]["dnstream"],
+        binsize = lambda wildcards: config["annotations"][wildcards.annotation]["binsize"],
+        sort = lambda wildcards: config["annotations"][wildcards.annotation]["sort"],
+        sortusing = lambda wildcards: config["annotations"][wildcards.annotation]["sortby"],
+        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
+    threads : config["threads"]
+    log: "logs/deeptools/computeMatrix-{annotation}-{sample}-{norm}-{strand}.log"
+    shell: """
+        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+        """
+
+rule gzip_deeptools_table:
+    input:
+        tsv = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv",
+        mat = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"
+    output:
+        "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
+    shell: """
+        pigz -f {input.tsv}
+        rm {input.mat}
+        """
+
+rule melt_matrix:
+    input:
+        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
+    output:
+        temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}-melted.tsv.gz")
+    params:
+        name = lambda wildcards : wildcards.sample,
+        group = lambda wildcards : SAMPLES[wildcards.sample]["group"],
+        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"]
+    script:
+        "scripts/melt_matrix2.R"
+
+rule cat_matrices:
+    input:
+        expand("datavis/{{annotation}}/{{norm}}/{{annotation}}-{sample}-{{norm}}-{{strand}}-melted.tsv.gz", sample=SAMPLES)
+    output:
+        "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
+    shell: """
+        cat {input} > {output}
+        """
+
+rule r_datavis:
+    input:
+        matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
+    output:
+        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bysample.png",
+        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png",
+    params:
+        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
+        #pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
+        heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["heatmap_colormap"],
+        #metagene_palette = lambda wildcards : config["annotations"][wildcards.annotation]["metagene_palette"],
+        #avg_heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["avg_heatmap_cmap"],
+        refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
+        ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
+    script:
+        "scripts/plotHeatmaps.R"
+
+
+    

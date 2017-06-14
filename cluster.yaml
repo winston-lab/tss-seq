@@ -2,6 +2,7 @@ __default__:
     queue : "short"
     time : "11:50"
     n : 1
+    mem : 2000
     name : "{rule}.{wildcards}"
     log : "logs/cluster/{rule}.{wildcards}.log"
     err : "logs/cluster/{rule}.{wildcards}.err"
@@ -12,15 +13,15 @@ fastqc_raw:
     mem : 2000
 
 remove_adapter:
-    time : "2:00"
+    time : "3:00"
     mem : 1000
 
 remove_3p_barcode_and_qual_trim:
-    time : "2:00"
+    time : "3:00"
     mem : 1000
 
 remove_molec_barcode:
-    time : "6:00"
+    time : "8:00"
     n : 4
     mem : 2000
 
@@ -54,14 +55,19 @@ get_coverage:
 normalize:
     time : "2:00"
     mem : 2000
+ 
+deeptools_matrix:
+    time : "2:00"
+    n : 4
+    mem : 2000
 
+r_datavis:
+    time : "4:00"
+    mem : 60000
 
-
-
-
-
-
-
-
+bigwig_compare:
+    time : "3:00"
+    n : 4
+    mem : 20000
 
 

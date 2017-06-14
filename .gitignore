@@ -5,7 +5,7 @@ coverage/
 fastq/*
 logs/*
 logs/cluster/*
-
+datavis/
 
 config.yaml
 
