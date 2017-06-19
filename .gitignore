@@ -6,6 +6,10 @@ fastq/*
 logs/*
 logs/cluster/*
 datavis/
+scripts/.snakemake*
+correlations/
+snakemake.err
+snakemake.log
 
 config.yaml
 

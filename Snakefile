@@ -19,8 +19,13 @@ localrules: all,
             make_stranded_annotations,
             make_bigwig_for_deeptools,
             gzip_deeptools_table,
+            gzip_deeptools_lfc_table,
             melt_matrix,
-            cat_matrices
+            melt_lfc_matrix,
+            cat_matrices,
+            cat_lfc_matrices,
+            make_window_files,
+            cat_windows
 
 rule all:
     input:
@@ -28,7 +33,9 @@ rule all:
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
-        expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
+        #expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
+        expand("datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm=["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] )
 
 rule fastqc_raw:
     input: 
@@ -218,8 +225,8 @@ rule make_stranded_bedgraph:
         plus = "coverage/{norm}/{sample}-tss-{norm}-plus.bedgraph",        
         minus = "coverage/{norm}/{sample}-tss-{norm}-minus.bedgraph"        
     output:
-        sense = temp("coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"),
-        antisense = temp("coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"),
+        sense = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph",
+        antisense = "coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"
         
     log : "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}.log"
     shell: """
@@ -287,12 +294,44 @@ rule deeptools_matrix:
         (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
         """
 
+rule deeptools_lfc_matrix:
+    input:
+        annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
+        bw = "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
+    output:
+        dtfile = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"),
+        matrix = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv")
+    params:
+        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
+        upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards: config["annotations"][wildcards.annotation]["dnstream"],
+        binsize = lambda wildcards: config["annotations"][wildcards.annotation]["binsize"],
+        sort = lambda wildcards: config["annotations"][wildcards.annotation]["sort"],
+        sortusing = lambda wildcards: config["annotations"][wildcards.annotation]["sortby"],
+        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
+    threads : config["threads"]
+    log: "logs/deeptools/compute_lfc_Matrix-{annotation}-{condition}-v-{control}-{norm}-{strand}.log"
+    shell: """
+        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+        """
+
 rule gzip_deeptools_table:
     input:
         tsv = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv",
         mat = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"
     output:
         "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
+    shell: """
+        pigz -f {input.tsv}
+        rm {input.mat}
+        """
+
+rule gzip_deeptools_lfc_table:
+    input:
+        tsv = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv",
+        mat = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"
+    output:
+        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
     shell: """
         pigz -f {input.tsv}
         rm {input.mat}
@@ -312,11 +351,37 @@ rule melt_matrix:
     script:
         "scripts/melt_matrix2.R"
 
+rule melt_lfc_matrix:
+    input:
+        matrix = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
+    output:
+        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}-melted.tsv.gz"
+    params:
+        condition = lambda wildcards : wildcards.condition,
+        control = lambda wildcards : wildcards.control,
+        conditiongroup = lambda wildcards : SAMPLES[wildcards.condition]["group"],
+        controlgroup = lambda wildcards : SAMPLES[wildcards.control]["group"],
+        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"]
+    script:
+        "scripts/melt_lfc_matrix.R"
+
 rule cat_matrices:
     input:
         expand("datavis/{{annotation}}/{{norm}}/{{annotation}}-{sample}-{{norm}}-{{strand}}-melted.tsv.gz", sample=SAMPLES)
+
     output:
         "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
+    shell: """
+        cat {input} > {output}
+        """
+
+rule cat_lfc_matrices:
+    input:
+        expand("datavis/{{annotation}}/{{norm}}/lfc/{{annotation}}-{condition}-v-{control}-{{norm}}-{{strand}}-melted.tsv.gz", condition = CONDITION, control = CONTROL)
+    output:
+        "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
     shell: """
         cat {input} > {output}
         """
@@ -341,4 +406,67 @@ rule r_datavis:
         "scripts/plotHeatmaps.R"
 
 
-    
+rule r_lfc_datavis:
+    input:
+        matrix = "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
+    output:
+        heatmap_sample = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bysample.png",
+        heatmap_group = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png",
+    params:
+        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
+        #pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
+        heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["lfc_heatmap_colormap"],
+        #metagene_palette = lambda wildcards : config["annotations"][wildcards.annotation]["metagene_palette"],
+        #avg_heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["avg_heatmap_cmap"],
+        refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
+        ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
+    script:
+        "scripts/plot_lfc_Heatmaps.R"
+
+rule make_window_files:
+    input:
+        chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+    output:
+        temp(os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed")
+    log: "logs/make_window_files/make_window_files-{windowsize}.log"
+    shell: """
+        (bedtools makewindows -g {input.chrsizes} -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+        """
+
+rule map_to_windows:
+    input:
+        bed = os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed",
+        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
+    output:
+        temp("coverage/{norm}/.{sample}-{norm}-{windowsize}.tsv")
+    log: "logs/map_to_windows/map_to_windows-{sample}-{norm}-{windowsize}.log"
+    shell: """
+        (bedtools map -c 4 -o sum -a {input.bed} -b {input.bedgraph} | cut -f4 > {output}) &> {log}
+        """
+ 
+rule cat_windows:
+    input:
+        values = expand("coverage/{{norm}}/.{sample}-{{norm}}-{{windowsize}}.tsv", sample=SAMPLES),
+        coord = os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed",
+    output:
+        "correlations/{norm}-window{windowsize}.tsv"
+    params:
+        labels = list(SAMPLES.keys())
+    shell: """
+        echo -e "chr\tstart\tend\t{params.labels}\n$(paste {input.coord} {input.values})" > {output}
+        """
+
+rule plot_correlations:
+    input:
+        "correlations/{norm}-window{windowsize}.tsv"
+    output:
+        scatter = "correlations/{norm}-window{windowsize}-pairwise-scatter.png",
+        dists_cluster = "correlations/{norm}-window{windowsize}-sample-dists-clustered.png",
+        dists_nocluster = "correlations/{norm}-window{windowsize}-sample-dists-unclustered.png",
+        pca = "correlations/{norm}-window{windowsize}-pca.png",
+        scree = "correlations/{norm}-window{windowsize}-pca-scree.png"
+    script:
+        "scripts/plotcorrelations.R"
+
