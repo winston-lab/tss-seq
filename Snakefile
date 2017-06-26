@@ -39,7 +39,7 @@ rule all:
         expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
-        expand("datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm=["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        #expand("datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm=["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
         #"diff_exp/de_bases/sig-bases-spikenorm.tsv",
         #"diff_exp/de_bases/sig-bases-libsizenorm.tsv"
@@ -439,7 +439,7 @@ rule make_window_files:
     input:
         chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
     output:
-        temp(os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed")
+        temp(os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed")
     log: "logs/make_window_files/make_window_files-{windowsize}.log"
     shell: """
         (bedtools makewindows -g {input.chrsizes} -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
@@ -447,7 +447,7 @@ rule make_window_files:
 
 rule map_to_windows:
     input:
-        bed = os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed",
+        bed = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
         bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
     output:
         temp("coverage/{norm}/.{sample}-{norm}-{windowsize}.tsv")
@@ -459,7 +459,7 @@ rule map_to_windows:
 rule cat_windows:
     input:
         values = expand("coverage/{{norm}}/.{sample}-{{norm}}-{{windowsize}}.tsv", sample=SAMPLES),
-        coord = os.path.dirname(config["genome"]["chrsizes"]) + "windows-{windowsize}.bed",
+        coord = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
     output:
         "correlations/{norm}-window{windowsize}.tsv"
     params:
