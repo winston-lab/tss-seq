@@ -181,28 +181,31 @@ rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
     output:
-        SCplmin = "coverage/counts/scer/{sample}-tss-SC-counts-plmin.bedgraph",
-        SCpl = "coverage/counts/scer/{sample}-tss-SC-counts-plus.bedgraph",
-        SCmin = "coverage/counts/scer/{sample}-tss-SC-counts-minus.bedgraph",
-        SPplmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        SPpl = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
-        SPmin = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
+        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph",
+        SIpl = "coverage/counts/spikein/{sample}-tss-SI-counts-plus.bedgraph",
+        SImin = "coverage/counts/spikein/{sample}-tss-SI-counts-minus.bedgraph",
+        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
+        minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
+    params:
+        exp_prefix = config["combinedgenome"]["experimental_prefix"],
+        si_prefix = config["combinedgenome"]["spikein_prefix"]
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCplmin}) &> {log};
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCpl}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep Scer_ | sed 's/Scer_//g' | sort -k1,1 -k2,2n > {output.SCmin}) &>> {log};
-        (genomeCoverageBed -bga -5 -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPplmin}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPpl}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep Spom_ | sed 's/Spom_//g' | sort -k1,1 -k2,2n > {output.SPmin}) &>> {log};
+        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log};
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.SIpl}) &>> {log};
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.SImin}) &>> {log};
+        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log};
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log};
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log};
         """
 
 rule normalize:
     input:
-        SPpl = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
-        SPmin = "coverage/counts/{sample}-tss-counts-minus.bedgraph",
-        SPplmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        SCplmin = "coverage/counts/scer/{sample}-tss-SC-counts-plmin.bedgraph"
+        plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
+        minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph",
+        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"
     output:
         spikePlus = "coverage/spikenorm/{sample}-tss-spikenorm-plus.bedgraph",
         spikeMinus = "coverage/spikenorm/{sample}-tss-spikenorm-minus.bedgraph",
@@ -210,10 +213,10 @@ rule normalize:
         libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
-        (scripts/libsizenorm.awk {input.SCplmin} {input.SPpl} > {output.spikePlus}) &> {log} 
-        (scripts/libsizenorm.awk {input.SCplmin} {input.SPmin} > {output.spikeMinus}) &>> {log}
-        (scripts/libsizenorm.awk {input.SPplmin} {input.SPpl} > {output.libnormPlus}) &>> {log}
-        (scripts/libsizenorm.awk {input.SPplmin} {input.SPmin} > {output.libnormMinus}) &>> {log}
+        (scripts/libsizenorm.awk {input.SIplmin} {input.plus} > {output.spikePlus}) &> {log} 
+        (scripts/libsizenorm.awk {input.SIplmin} {input.minus} > {output.spikeMinus}) &>> {log}
+        (scripts/libsizenorm.awk {input.plmin} {input.plus} > {output.libnormPlus}) &>> {log}
+        (scripts/libsizenorm.awk {input.plmin} {input.minus} > {output.libnormMinus}) &>> {log}
         """
 
 #make 'stranded' genome for datavis purposes
@@ -482,10 +485,10 @@ name_string = " ".join(SAMPLES)
 rule union_bedgraph:
     input:
         exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=SAMPLES),
-        si = expand("coverage/counts/scer/{sample}-tss-SC-counts-{{strand}}.bedgraph", sample=SAMPLES)
+        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=SAMPLES)
     output:
         exp = temp("coverage/counts/union-bedgraph-{strand}-nozero.txt"),    
-        si = temp("coverage/counts/scer/union-bedgraph-si-{strand}-nozero.txt")
+        si = temp("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt")
     shell: """
         bedtools unionbedg -i {input.exp} -header -names {name_string} |
         awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
@@ -498,10 +501,10 @@ rule union_bedgraph:
 rule cat_strands:
     input:
         exp = expand("coverage/counts/union-bedgraph-{strand}-nozero.txt", strand=["plus", "minus"]),
-        si = expand("coverage/counts/scer/union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"])
+        si = expand("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"])
     output:
         exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
-        si = "coverage/counts/scer/union-bedgraph-si-bothstr-nozero.txt"
+        si = "coverage/counts/spikein/union-bedgraph-si-bothstr-nozero.txt"
     shell: """
         cat {input.exp} > coverage/counts/.catstrandtemp.txt
         cut -f1-4 coverage/counts/.catstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}'  > .positions.txt
@@ -518,7 +521,7 @@ rule cat_strands:
 rule get_de_bases:
    input:
         exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
-        si = "coverage/counts/scer/union-bedgraph-si-bothstr-nozero.txt"
+        si = "coverage/counts/spikein/union-bedgraph-si-bothstr-nozero.txt"
    params:
         alpha = config["deseq"]["fdr"],
         samples = list(SAMPLES.keys()),
