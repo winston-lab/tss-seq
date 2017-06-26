@@ -85,3 +85,7 @@ map_to_windows:
 plot_correlations:
     time : "11:59"
     mem : 40000
+
+get_de_bases:
+    time : "6:00"
+    mem : 40000

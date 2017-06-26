@@ -6,6 +6,9 @@ configfile: "config.yaml"
 CONTROL = config["samples"]["control"]
 CONDITION = config["samples"]["condition"]
 
+controlgroups = list(set([CONTROL[x]['group'] for x in CONTROL]))
+conditiongroups = list(set([CONDITION[x]['group'] for x in CONDITION]))
+
 #if using python >3.5:
 #SAMPLES = {**CONTROL, **CONDITION}
 SAMPLES = CONTROL.copy()
@@ -25,7 +28,9 @@ localrules: all,
             cat_matrices,
             cat_lfc_matrices,
             make_window_files,
-            cat_windows
+            cat_windows,
+            union_bedgraph,
+            cat_strands
 
 rule all:
     input:
@@ -35,7 +40,9 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
         expand("datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm=["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
-        expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] )
+        expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
+        #"diff_exp/de_bases/sig-bases-spikenorm.tsv",
+        #"diff_exp/de_bases/sig-bases-libsizenorm.tsv"
 
 rule fastqc_raw:
     input: 
@@ -469,4 +476,58 @@ rule plot_correlations:
         scree = "correlations/{norm}-window{windowsize}-pca-scree.png"
     script:
         "scripts/plotcorrelations.R"
+
+name_string = " ".join(SAMPLES)
+
+rule union_bedgraph:
+    input:
+        exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=SAMPLES),
+        si = expand("coverage/counts/scer/{sample}-tss-SC-counts-{{strand}}.bedgraph", sample=SAMPLES)
+    output:
+        exp = temp("coverage/counts/union-bedgraph-{strand}-nozero.txt"),    
+        si = temp("coverage/counts/scer/union-bedgraph-si-{strand}-nozero.txt")
+    shell: """
+        bedtools unionbedg -i {input.exp} -header -names {name_string} |
+        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>1{{print $0}}' > {output.exp}
+        bedtools unionbedg -i {input.si} -header -names {name_string} |
+        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>1{{print $0}}' > {output.si}
+        """
+
+rule cat_strands:
+    input:
+        exp = expand("coverage/counts/union-bedgraph-{strand}-nozero.txt", strand=["plus", "minus"]),
+        si = expand("coverage/counts/scer/union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"])
+    output:
+        exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
+        si = "coverage/counts/scer/union-bedgraph-si-bothstr-nozero.txt"
+    shell: """
+        cat {input.exp} > coverage/counts/.catstrandtemp.txt
+        cut -f1-4 coverage/counts/.catstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}'  > .positions.txt
+        cut -f5- coverage/counts/.catstrandtemp.txt > .values.txt
+        paste .positions.txt .values.txt > {output.exp}
+        rm coverage/counts/.catstrandtemp.txt .positions.txt .values.txt
+        cat {input.si} > coverage/counts/.sicatstrandtemp.txt
+        cut -f1-4 coverage/counts/.sicatstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}' > .sipositions.txt
+        cut -f5- coverage/counts/.sicatstrandtemp.txt > .sivalues.txt
+        paste .sipositions.txt .sivalues.txt > {output.si}
+        rm coverage/counts/.sicatstrandtemp.txt .sipositions.txt .sivalues.txt
+        """
+
+rule get_de_bases:
+   input:
+        exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
+        si = "coverage/counts/scer/union-bedgraph-si-bothstr-nozero.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        samples = list(SAMPLES.keys()),
+        samplegroups = [SAMPLES[x]["group"] for x in SAMPLES]
+   output:
+        spikenorm = protected("diff_exp/de_bases/sig-bases-spikenorm.tsv"),
+        libsizenorm = protected("diff_exp/de_bases/sig-bases-libsizenorm.tsv")
+   script:
+        "scripts/base-diff-expr.R"
+
+
 

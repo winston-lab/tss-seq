@@ -38,9 +38,9 @@ heatmap_base = ggplot(data = raw) +
         axis.title.x = element_text(size=12, face="bold"),
         axis.ticks.length = unit(-2, "mm"))
 
-
-heatmap_samples = heatmap_base + facet_wrap(~sample, ncol=(nsamples/ngroups))
-ggsave(snakemake@output[["heatmap_sample"]], plot = heatmap_samples, height=3+round((nindices/600)*(nsamples/ngroups)), width = 3+.3*w*ngroups, units = "cm")
+#heatmap_samples = heatmap_base + facet_wrap(~sample, ncol=(nsamples/ngroups))
+heatmap_samples = heatmap_base + facet_grid(group~sample)
+ggsave(snakemake@output[["heatmap_sample"]], plot = heatmap_samples, height=3+round((nindices/600)*(nsamples/ngroups)), width = 3+.3*w*nsamples, units = "cm")
 rm(heatmap_samples)
 heatmap_groups = heatmap_base + facet_wrap(~group, ncol=(nsamples/ngroups))
 ggsave(snakemake@output[["heatmap_group"]], plot = heatmap_groups, height=3+round(3*(nindices/1000)), width = 3+.3*w*ngroups, units = "cm")

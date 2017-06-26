@@ -55,7 +55,7 @@ pheatmap(sampledistmat,
          filename = snakemake@output[["dists_nocluster"]])
 
 #pca, plot PC1 vs PC2 and scree plot
-cpm.pca = prcomp(t(cpm), center=TRUE, scale=TRUE)
+cpm.pca = prcomp(t(cpm), center=TRUE, scale=FALSE)
 cpm.pca.df = as.data.frame(cpm.pca$x) %>% rownames_to_column(var="sample") %>% as_data_frame()
 eig = (cpm.pca$sdev)^2
 varpct = eig*100/sum(eig)
