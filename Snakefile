@@ -38,11 +38,9 @@ rule all:
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
-        #expand("coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw", norm=["spikenorm", "libsizenorm"], strand= ["SENSE", "ANTISENSE"], condition = CONDITION, control = CONTROL)
-        #expand("datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm=["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
-        expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
-        #"diff_exp/de_bases/sig-bases-spikenorm.tsv",
-        #"diff_exp/de_bases/sig-bases-libsizenorm.tsv"
+        "qual_ctrl/all/pca-scree-libsizenorm.png",
+        "diff_exp/de_bases/de-bases-libsizenorm.tsv"
+        #expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
 
 rule fastqc_raw:
     input: 
@@ -415,95 +413,111 @@ rule r_datavis:
         "scripts/plotHeatmaps.R"
 
 
-rule r_lfc_datavis:
-    input:
-        matrix = "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
-    output:
-        heatmap_sample = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bysample.png",
-        heatmap_group = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png",
-    params:
-        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
-        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
-        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
-        #pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
-        heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["lfc_heatmap_colormap"],
-        #metagene_palette = lambda wildcards : config["annotations"][wildcards.annotation]["metagene_palette"],
-        #avg_heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["avg_heatmap_cmap"],
-        refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
-        ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
-    script:
-        "scripts/plot_lfc_Heatmaps.R"
+#rule r_lfc_datavis:
+#    input:
+#        matrix = "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
+#    output:
+#        heatmap_sample = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bysample.png",
+#        heatmap_group = "datavis/{annotation}/{norm}/lfc/tss-lfc-{annotation}-{norm}-{strand}-heatmap-bygroup.png",
+#    params:
+#        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+#        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+#        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
+#        #pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
+#        heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["lfc_heatmap_colormap"],
+#        #metagene_palette = lambda wildcards : config["annotations"][wildcards.annotation]["metagene_palette"],
+#        #avg_heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["avg_heatmap_cmap"],
+#        refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
+#        ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
+#    script:
+#        "scripts/plot_lfc_Heatmaps.R"
 
-rule make_window_files:
-    input:
-        chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
-    output:
-        temp(os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed")
-    log: "logs/make_window_files/make_window_files-{windowsize}.log"
-    shell: """
-        (bedtools makewindows -g {input.chrsizes} -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
-        """
+#rule make_window_files:
+#    input:
+#        chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+#    output:
+#        temp(os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed")
+#    log: "logs/make_window_files/make_window_files-{windowsize}.log"
+#    shell: """
+#        (bedtools makewindows -g {input.chrsizes} -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+#        """
 
-rule map_to_windows:
-    input:
-        bed = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
-        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
-    output:
-        temp("coverage/{norm}/.{sample}-{norm}-{windowsize}.tsv")
-    log: "logs/map_to_windows/map_to_windows-{sample}-{norm}-{windowsize}.log"
-    shell: """
-        (bedtools map -c 4 -o sum -a {input.bed} -b {input.bedgraph} | cut -f4 > {output}) &> {log}
-        """
+#rule map_to_windows:
+#    input:
+#        bed = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
+#        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
+#    output:
+#        temp("coverage/{norm}/.{sample}-{norm}-{windowsize}.tsv")
+#    log: "logs/map_to_windows/map_to_windows-{sample}-{norm}-{windowsize}.log"
+#    shell: """
+#        (bedtools map -c 4 -o sum -a {input.bed} -b {input.bedgraph} | cut -f4 > {output}) &> {log}
+#        """
  
-rule cat_windows:
-    input:
-        values = expand("coverage/{{norm}}/.{sample}-{{norm}}-{{windowsize}}.tsv", sample=SAMPLES),
-        coord = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
-    output:
-        "correlations/{norm}-window{windowsize}.tsv"
-    params:
-        labels = list(SAMPLES.keys())
-    shell: """
-        echo -e "chr\tstart\tend\t{params.labels}\n$(paste {input.coord} {input.values})" > {output}
-        """
+#rule cat_windows:
+#    input:
+#        values = expand("coverage/{{norm}}/.{sample}-{{norm}}-{{windowsize}}.tsv", sample=SAMPLES),
+#        coord = os.path.dirname(config["genome"]["chrsizes"]) + "/windows-{windowsize}.bed",
+#    output:
+#        "correlations/{norm}-window{windowsize}.tsv"
+#    params:
+#        labels = list(SAMPLES.keys())
+#    shell: """
+#        echo -e "chr\tstart\tend\t{params.labels}\n$(paste {input.coord} {input.values})" > {output}
+#        """
 
-rule plot_correlations:
-    input:
-        "correlations/{norm}-window{windowsize}.tsv"
-    output:
-        scatter = "correlations/{norm}-window{windowsize}-pairwise-scatter.png",
-        dists_cluster = "correlations/{norm}-window{windowsize}-sample-dists-clustered.png",
-        dists_nocluster = "correlations/{norm}-window{windowsize}-sample-dists-unclustered.png",
-        pca = "correlations/{norm}-window{windowsize}-pca.png",
-        scree = "correlations/{norm}-window{windowsize}-pca-scree.png"
-    script:
-        "scripts/plotcorrelations.R"
+#rule plot_correlations:
+#    input:
+#        "correlations/{norm}-window{windowsize}.tsv"
+#    output:
+#        scatter = "correlations/{norm}-window{windowsize}-pairwise-scatter.png",
+#        dists_cluster = "correlations/{norm}-window{windowsize}-sample-dists-clustered.png",
+#        dists_nocluster = "correlations/{norm}-window{windowsize}-sample-dists-unclustered.png",
+#        pca = "correlations/{norm}-window{windowsize}-pca.png",
+#        scree = "correlations/{norm}-window{windowsize}-pca-scree.png"
+#    script:
+#        "scripts/plotcorrelations.R"
 
 name_string = " ".join(SAMPLES)
+PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
+pass_string = " ".join(PASSING) 
 
 rule union_bedgraph:
     input:
         exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=SAMPLES),
-        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=SAMPLES)
+        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=SAMPLES),
+        pass_exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=PASSING),
+        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=PASSING),
     output:
         exp = temp("coverage/counts/union-bedgraph-{strand}-nozero.txt"),    
-        si = temp("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt")
+        si = temp("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt"),
+        pass_exp = temp("coverage/counts/passing-union-bedgraph-{strand}-nozero.txt"),    
+        pass_si = temp("coverage/counts/spikein/passing-union-bedgraph-si-{strand}-nozero.txt")
     shell: """
         bedtools unionbedg -i {input.exp} -header -names {name_string} |
         awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>1{{print $0}}' > {output.exp}
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.exp}
         bedtools unionbedg -i {input.si} -header -names {name_string} |
         awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>1{{print $0}}' > {output.si}
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.si}
+        bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
+        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_exp}
+        bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
+        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_si}
         """
 
 rule cat_strands:
     input:
         exp = expand("coverage/counts/union-bedgraph-{strand}-nozero.txt", strand=["plus", "minus"]),
-        si = expand("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"])
+        si = expand("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"]),
+        pass_exp = expand("coverage/counts/passing-union-bedgraph-{strand}-nozero.txt", strand=["plus", "minus"]),
+        pass_si = expand("coverage/counts/spikein/passing-union-bedgraph-si-{strand}-nozero.txt", strand=["plus", "minus"])
     output:
-        exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-bothstr-nozero.txt"
+        exp = "coverage/counts/allsample-union-bedgraph-bothstr-nozero.txt",
+        si = "coverage/counts/spikein/allsample-union-bedgraph-si-bothstr-nozero.txt",
+        pass_exp = "coverage/counts/passing-union-bedgraph-bothstr-nozero.txt",
+        pass_si = "coverage/counts/spikein/passing-union-bedgraph-si-bothstr-nozero.txt"
     shell: """
         cat {input.exp} > coverage/counts/.catstrandtemp.txt
         cut -f1-4 coverage/counts/.catstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}'  > .positions.txt
@@ -515,21 +529,68 @@ rule cat_strands:
         cut -f5- coverage/counts/.sicatstrandtemp.txt > .sivalues.txt
         paste .sipositions.txt .sivalues.txt > {output.si}
         rm coverage/counts/.sicatstrandtemp.txt .sipositions.txt .sivalues.txt
+        cat {input.pass_exp} > coverage/counts/.catstrandtemp.txt
+        cut -f1-4 coverage/counts/.catstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}'  > .positions.txt
+        cut -f5- coverage/counts/.catstrandtemp.txt > .values.txt
+        paste .positions.txt .values.txt > {output.pass_exp}
+        rm coverage/counts/.catstrandtemp.txt .positions.txt .values.txt
+        cat {input.pass_si} > coverage/counts/.sicatstrandtemp.txt
+        cut -f1-4 coverage/counts/.sicatstrandtemp.txt | awk 'BEGIN{{FS="\t"; OFS=":"}}{{print $1, $2, $3, $4}}' > .sipositions.txt
+        cut -f5- coverage/counts/.sicatstrandtemp.txt > .sivalues.txt
+        paste .sipositions.txt .sivalues.txt > {output.pass_si}
+        rm coverage/counts/.sicatstrandtemp.txt .sipositions.txt .sivalues.txt
         """
 
-rule get_de_bases:
+rule deseq_initial_qc:
    input:
-        exp = "coverage/counts/union-bedgraph-bothstr-nozero.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-bothstr-nozero.txt"
+        exp = "coverage/counts/allsample-union-bedgraph-bothstr-nozero.txt",
+        si = "coverage/counts/spikein/allsample-union-bedgraph-si-bothstr-nozero.txt"
    params:
         alpha = config["deseq"]["fdr"],
         samples = list(SAMPLES.keys()),
         samplegroups = [SAMPLES[x]["group"] for x in SAMPLES]
    output:
-        spikenorm = protected("diff_exp/de_bases/sig-bases-spikenorm.tsv"),
-        libsizenorm = protected("diff_exp/de_bases/sig-bases-libsizenorm.tsv")
+        exp_size_v_sf = "qual_ctrl/all/libsize-v-sizefactor-experimental.png",
+        si_size_v_sf = "qual_ctrl/all/libsize-v-sizefactor-spikein.png",
+        si_pct = "qual_ctrl/all/spikein-pct.png",
+        corrplot_spikenorm = "qual_ctrl/all/pairwise-correlation-spikenorm.png",
+        corrplot_libsizenorm = "qual_ctrl/all/pairwise-correlation-libsizenorm.png",
+        count_heatmap_spikenorm = "qual_ctrl/all/de-bases-heatmap-spikenorm.png",
+        count_heatmap_libsizenorm = "qual_ctrl/all/de-bases-heatmap-libsizenorm.png",
+        dist_heatmap_spikenorm = "qual_ctrl/all/sample-dists-spikenorm.png",
+        dist_heatmap_libsizenorm = "qual_ctrl/all/sample-dists-libsizenorm.png",
+        pca_spikenorm = "qual_ctrl/all/pca-spikenorm.png",
+        scree_spikenorm = "qual_ctrl/all/pca-scree-spikenorm.png",
+        pca_libsizenorm = "qual_ctrl/all/pca-libsizenorm.png",
+        scree_libsizenorm = "qual_ctrl/all/pca-scree-libsizenorm.png"
    script:
-        "scripts/base-diff-expr.R"
+        "scripts/initial_qc.R"
 
+rule second_qc_and_call_de_bases:
+   input:
+        exp = "coverage/counts/passing-union-bedgraph-bothstr-nozero.txt",
+        si = "coverage/counts/spikein/passing-union-bedgraph-si-bothstr-nozero.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        samples = list(PASSING.keys()),
+        samplegroups = [PASSING[x]["group"] for x in PASSING]
+   output:
+        exp_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-experimental.png",
+        si_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-spikein.png",
+        si_pct = "qual_ctrl/passing/spikein-pct.png",
+        corrplot_spikenorm = "qual_ctrl/passing/pairwise-correlation-spikenorm.png",
+        corrplot_libsizenorm = "qual_ctrl/passing/pairwise-correlation-libsizenorm.png",
+        count_heatmap_spikenorm = "qual_ctrl/passing/de-bases-heatmap-spikenorm.png",
+        count_heatmap_libsizenorm = "qual_ctrl/passing/de-bases-heatmap-libsizenorm.png",
+        dist_heatmap_spikenorm = "qual_ctrl/passing/sample-dists-spikenorm.png",
+        dist_heatmap_libsizenorm = "qual_ctrl/passing/sample-dists-libsizenorm.png",
+        pca_spikenorm = "qual_ctrl/passing/pca-spikenorm.png",
+        scree_spikenorm = "qual_ctrl/passing/pca-scree-spikenorm.png",
+        pca_libsizenorm = "qual_ctrl/passing/pca-libsizenorm.png",
+        scree_libsizenorm = "qual_ctrl/passing/pca-scree-libsizenorm.png",
+        de_spikenorm_path = "diff_exp/de_bases/de-bases-spikenorm.tsv",
+        de_libsizenorm_path = "diff_exp/de_bases/de-bases-libsizenorm.tsv"
+   script:
+        "scripts/call_de_bases_and_second_qc.R"
 
 

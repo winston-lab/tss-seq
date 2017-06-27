@@ -86,6 +86,10 @@ plot_correlations:
     time : "11:59"
     mem : 40000
 
-get_de_bases:
+deseq_initial_qc:
+    time : "6:00"
+    mem : 40000
+
+second_qc_and_call_de_bases:
     time : "6:00"
     mem : 40000
