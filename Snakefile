@@ -34,8 +34,10 @@ localrules: all,
             separate_de_bases,
             de_bases_to_bed,
             merge_de_bases_to_clusters,
-            cat_cluster_strands
-
+            cat_cluster_strands,
+            extract_base_distances,
+            separate_de_clusters,
+	    de_clusters_to_bed
 
 rule all:
     input:
@@ -44,12 +46,13 @@ rule all:
         expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/pca-scree-libsizenorm.png",
-        "diff_exp/de_bases/de-bases-libsizenorm.tsv",
         #expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
         #expand("diff_exp/de_bases/allclusters/allclusters-{norm}-combined.bed", norm=["libsizenorm", "spikenorm"]),
         #expand("coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph", norm=["counts"], sample=SAMPLES),
-        #expand("diff_exp/de_clusters/union-bedgraph-clusters-{norm}.txt", norm = ["libsizenorm", "spikenorm"] )
-        expand("diff_exp/de_clusters/union-bedgraph-clusters-{norm}.txt", norm = ["libsizenorm", "spikenorm"])
+        expand("diff_exp/de_bases/base-distances-{norm}.tsv", norm = ["libsizenorm", "spikenorm"]),
+        "diff_exp/de_clusters/de-clusters-libsizenorm.tsv",
+        expand("diff_exp/de_clusters/de-clusters-{norm}-{direction}.bed", direction = ["up","down"], norm = ["libsizenorm","spikenorm"])
+
 rule fastqc_raw:
     input: 
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
@@ -622,6 +625,21 @@ rule de_bases_to_bed:
         tail -n +2 {input} | awk -v awkdirect={wildcards.direction} -F '[:\t]' 'BEGIN{{OFS="\t"}} $1=="plus"{{print $2"-"$1, $3, $4, awkdirect"_"NR, -log($10), "+"}} $1=="minus"{{print $2"-"$1, $3, $4, awkdirect"_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 
         """
 
+rule extract_base_distances:
+    input:
+        up = "diff_exp/de_bases/de-bases-{norm}-up.bed",
+        down = "diff_exp/de_bases/de-bases-{norm}-down.bed"
+    output:
+        "diff_exp/de_bases/base-distances-{norm}.tsv"
+    shell: """
+        bedtools closest -s -d -io -t first -a {input.up} -b {input.up} | cut -f13 > diff_exp/.{wildcards.norm}-basedistances-up.temp
+        bedtools closest -s -d -io -t first -a {input.down} -b {input.down} | cut -f13 > diff_exp/.{wildcards.norm}-basedistances-down.temp
+        cat diff_exp/.{wildcards.norm}-basedistances-up.temp diff_exp/.{wildcards.norm}-basedistances-down.temp > {output}
+        rm diff_exp/.{wildcards.norm}*.temp
+        """
+
+#rule vis_base_distances
+
 rule merge_de_bases_to_clusters:
     input:
         "diff_exp/de_bases/de-bases-{norm}-{direction}.bed"
@@ -664,4 +682,53 @@ rule union_cluster_bedgraph:
         paste diff_exp/de_clusters/{wildcards.norm}-base.temp diff_exp/de_clusters/{wildcards.norm}-values.temp > {output}
         rm diff_exp/de_clusters/{wildcards.norm}*temp
         """
+
+rule call_de_clusters:
+   input:
+        spikeclust = "diff_exp/de_clusters/union-bedgraph-clusters-spikenorm.txt",
+        libsizeclust = "diff_exp/de_clusters/union-bedgraph-clusters-libsizenorm.txt",
+        si = "coverage/counts/spikein/passing-union-bedgraph-si-bothstr-nozero.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        samples = list(PASSING.keys()),
+        samplegroups = [PASSING[x]["group"] for x in PASSING]
+   output:
+        #exp_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-experimental.png",
+        #si_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-spikein.png",
+        #si_pct = "qual_ctrl/passing/spikein-pct.png",
+        corrplot_spikenorm = "qual_ctrl/de_clusters/de-clusters-pairwise-correlation-spikenorm.png",
+        corrplot_libsizenorm = "qual_ctrl/de_clusters/de-clusters-pairwise-correlation-libsizenorm.png",
+        count_heatmap_spikenorm = "diff_exp/de_clusters/de-clusters-heatmap-spikenorm.png",
+        count_heatmap_libsizenorm = "diff_exp/de_clusters/de-clusters-heatmap-libsizenorm.png",
+        dist_heatmap_spikenorm = "qual_ctrl/de_clusters/de-clusters-sample-dists-spikenorm.png",
+        dist_heatmap_libsizenorm = "qual_ctrl/de_clusters/de-clusters-sample-dists-libsizenorm.png",
+        pca_spikenorm = "qual_ctrl/de_clusters/de-clusters-pca-spikenorm.png",
+        scree_spikenorm = "qual_ctrl/de_clusters/de-clusters-pca-scree-spikenorm.png",
+        pca_libsizenorm = "qual_ctrl/de_clusters/de-clusters-pca-libsizenorm.png",
+        scree_libsizenorm = "qual_ctrl/de_clusters/de-clusters-pca-scree-libsizenorm.png",
+        de_spikenorm_path = "diff_exp/de_clusters/de-clusters-spikenorm.tsv",
+        de_libsizenorm_path = "diff_exp/de_clusters/de-clusters-libsizenorm.tsv"
+   script:
+        "scripts/call_de_clusters.R"
+
+rule separate_de_clusters:
+    input:
+        "diff_exp/de_clusters/de-clusters-{norm}.tsv"
+    output:
+        up = "diff_exp/de_clusters/de-clusters-{norm}-up.tsv",
+        down = "diff_exp/de_clusters/de-clusters-{norm}-down.tsv"
+    shell: """
+        awk 'BEGIN{{FS=OFS="\t"}} $3>=0 {{print $0}}' {input} > {output.up}
+        awk 'BEGIN{{FS=OFS="\t"}} $3<0 {{print $0}}' {input} > {output.down}
+        """
+
+rule de_clusters_to_bed:
+    input:
+        "diff_exp/de_clusters/de-clusters-{norm}-{direction}.tsv"
+    output:
+       "diff_exp/de_clusters/de-clusters-{norm}-{direction}.bed" 
+    shell: """
+        tail -n +2 {input} | awk -v awkdirect={wildcards.direction} -F '[:\t]' 'BEGIN{{OFS="\t"}} $1=="plus"{{print $2, $3, $4, awkdirect"_"NR, -log($10), "+"}} $1=="minus"{{print $2, $3, $4, awkdirect"_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 
+        """
+
 
