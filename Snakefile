@@ -30,7 +30,12 @@ localrules: all,
             make_window_files,
             cat_windows,
             union_bedgraph,
-            cat_strands
+            cat_strands,
+            separate_de_bases,
+            de_bases_to_bed,
+            merge_de_bases_to_clusters,
+            cat_cluster_strands
+
 
 rule all:
     input:
@@ -39,9 +44,12 @@ rule all:
         expand("coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph", sample=SAMPLES),
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/pca-scree-libsizenorm.png",
-        "diff_exp/de_bases/de-bases-libsizenorm.tsv"
+        "diff_exp/de_bases/de-bases-libsizenorm.tsv",
         #expand("correlations/{norm}-window{windowsize}-pca-scree.png", norm=["libsizenorm", "spikenorm"], windowsize=config["corr-binsizes"] ),
-
+        #expand("diff_exp/de_bases/allclusters/allclusters-{norm}-combined.bed", norm=["libsizenorm", "spikenorm"]),
+        #expand("coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph", norm=["counts"], sample=SAMPLES),
+        #expand("diff_exp/de_clusters/union-bedgraph-clusters-{norm}.txt", norm = ["libsizenorm", "spikenorm"] )
+        expand("diff_exp/de_clusters/union-bedgraph-clusters-{norm}.txt", norm = ["libsizenorm", "spikenorm"])
 rule fastqc_raw:
     input: 
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
@@ -268,17 +276,17 @@ rule make_bigwig_for_deeptools:
         (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
         """
 
-rule bigwig_compare:
-    input:
-        condition = "coverage/{norm}/bw/{condition}-tss-{norm}-{strand}.bw",
-        control = "coverage/{norm}/bw/{control}-tss-{norm}-{strand}.bw"
-    output:
-        "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
-    log: "logs/bigwig_compare/bigwig_compare-{condition}-v-{control}-{norm}-{strand}.log"
-    threads: config["threads"]
-    shell: """
-        (bigwigCompare -b1 {input.condition} -b2 {input.control} --pseudocount 0.1 --ratio log2 --binSize 1 -p {threads} -o {output}) &> {log}
-        """
+#rule bigwig_compare:
+#    input:
+#        condition = "coverage/{norm}/bw/{condition}-tss-{norm}-{strand}.bw",
+#        control = "coverage/{norm}/bw/{control}-tss-{norm}-{strand}.bw"
+#    output:
+#        "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
+#    log: "logs/bigwig_compare/bigwig_compare-{condition}-v-{control}-{norm}-{strand}.log"
+#    threads: config["threads"]
+#    shell: """
+#        (bigwigCompare -b1 {input.condition} -b2 {input.control} --pseudocount 0.1 --ratio log2 --binSize 1 -p {threads} -o {output}) &> {log}
+#        """
 
 rule deeptools_matrix:
     input:
@@ -301,26 +309,26 @@ rule deeptools_matrix:
         (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
         """
 
-rule deeptools_lfc_matrix:
-    input:
-        annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
-        bw = "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
-    output:
-        dtfile = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"),
-        matrix = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv")
-    params:
-        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
-        upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
-        dnstream = lambda wildcards: config["annotations"][wildcards.annotation]["dnstream"],
-        binsize = lambda wildcards: config["annotations"][wildcards.annotation]["binsize"],
-        sort = lambda wildcards: config["annotations"][wildcards.annotation]["sort"],
-        sortusing = lambda wildcards: config["annotations"][wildcards.annotation]["sortby"],
-        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
-    threads : config["threads"]
-    log: "logs/deeptools/compute_lfc_Matrix-{annotation}-{condition}-v-{control}-{norm}-{strand}.log"
-    shell: """
-        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
-        """
+#rule deeptools_lfc_matrix:
+#    input:
+#        annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
+#        bw = "coverage/{norm}/bw/lfc/{condition}-v-{control}-{norm}-{strand}.bw"
+#    output:
+#        dtfile = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"),
+#        matrix = temp("datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv")
+#    params:
+#        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
+#        upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
+#        dnstream = lambda wildcards: config["annotations"][wildcards.annotation]["dnstream"],
+#        binsize = lambda wildcards: config["annotations"][wildcards.annotation]["binsize"],
+#        sort = lambda wildcards: config["annotations"][wildcards.annotation]["sort"],
+#        sortusing = lambda wildcards: config["annotations"][wildcards.annotation]["sortby"],
+#        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
+#    threads : config["threads"]
+#    log: "logs/deeptools/compute_lfc_Matrix-{annotation}-{condition}-v-{control}-{norm}-{strand}.log"
+#    shell: """
+#        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+#        """
 
 rule gzip_deeptools_table:
     input:
@@ -333,16 +341,16 @@ rule gzip_deeptools_table:
         rm {input.mat}
         """
 
-rule gzip_deeptools_lfc_table:
-    input:
-        tsv = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv",
-        mat = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"
-    output:
-        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
-    shell: """
-        pigz -f {input.tsv}
-        rm {input.mat}
-        """
+#rule gzip_deeptools_lfc_table:
+#    input:
+#        tsv = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv",
+#        mat = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.mat.gz"
+#    output:
+#        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
+#    shell: """
+#        pigz -f {input.tsv}
+#        rm {input.mat}
+#        """
 
 rule melt_matrix:
     input:
@@ -358,21 +366,21 @@ rule melt_matrix:
     script:
         "scripts/melt_matrix2.R"
 
-rule melt_lfc_matrix:
-    input:
-        matrix = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
-    output:
-        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}-melted.tsv.gz"
-    params:
-        condition = lambda wildcards : wildcards.condition,
-        control = lambda wildcards : wildcards.control,
-        conditiongroup = lambda wildcards : SAMPLES[wildcards.condition]["group"],
-        controlgroup = lambda wildcards : SAMPLES[wildcards.control]["group"],
-        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
-        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
-        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"]
-    script:
-        "scripts/melt_lfc_matrix.R"
+#rule melt_lfc_matrix:
+#    input:
+#        matrix = "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}.tsv.gz"
+#    output:
+#        "datavis/{annotation}/{norm}/lfc/{annotation}-{condition}-v-{control}-{norm}-{strand}-melted.tsv.gz"
+#    params:
+#        condition = lambda wildcards : wildcards.condition,
+#        control = lambda wildcards : wildcards.control,
+#        conditiongroup = lambda wildcards : SAMPLES[wildcards.condition]["group"],
+#        controlgroup = lambda wildcards : SAMPLES[wildcards.control]["group"],
+#        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+#        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+#        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"]
+#    script:
+#        "scripts/melt_lfc_matrix.R"
 
 rule cat_matrices:
     input:
@@ -384,14 +392,14 @@ rule cat_matrices:
         cat {input} > {output}
         """
 
-rule cat_lfc_matrices:
-    input:
-        expand("datavis/{{annotation}}/{{norm}}/lfc/{{annotation}}-{condition}-v-{control}-{{norm}}-{{strand}}-melted.tsv.gz", condition = CONDITION, control = CONTROL)
-    output:
-        "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
-    shell: """
-        cat {input} > {output}
-        """
+#rule cat_lfc_matrices:
+#    input:
+#        expand("datavis/{{annotation}}/{{norm}}/lfc/{{annotation}}-{condition}-v-{control}-{{norm}}-{{strand}}-melted.tsv.gz", condition = CONDITION, control = CONTROL)
+#    output:
+#        "datavis/{annotation}/{norm}/lfc/allsampleslfc-{annotation}-{norm}-{strand}.tsv.gz"
+#    shell: """
+#        cat {input} > {output}
+#        """
 
 rule r_datavis:
     input:
@@ -566,6 +574,7 @@ rule deseq_initial_qc:
    script:
         "scripts/initial_qc.R"
 
+#may need to modify to accomodate multiple condition-v-control comparisons
 rule second_qc_and_call_de_bases:
    input:
         exp = "coverage/counts/passing-union-bedgraph-bothstr-nozero.txt",
@@ -593,4 +602,66 @@ rule second_qc_and_call_de_bases:
    script:
         "scripts/call_de_bases_and_second_qc.R"
 
+rule separate_de_bases:
+    input:
+        "diff_exp/de_bases/de-bases-{norm}.tsv"
+    output:
+        up = "diff_exp/de_bases/de-bases-{norm}-up.tsv",
+        down = "diff_exp/de_bases/de-bases-{norm}-down.tsv"
+    shell: """
+        awk 'BEGIN{{FS=OFS="\t"}} $3>=0 {{print $0}}' {input} > {output.up}
+        awk 'BEGIN{{FS=OFS="\t"}} $3<0 {{print $0}}' {input} > {output.down}
+        """
+
+rule de_bases_to_bed:
+    input:
+        "diff_exp/de_bases/de-bases-{norm}-{direction}.tsv"
+    output:
+       "diff_exp/de_bases/de-bases-{norm}-{direction}.bed" 
+    shell: """
+        tail -n +2 {input} | awk -v awkdirect={wildcards.direction} -F '[:\t]' 'BEGIN{{OFS="\t"}} $1=="plus"{{print $2"-"$1, $3, $4, awkdirect"_"NR, -log($10), "+"}} $1=="minus"{{print $2"-"$1, $3, $4, awkdirect"_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output} 
+        """
+
+rule merge_de_bases_to_clusters:
+    input:
+        "diff_exp/de_bases/de-bases-{norm}-{direction}.bed"
+    output:
+        "diff_exp/de_bases/allclusters/allclusters-{norm}-{direction}.bed"
+    params:
+        mergedist = config["cluster-merge-distance"]
+    shell: """
+        bedtools merge -s -d {params.mergedist} -i {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
+        """
+
+rule cat_cluster_strands:
+    input:
+        expand("diff_exp/de_bases/allclusters/allclusters-{{norm}}-{direction}.bed", direction = ["up", "down"]) 
+    output:
+        "diff_exp/de_bases/allclusters/allclusters-{norm}-combined.bed"
+    shell: """
+        cat {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
+        """
+
+rule map_counts_to_clusters:
+    input:
+        bed = "diff_exp/de_bases/allclusters/allclusters-{norm}-combined.bed",
+        bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
+    output:
+        temp("diff_exp/de_clusters/{sample}-allclusters-{norm}.bedgraph")
+    shell: """
+        bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | cut -f1,2,3,5 > {output}
+        """
+
+rule union_cluster_bedgraph:
+    input:
+        expand("diff_exp/de_clusters/{sample}-allclusters-{{norm}}.bedgraph", sample=PASSING)
+    output:
+        "diff_exp/de_clusters/union-bedgraph-clusters-{norm}.txt"
+    shell: """
+        bedtools unionbedg -i {input} > diff_exp/de_clusters/{wildcards.norm}.temp
+        awk 'BEGIN{{FS="-|\t"; OFS=":"}} {{print $2, $1, $3, $4}}' diff_exp/de_clusters/{wildcards.norm}.temp > diff_exp/de_clusters/{wildcards.norm}-base.temp
+        cut -f4- diff_exp/de_clusters/{wildcards.norm}.temp > diff_exp/de_clusters/{wildcards.norm}-values.temp
+        paste diff_exp/de_clusters/{wildcards.norm}-base.temp diff_exp/de_clusters/{wildcards.norm}-values.temp > {output}
+        rm diff_exp/de_clusters/{wildcards.norm}*temp
+        """
 
