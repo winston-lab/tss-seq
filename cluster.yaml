@@ -93,3 +93,7 @@ deseq_initial_qc:
 second_qc_and_call_de_bases:
     time : "6:00"
     mem : 40000
+
+call_de_clusters:
+    time : "2:00"
+    mem : 20000
