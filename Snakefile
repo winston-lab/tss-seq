@@ -3,18 +3,12 @@ import os
 
 configfile: "config.yaml"
 
-CONTROL = config["samples"]["control"]
-CONDITION = config["samples"]["condition"]
-
-controlgroups = list(set([CONTROL[x]['group'] for x in CONTROL]))
-conditiongroups = list(set([CONDITION[x]['group'] for x in CONDITION]))
-
-#if using python >3.5:
-#SAMPLES = {**CONTROL, **CONDITION}
-SAMPLES = CONTROL.copy()
-SAMPLES.update(CONDITION)
-#SAMPLES = config["samples"]
-
+SAMPLES = config["samples"]
+name_string = " ".join(SAMPLES)
+PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
+pass_string = " ".join(PASSING) 
+controlgroups = config["comparisons"]["controls"]
+conditiongroups = config["comparisons"]["conditions"]
 
 localrules: all,
             make_stranded_genome,
@@ -52,7 +46,8 @@ rule all:
         expand("diff_exp/de_bases/base-distances-{norm}.tsv", norm = ["libsizenorm", "spikenorm"]),
         "diff_exp/de_clusters/de-clusters-libsizenorm.tsv",
         expand("diff_exp/de_clusters/de-clusters-{norm}-{direction}.bed", direction = ["up","down"], norm = ["libsizenorm","spikenorm"]),
-        expand("coverage/counts/union-bedgraph-{condition}-v-{control}.txt", condition = conditiongroups, control = controlgroups)
+        expand("coverage/counts/union-bedgraph-{condition}-v-{control}.txt", zip, condition = config["comparisons"]["conditions"], control = config["comparisons"]["controls"]),
+        "coverage/counts/spikein/union-bedgraph-si-allsamples.txt"
 
 rule fastqc_raw:
     input: 
@@ -191,10 +186,10 @@ rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
     output:
-        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph",
+        SIplmin = temp("coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"),
         SIpl = "coverage/counts/spikein/{sample}-tss-SI-counts-plus.bedgraph",
         SImin = "coverage/counts/spikein/{sample}-tss-SI-counts-minus.bedgraph",
-        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        plmin = temp("coverage/counts/{sample}-tss-counts-plmin.bedgraph"),
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
         minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
     params:
@@ -202,10 +197,10 @@ rule get_coverage:
         si_prefix = config["combinedgenome"]["spikein_prefix"]
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log};
+        #(genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log};
         (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIpl}) &>> {log};
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SImin}) &>> {log};
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log};
+        #(genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log};
         (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log};
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log};
         """
@@ -389,7 +384,6 @@ rule melt_matrix:
 rule cat_matrices:
     input:
         expand("datavis/{{annotation}}/{{norm}}/{{annotation}}-{sample}-{{norm}}-{{strand}}-melted.tsv.gz", sample=SAMPLES)
-
     output:
         "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     shell: """
@@ -489,37 +483,35 @@ rule r_datavis:
 #    script:
 #        "scripts/plotcorrelations.R"
 
-name_string = " ".join(SAMPLES)
-PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
-pass_string = " ".join(PASSING) 
+
+
+#rule union_bedgraph:
+#    input:
+#        exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=SAMPLES),
+#        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=SAMPLES),
+#        pass_exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=PASSING),
+#        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=PASSING),
+#    output:
+#        exp = temp("coverage/counts/union-bedgraph-{strand}-nozero.txt"),    
+#        si = temp("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt"),
+#        pass_exp = temp("coverage/counts/passing-union-bedgraph-{strand}-nozero.txt"),    
+#        pass_si = temp("coverage/counts/spikein/passing-union-bedgraph-si-{strand}-nozero.txt")
+#    shell: """
+#        bedtools unionbedg -i {input.exp} -header -names {name_string} |
+#        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+#        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.exp}
+#        bedtools unionbedg -i {input.si} -header -names {name_string} |
+#        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+#        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.si}
+#        bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
+#        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+#        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_exp}
+#        bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
+#        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
+#        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_si}
+#        """
 
 rule union_bedgraph:
-    input:
-        exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=SAMPLES),
-        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=SAMPLES),
-        pass_exp = expand("coverage/counts/{sample}-tss-counts-{{strand}}.bedgraph", sample=PASSING),
-        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-{{strand}}.bedgraph", sample=PASSING),
-    output:
-        exp = temp("coverage/counts/union-bedgraph-{strand}-nozero.txt"),    
-        si = temp("coverage/counts/spikein/union-bedgraph-si-{strand}-nozero.txt"),
-        pass_exp = temp("coverage/counts/passing-union-bedgraph-{strand}-nozero.txt"),    
-        pass_si = temp("coverage/counts/spikein/passing-union-bedgraph-si-{strand}-nozero.txt")
-    shell: """
-        bedtools unionbedg -i {input.exp} -header -names {name_string} |
-        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.exp}
-        bedtools unionbedg -i {input.si} -header -names {name_string} |
-        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.si}
-        bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
-        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_exp}
-        bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
-        awk -v awkstrand={wildcards.strand} 'BEGIN{{FS=OFS="\t"}}{{print awkstrand, $0 }}' |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=5; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_si}
-        """
-
-rule union_bedgraph2:
     input:
         exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
         si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
@@ -528,17 +520,37 @@ rule union_bedgraph2:
     output:
         exp = "coverage/counts/union-bedgraph-allsamples.txt",    
         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
-        pass_exp = temp("coverage/counts/union-bedgraph-passing.txt"),    
-        pass_si = temp("coverage/counts/spikein/union-bedgraph-si-passing.txt")
+        pass_exp = "coverage/counts/union-bedgraph-passing.txt",    
+        pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+    #TODO: write this into a script
     shell: """
         bedtools unionbedg -i {input.exp} -header -names {name_string} |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.exp}
+        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-allsamples.temp
+        cut -f1-3 .union-bedgraph-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt
+        cut -f4- .union-bedgraph-allsamples.temp > .values.txt
+        paste .positions.txt .values.txt > {output.exp}
+        rm .union-bedgraph-allsamples.temp .positions.txt .values.txt
+
         bedtools unionbedg -i {input.si} -header -names {name_string} |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.si}
+        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-si-allsamples.temp
+        cut -f1-3 .union-bedgraph-si-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt
+        cut -f4- .union-bedgraph-si-allsamples.temp > .values.txt
+        paste .positions.txt .values.txt > {output.si}
+        rm .union-bedgraph-si-allsamples.temp .positions.txt .values.txt
+
         bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_exp}
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-passing.temp
+        cut -f1-3 .union-bedgraph-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt
+        cut -f4- .union-bedgraph-passing.temp > .values.txt
+        paste .positions.txt .values.txt > {output.pass_exp}
+        rm .union-bedgraph-passing.temp .positions.txt .values.txt
+
         bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output.pass_si}
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-si-passing.temp
+        cut -f1-3 .union-bedgraph-si-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt
+        cut -f4- .union-bedgraph-si-passing.temp > .values.txt
+        paste .positions.txt .values.txt > {output.pass_si}
+        rm .union-bedgraph-si-passing.temp .positions.txt .values.txt
         """
 
 rule union_bedgraph_cond_v_ctrl:
@@ -550,7 +562,11 @@ rule union_bedgraph_cond_v_ctrl:
         names = lambda wildcards : " ".join({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})
     shell: """
         bedtools unionbedg -i {input} -header -names {params.names} |
-        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > {output}
+        awk 'BEGIN{{FS=OFS="\t"}}{{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp
+        cut -f1-3 .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .{wildcards.condition}-v-{wildcards.control}-positions.txt
+        cut -f4- .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp > .{wildcards.condition}-v-{wildcards.control}-values.txt
+        paste .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt > {output}
+        rm .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt
         """
 
 #rule cat_strands:
