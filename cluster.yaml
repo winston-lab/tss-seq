@@ -65,34 +65,17 @@ r_datavis:
     time : "4:00"
     mem : 60000
 
-bigwig_compare:
-    time : "3:00"
-    n : 4
-    mem : 4000
-
-deeptools_lfc_matrix:
-    time : "2:00"
-    n : 4
-    mem : 2000
-r_lfc_datavis:
-    time : "4:00"
-    mem : 60000
-
-map_to_windows:
-    time : "2:00"
-    mem : 4000
-
-plot_correlations:
-    time : "11:59"
-    mem : 40000
-
 deseq_initial_qc:
     time : "6:00"
     mem : 40000
 
-second_qc_and_call_de_bases:
+deseq_passing_qc:
     time : "6:00"
     mem : 40000
+
+#second_qc_and_call_de_bases:
+#    time : "6:00"
+#    mem : 40000
 
 call_de_clusters:
     time : "2:00"

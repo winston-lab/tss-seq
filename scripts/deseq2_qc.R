@@ -6,17 +6,17 @@ library(viridis)
 library(GGally)
 
 import = function(path){
-  read_table2(path, col_names=FALSE) 
+  read_table2(path, col_names=TRUE)
 }
 
 get_countdata = function(table, samplenames){
-  df = data.frame(table[,-1], row.names=table$X1)
+  df = data.frame(table[,-1], row.names=table$'chrom-start-end')
   names(df) = samplenames
   return(df)
 }
 
 extract_deseq_results = function(dds, alpha){
-  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj<alpha) %>% arrange(padj) %>% return()
+  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -167,9 +167,7 @@ qual_ctrl = function(intable,
                      pca.spikenorm,
                      scree.spikenorm,
                      pca.libsizenorm,
-                     scree.libsizenorm,
-                     de.spikenorm.path,
-                     de.libsizenorm.path){
+                     scree.libsizenorm){
 
   raw = import(intable)
   raw.si = import(intable.si)
@@ -205,17 +203,13 @@ qual_ctrl = function(intable,
   resdf = extract_deseq_results(dds, alpha=alpha)
   resdf.nospike = extract_deseq_results(dds.nospike, alpha=alpha)
   
-  #write out DE bases
-  write.table(resdf, file=de.spikenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
-  write.table(resdf.nospike, file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
-  
   #transformations for datavis and quality control
   #I use rlog transformation, but can be slow for many samples, if so, switch to variance stabilizing transform
-  #blinding is FALSE for datavis purposes
-  rld = rlog(dds, blind=FALSE)
+  #blinding is TRUE for quality control purposes
+  rld = rlog(dds, blind=TRUE)
   rld.df = rld %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
-  rld.nospike = rlog(dds.nospike, blind=FALSE)
+  rld.nospike = rlog(dds.nospike, blind=TRUE)
   rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
   #plot transformed counts for significantly changed bases
@@ -257,6 +251,4 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     pca.spikenorm = snakemake@output[["pca_spikenorm"]],
                     scree.spikenorm = snakemake@output[["scree_spikenorm"]],
                     pca.libsizenorm = snakemake@output[["pca_libsizenorm"]],
-                    scree.libsizenorm = snakemake@output[["scree_libsizenorm"]],
-                    de.spikenorm.path = snakemake@output[["de_spikenorm_path"]],
-                    de.libsizenorm.path = snakemake@output[["de_libsizenorm_path"]])
+                    scree.libsizenorm = snakemake@output[["scree_libsizenorm"]])
