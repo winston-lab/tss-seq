@@ -255,9 +255,10 @@ rule make_stranded_sicounts_bedgraph:
     output:
         sense = "coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph"
     shell: """
-        awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/counts/{wildcards.sample}-counts-plus.tmp
-        awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/counts/{wildcards.sample}-counts-minus.tmp
-        cat coverage/counts/{wildcards.sample}-counts-plus.tmp coverage/counts/{wildcards.sample}-counts-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense} 
+        awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp
+        awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp
+        cat coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense} 
+        rm coverage/counts/spikein/{wildcards.sample}-counts-*.tmp
         """
 
 rule make_stranded_annotations:

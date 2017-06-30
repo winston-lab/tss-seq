@@ -80,3 +80,7 @@ deseq_passing_qc:
 call_de_clusters:
     time : "2:00"
     mem : 20000
+
+call_de_bases_cond_v_ctrl:
+    time : "6:00"
+    mem : 20000

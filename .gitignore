@@ -11,6 +11,9 @@ correlations/
 snakemake.err
 snakemake.log
 diff_exp/
+rulegraph.svg
+dag.svg
+Rplots.pdf
 
 config.yaml
 
