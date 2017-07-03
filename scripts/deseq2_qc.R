@@ -1,4 +1,5 @@
 library(tidyverse)
+library(forcats)
 library(DESeq2)
 library(pheatmap)
 library(ggrepel)
@@ -6,7 +7,7 @@ library(viridis)
 library(GGally)
 
 import = function(path){
-  read_table2(path, col_names=TRUE)
+  read_table2(path, col_names=TRUE) 
 }
 
 get_countdata = function(table, samplenames){
@@ -75,7 +76,8 @@ plot_dist_heatmap = function(path, counts){
 plot_pca = function(pcapath, screepath, counts){
   pca = counts %>% assay() %>% t() %>% prcomp(center=TRUE, scale=FALSE)
   pca.df = data.frame(pca$x, group = colData(counts)[["condition"]]) %>% rownames_to_column(var="name")
-  percentVar = data.frame(pctvar = (pca$sdev^2)/sum(pca$sdev^2)) %>% rownames_to_column(var="PC")
+  percentVar = data.frame(pctvar = (pca$sdev^2)/sum(pca$sdev^2)) %>% rownames_to_column(var="PC") %>% as_tibble()
+  percentVar$PC = percentVar$PC %>% fct_inorder()
   
   scree = ggplot(data = percentVar, aes(x=PC, y=pctvar*100)) +
                   geom_col() +
@@ -86,7 +88,7 @@ plot_pca = function(pcapath, screepath, counts){
   
   p = ggplot(data = pca.df, aes(x=PC1, y=PC2)) +
               geom_point(aes(color=group), size=4) +
-              geom_text_repel(aes(label=name), size=4, point.padding = unit(.2, "cm")) +
+              geom_text_repel(aes(label=name), size=3, point.padding = unit(.2, "cm")) +
               scale_color_brewer(palette = "Set1", direction=-1) +
               xlab(paste("PC1: ", round(percentVar[1,2]*100, 1), "% of variance explained", sep = "")) +
               ylab(paste("PC2: ", round(percentVar[2,2]*100, 1), "% \nof variance explained", sep = "")) +
@@ -154,6 +156,7 @@ qual_ctrl = function(intable,
                      intable.si,
                      samplenames,
                      samplegroups,
+                     nospikein,
                      sipath1,
                      sipath2,
                      sipctpath,
@@ -172,44 +175,44 @@ qual_ctrl = function(intable,
   raw = import(intable)
   raw.si = import(intable.si)
 
+  save.image()
+
   countdata = get_countdata(raw, samplenames = samplenames)
-  countdata.si = get_countdata(raw.si, samplenames = samplenames)
+  countdata.si = get_countdata(raw.si, samplenames = samplenames) %>% select(-one_of(nospikein))
   
-  coldata = data.frame(condition=factor(samplegroups, levels = unique(samplegroups)), row.names=names(countdata))
+  coldata.all = data.frame(condition=factor(samplegroups, levels = unique(samplegroups)), row.names=names(countdata))
+  coldata.drop = coldata.all %>% rownames_to_column(var="sample") %>% filter(!(sample %in% nospikein)) %>% column_to_rownames(var="sample")
   
-  dds = DESeqDataSetFromMatrix(countData = countdata, colData = coldata, design = ~condition)
-  si.dds = DESeqDataSetFromMatrix(countData = countdata.si, colData = coldata, design= ~condition)
+  dds = DESeqDataSetFromMatrix(countData = countdata, colData = coldata.all, design = ~condition)
+  dds.drop = DESeqDataSetFromMatrix(countData = countdata %>% select(-one_of(nospikein)), colData = coldata.drop, design = ~condition)
+  si.dds = DESeqDataSetFromMatrix(countData = countdata.si, colData = coldata.drop, design= ~condition)
   
   #get size factors from spike-in
   si.dds = estimateSizeFactors(si.dds)
-  dds.nospike = dds
-  sizeFactors(dds) = sizeFactors(si.dds)
+  sizeFactors(dds.drop) = sizeFactors(si.dds)
   
   #do differential expression +/- spike-in
-  dds = estimateDispersions(dds)
-  dds = nbinomWaldTest(dds)
+  dds.drop = dds.drop %>% estimateDispersions() %>% nbinomWaldTest()
   
-  dds.nospike = estimateSizeFactors(dds.nospike)
-  dds.nospike = estimateDispersions(dds.nospike)
-  dds.nospike = nbinomWaldTest(dds.nospike)
+  dds  = dds %>% estimateSizeFactors() %>% estimateDispersions() %>% nbinomWaldTest()
   
-  plot_spikein_pct(sipath1, sipath2, sipctpath, dds.nospike, si.dds)
+  plot_spikein_pct(sipath1, sipath2, sipctpath, dds.drop, si.dds)
   
   #plot correlations
-  plot_correlation(corrplot.spikenorm, dds)
-  plot_correlation(corrplot.libsizenorm, dds.nospike)
+  plot_correlation(corrplot.spikenorm, dds.drop)
+  plot_correlation(corrplot.libsizenorm, dds)
   
   #get results
-  resdf = extract_deseq_results(dds, alpha=alpha)
-  resdf.nospike = extract_deseq_results(dds.nospike, alpha=alpha)
+  resdf = extract_deseq_results(dds.drop, alpha=alpha)
+  resdf.nospike = extract_deseq_results(dds, alpha=alpha)
   
   #transformations for datavis and quality control
   #I use rlog transformation, but can be slow for many samples, if so, switch to variance stabilizing transform
   #blinding is TRUE for quality control purposes
-  rld = rlog(dds, blind=TRUE)
+  rld = rlog(dds.drop, blind=TRUE)
   rld.df = rld %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
-  rld.nospike = rlog(dds.nospike, blind=TRUE)
+  rld.nospike = rlog(dds, blind=TRUE)
   rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
   #plot transformed counts for significantly changed bases
@@ -224,8 +227,8 @@ qual_ctrl = function(intable,
   plot_pca(pca.libsizenorm, scree.libsizenorm, rld.nospike)
   
   return(list(si.dds = si.dds,
-              dds.spikenorm = dds,
-              dds.libsizenorm = dds.nospike,
+              dds.spikenorm = dds.drop,
+              dds.libsizenorm = dds,
               resdf.spikenorm = resdf,
               resdf.libsizenorm = resdf.nospike,
               rld.spikenorm = rld,
@@ -238,6 +241,7 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     intable.si = snakemake@input[["si"]],
                     samplenames = snakemake@params[["samples"]],
                     samplegroups = snakemake@params[["samplegroups"]],
+                    nospikein = snakemake@params[["nospikein"]],
                     sipath1 = snakemake@output[["exp_size_v_sf"]],
                     sipath2 = snakemake@output[["si_size_v_sf"]],
                     sipctpath = snakemake@output[["si_pct"]],
@@ -252,3 +256,4 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     scree.spikenorm = snakemake@output[["scree_spikenorm"]],
                     pca.libsizenorm = snakemake@output[["pca_libsizenorm"]],
                     scree.libsizenorm = snakemake@output[["scree_libsizenorm"]])
+

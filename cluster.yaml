@@ -8,57 +8,57 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_raw:
-    time : "2:00"
-    n : 4
+    time : "1:00"
+    n : 1
     mem : 2000
 
 remove_adapter:
-    time : "3:00"
+    time : "1:00"
     mem : 1000
 
 remove_3p_barcode_and_qual_trim:
-    time : "3:00"
+    time : "1:00"
     mem : 1000
 
 remove_molec_barcode:
-    time : "8:00"
-    n : 4
+    time : "1:00"
+    n : 2
     mem : 2000
 
 fastqc_cleaned:
-    time : "2:00"
-    n : 4
+    time : "1:00"
+    n : 1
     mem : 2000
 
 bowtie2_build:
-    time : "2:00"
+    time : "1:00"
     mem : 2000
 
 align:
-    time : "11:50"
+    time : "2:00"
     n : 4
     mem : 2000
 
 select_unique_mappers:
-    time : "2:00"
-    n : 4
+    time : "1:00"
+    n : 1
     mem : 2000
 
 remove_PCR_duplicates:
-    time : "8:00"
-    mem : 4000
+    time : "1:00"
+    mem : 2000
 
 get_coverage:
-    time : "2:00"
+    time : "1:00"
     mem : 2000
 
 normalize:
-    time : "2:00"
+    time : "1:00"
     mem : 2000
  
 deeptools_matrix:
-    time : "2:00"
-    n : 4
+    time : "1:00"
+    n : 1
     mem : 2000
 
 r_datavis:
@@ -73,14 +73,10 @@ deseq_passing_qc:
     time : "6:00"
     mem : 40000
 
-#second_qc_and_call_de_bases:
-#    time : "6:00"
-#    mem : 40000
-
 call_de_clusters:
     time : "2:00"
     mem : 20000
 
 call_de_bases_cond_v_ctrl:
     time : "6:00"
-    mem : 20000
+    mem : 40000
