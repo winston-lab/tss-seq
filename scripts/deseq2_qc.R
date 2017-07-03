@@ -175,16 +175,25 @@ qual_ctrl = function(intable,
   raw = import(intable)
   raw.si = import(intable.si)
 
-  save.image()
-
   countdata = get_countdata(raw, samplenames = samplenames)
-  countdata.si = get_countdata(raw.si, samplenames = samplenames) %>% select(-one_of(nospikein))
+  countdata.si = get_countdata(raw.si, samplenames = samplenames)
+
+  if(!is.null(nospikein)){
+    countdata.si = countdata.si %>% select(-one_of(nospikein))
+  }
   
   coldata.all = data.frame(condition=factor(samplegroups, levels = unique(samplegroups)), row.names=names(countdata))
-  coldata.drop = coldata.all %>% rownames_to_column(var="sample") %>% filter(!(sample %in% nospikein)) %>% column_to_rownames(var="sample")
-  
+  coldata.drop = coldata.all
+  if(!is.null(nospikein)){
+    coldata.drop = coldata.drop %>% rownames_to_column(var="sample") %>% filter(!(sample %in% nospikein)) %>% column_to_rownames(var="sample")
+  }
+
   dds = DESeqDataSetFromMatrix(countData = countdata, colData = coldata.all, design = ~condition)
-  dds.drop = DESeqDataSetFromMatrix(countData = countdata %>% select(-one_of(nospikein)), colData = coldata.drop, design = ~condition)
+  if(is.null(nospikein)){
+    dds.drop = dds
+  } else {
+    dds.drop = DESeqDataSetFromMatrix(countData = countdata %>% select(-one_of(nospikein)), colData = coldata.drop, design = ~condition)
+  }
   si.dds = DESeqDataSetFromMatrix(countData = countdata.si, colData = coldata.drop, design= ~condition)
   
   #get size factors from spike-in
