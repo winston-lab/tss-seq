@@ -163,8 +163,8 @@ qual_ctrl = function(intable,
                      corrplot.spikenorm,
                      corrplot.libsizenorm,
                      alpha,
-                     count.heatmap.spikenorm,
-                     count.heatmap.libsizenorm,
+                     #count.heatmap.spikenorm,
+                     #count.heatmap.libsizenorm,
                      dist.heatmap.spikenorm,
                      dist.heatmap.libsizenorm,
                      pca.spikenorm,
@@ -225,8 +225,8 @@ qual_ctrl = function(intable,
   rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
   #plot transformed counts for significantly changed bases
-  plot_count_heatmap(count.heatmap.spikenorm, rld, resdf, alpha)
-  plot_count_heatmap(count.heatmap.libsizenorm, rld.nospike, resdf.nospike, alpha)
+  #plot_count_heatmap(count.heatmap.spikenorm, rld, resdf, alpha)
+  #plot_count_heatmap(count.heatmap.libsizenorm, rld.nospike, resdf.nospike, alpha)
   
   #plot heatmaps of sample-to-sample Euclidean distances
   plot_dist_heatmap(dist.heatmap.spikenorm, rld)
@@ -257,8 +257,8 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     corrplot.spikenorm = snakemake@output[["corrplot_spikenorm"]],
                     corrplot.libsizenorm = snakemake@output[["corrplot_libsizenorm"]],
                     alpha=snakemake@params[["alpha"]],
-                    count.heatmap.spikenorm = snakemake@output[["count_heatmap_spikenorm"]],
-                    count.heatmap.libsizenorm = snakemake@output[["count_heatmap_libsizenorm"]],
+                    #count.heatmap.spikenorm = snakemake@output[["count_heatmap_spikenorm"]],
+                    #count.heatmap.libsizenorm = snakemake@output[["count_heatmap_libsizenorm"]],
                     dist.heatmap.spikenorm = snakemake@output[["dist_heatmap_spikenorm"]],
                     dist.heatmap.libsizenorm = snakemake@output[["dist_heatmap_libsizenorm"]],
                     pca.spikenorm = snakemake@output[["pca_spikenorm"]],

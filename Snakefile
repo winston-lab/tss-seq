@@ -446,8 +446,8 @@ rule deseq_initial_qc:
         si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
         corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
         corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
-        count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
-        count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
+        #count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
+        #count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
         dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
         dist_heatmap_libsizenorm = protected("qual_ctrl/all/all-sample-dists-libsizenorm.png"),
         pca_spikenorm = protected("qual_ctrl/all/all-pca-spikenorm.png"),
@@ -472,8 +472,8 @@ rule deseq_passing_qc:
         si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
         corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
         corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
-        count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
-        count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
+        #count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
+        #count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
         dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
         dist_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-sample-dists-libsizenorm.png"),
         pca_spikenorm = protected("qual_ctrl/passing/passing-pca-spikenorm.png"),
@@ -490,15 +490,16 @@ rule call_de_bases_cond_v_ctrl:
     params:
         alpha = config["deseq"]["fdr"],
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}],
+        nospikein = lambda wildcards : list({k:v for (k,v) in PASSING.items() if ((v["group"]== wildcards.control or v["group"]==wildcards.condition) and v["spikein"] == "n")}.keys())
     output:
-        exp_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-experimental.png",
-        si_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-spikein.png",
-        si_pct = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-spikein-pct.png",
+        #exp_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-experimental.png",
+        #si_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-spikein.png",
+        #si_pct = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-spikein-pct.png",
         corrplot_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pairwise-correlation-spikenorm.png",
         corrplot_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pairwise-correlation-libsizenorm.png",
-        count_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-spikenorm.png",
-        count_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-libsizenorm.png",
+        #count_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-spikenorm.png",
+        #count_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-libsizenorm.png",
         dist_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-sample-dists-spikenorm.png",
         dist_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-sample-dists-libsizenorm.png",
         pca_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-spikenorm.png",
@@ -531,8 +532,8 @@ rule de_bases_to_bed:
         down = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-down.bed" 
     log: "logs/de_bases_to_bed/de_bases_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
-        (tail -n +2 {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, "up_"NR, -log($10), "+"}} $2=="minus"{{print $1"-"$2, $3, $4, "up_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
-        (tail -n +2 {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, "down_"NR, -log($10), "+"}} $2=="minus"{{print $1"-"$2, $3, $4, "down_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
+        (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, "up_"NR, -log($5), "+"}} $2=="minus"{{print $1"-"$2, $3, $4, "up_"NR, -log($5), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
+        (tail -n +2 {input.down} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)}}'| awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, "down_"NR, -log($5), "+"}} $2=="minus"{{print $1"-"$2, $3, $4, "down_"NR, -log($5), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
 ## ^^this needs to be checked for the new output format
 
