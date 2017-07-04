@@ -41,5 +41,5 @@ heatmap_base = ggplot(data = raw) +
 heatmap_samples = heatmap_base + facet_wrap(~sample, ncol=(nsamples/ngroups))
 ggsave(snakemake@output[["heatmap_sample"]], plot = heatmap_samples, height=3+round((nindices/1000)*(ngroups)), width = 3+.3*w*(nsamples/ngroups), units = "cm")
 rm(heatmap_samples)
-heatmap_groups = heatmap_base + facet_wrap(~group)
+heatmap_groups = heatmap_base + facet_wrap(~group, ncol=ngroups)
 ggsave(snakemake@output[["heatmap_group"]], plot = heatmap_groups, height=3+round(nindices/600), width = 3+.3*w*ngroups, units = "cm")

@@ -370,32 +370,34 @@ rule union_bedgraph:
         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
         pass_exp = "coverage/counts/union-bedgraph-passing.txt",    
         pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+    params:
+        minreads = config["minreads"]
     log: "logs/union_bedgraph.log"
     #TODO: write this into a script
     shell: """
         (bedtools unionbedg -i {input.exp} -header -names {name_string} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-allsamples.temp) &> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-allsamples.temp) &> {log}
         (cut -f1-3 .union-bedgraph-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
         (cut -f4- .union-bedgraph-allsamples.temp > .values.txt) &>> {log}
         (paste .positions.txt .values.txt > {output.exp}) &>> {log}
         (rm .union-bedgraph-allsamples.temp .positions.txt .values.txt) &>> {log}
 
         (bedtools unionbedg -i {input.si} -header -names {name_string} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-si-allsamples.temp) &>> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-si-allsamples.temp) &>> {log}
         (cut -f1-3 .union-bedgraph-si-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
         (cut -f4- .union-bedgraph-si-allsamples.temp > .values.txt) &>> {log}
         (paste .positions.txt .values.txt > {output.si}) &>> {log}
         (rm .union-bedgraph-si-allsamples.temp .positions.txt .values.txt) &>> {log}
 
         (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-passing.temp) &>> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-passing.temp) &>> {log}
         (cut -f1-3 .union-bedgraph-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
         (cut -f4- .union-bedgraph-passing.temp > .values.txt) &>> {log}
         (paste .positions.txt .values.txt > {output.pass_exp}) &>> {log}
         (rm .union-bedgraph-passing.temp .positions.txt .values.txt) &>> {log}
 
         (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .union-bedgraph-si-passing.temp) &>> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-si-passing.temp) &>> {log}
         (cut -f1-3 .union-bedgraph-si-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
         (cut -f4- .union-bedgraph-si-passing.temp > .values.txt) &>> {log}
         (paste .positions.txt .values.txt > {output.pass_si}) &>> {log}
@@ -411,17 +413,18 @@ rule union_bedgraph_cond_v_ctrl:
         si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
     params:
         names = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
+        minreads = config["minreads"]
     log: "logs/union_bedgraph_cond_v_ctrl/union_bedgraph_{condition}-v-{control}.log"
     shell: """
         (bedtools unionbedg -i {input.exp} -header -names {params.names} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &> {log}
         (cut -f1-3 .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .{wildcards.condition}-v-{wildcards.control}-positions.txt) &>> {log}
         (cut -f4- .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp > .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
         (paste .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt > {output.exp}) &>> {log}
         (rm .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
 
         (bedtools unionbedg -i {input.si} -header -names {params.names} |
-        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>0{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &>> {log}
+        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &>> {log}
         (cut -f1-3 .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .{wildcards.condition}-v-{wildcards.control}-positions.txt) &>> {log}
         (cut -f4- .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp > .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
         (paste .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt > {output.si}) &>> {log}
@@ -438,19 +441,19 @@ rule deseq_initial_qc:
         samplegroups = [SAMPLES[x]["group"] for x in SAMPLES],
         nospikein = list({k:v for (k,v) in SAMPLES.items() if (v["spikein"] == "n")}.keys())
     output:
-        exp_size_v_sf = "qual_ctrl/all/all-libsize-v-sizefactor-experimental.png",
-        si_size_v_sf = "qual_ctrl/all/all-libsize-v-sizefactor-spikein.png",
-        si_pct = "qual_ctrl/all/all-spikein-pct.png",
-        corrplot_spikenorm = "qual_ctrl/all/all-pairwise-correlation-spikenorm.png",
-        corrplot_libsizenorm = "qual_ctrl/all/all-pairwise-correlation-libsizenorm.png",
-        count_heatmap_spikenorm = "qual_ctrl/all/all-de-bases-heatmap-spikenorm.png",
-        count_heatmap_libsizenorm = "qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png",
-        dist_heatmap_spikenorm = "qual_ctrl/all/all-sample-dists-spikenorm.png",
-        dist_heatmap_libsizenorm = "qual_ctrl/all/all-sample-dists-libsizenorm.png",
-        pca_spikenorm = "qual_ctrl/all/all-pca-spikenorm.png",
-        scree_spikenorm = "qual_ctrl/all/all-pca-scree-spikenorm.png",
-        pca_libsizenorm = "qual_ctrl/all/all-pca-libsizenorm.png",
-        scree_libsizenorm = "qual_ctrl/all/all-pca-scree-libsizenorm.png"
+        exp_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-experimental.png"),
+        si_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-spikein.png"),
+        si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
+        corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
+        corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
+        count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
+        count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
+        dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
+        dist_heatmap_libsizenorm = protected("qual_ctrl/all/all-sample-dists-libsizenorm.png"),
+        pca_spikenorm = protected("qual_ctrl/all/all-pca-spikenorm.png"),
+        scree_spikenorm = protected("qual_ctrl/all/all-pca-scree-spikenorm.png"),
+        pca_libsizenorm = protected("qual_ctrl/all/all-pca-libsizenorm.png"),
+        scree_libsizenorm = protected("qual_ctrl/all/all-pca-scree-libsizenorm.png")
     script:
        "scripts/deseq2_qc.R"
 
@@ -464,19 +467,19 @@ rule deseq_passing_qc:
         samplegroups = [PASSING[x]["group"] for x in PASSING],
         nospikein = list({k:v for (k,v) in PASSING.items() if v["spikein"] == "n"}.keys())
     output:
-        exp_size_v_sf = "qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png",
-        si_size_v_sf = "qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png",
-        si_pct = "qual_ctrl/passing/passing-spikein-pct.png",
-        corrplot_spikenorm = "qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png",
-        corrplot_libsizenorm = "qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png",
-        count_heatmap_spikenorm = "qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png",
-        count_heatmap_libsizenorm = "qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png",
-        dist_heatmap_spikenorm = "qual_ctrl/passing/passing-sample-dists-spikenorm.png",
-        dist_heatmap_libsizenorm = "qual_ctrl/passing/passing-sample-dists-libsizenorm.png",
-        pca_spikenorm = "qual_ctrl/passing/passing-pca-spikenorm.png",
-        scree_spikenorm = "qual_ctrl/passing/passing-pca-scree-spikenorm.png",
-        pca_libsizenorm = "qual_ctrl/passing/passing-pca-libsizenorm.png",
-        scree_libsizenorm = "qual_ctrl/passing/passing-pca-scree-libsizenorm.png"
+        exp_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png"),
+        si_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png"),
+        si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
+        corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
+        corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
+        count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
+        count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
+        dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
+        dist_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-sample-dists-libsizenorm.png"),
+        pca_spikenorm = protected("qual_ctrl/passing/passing-pca-spikenorm.png"),
+        scree_spikenorm = protected("qual_ctrl/passing/passing-pca-scree-spikenorm.png"),
+        pca_libsizenorm = protected("qual_ctrl/passing/passing-pca-libsizenorm.png"),
+        scree_libsizenorm = protected("qual_ctrl/passing/passing-pca-scree-libsizenorm.png")
     script:
         "scripts/deseq2_qc.R"
 
@@ -502,8 +505,8 @@ rule call_de_bases_cond_v_ctrl:
         scree_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-spikenorm.png",
         pca_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-libsizenorm.png",
         scree_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-libsizenorm.png",
-        de_spikenorm_path = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-spikenorm.tsv",
-        de_libsizenorm_path = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-libsizenorm.tsv"
+        de_spikenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-spikenorm.tsv"),
+        de_libsizenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-libsizenorm.tsv")
     script:
         "scripts/call_de_bases.R"
 

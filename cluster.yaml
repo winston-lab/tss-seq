@@ -66,11 +66,11 @@ r_datavis:
     mem : 60000
 
 deseq_initial_qc:
-    time : "6:00"
+    time : "11:59"
     mem : 40000
 
 deseq_passing_qc:
-    time : "6:00"
+    time : "11:59"
     mem : 40000
 
 call_de_clusters:
@@ -78,5 +78,5 @@ call_de_clusters:
     mem : 20000
 
 call_de_bases_cond_v_ctrl:
-    time : "6:00"
+    time : "11:50"
     mem : 40000
