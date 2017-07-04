@@ -196,7 +196,7 @@ qual_ctrl = function(intable,
       plot_pca(pca.spikenorm, scree.spikenorm, rld)
   } else{
          file.create(corrplot.spikenorm,
-                        count.heatmap.spikenorm,
+                        #count.heatmap.spikenorm,
                         dist.heatmap.spikenorm,
                         pca.spikenorm,
                         scree.spikenorm,

@@ -21,7 +21,7 @@ extract_deseq_results = function(dds, alpha){
 }
 
 plot_correlation = function(path, dds){
-  df = dds %>% counts(normalized=TRUE) %>% as.data.frame()
+  df = dds %>% counts(normalized=TRUE) %>% as.data.frame() %>% sample_frac(.1)
   lim = df %>% log10() %>% max() %>% ceiling()
 
   ggsave(path, plot=
@@ -207,10 +207,6 @@ qual_ctrl = function(intable,
   
   plot_spikein_pct(sipath1, sipath2, sipctpath, dds.drop, si.dds)
   
-  #plot correlations
-  plot_correlation(corrplot.spikenorm, dds.drop)
-  plot_correlation(corrplot.libsizenorm, dds)
-  
   #get results
   resdf = extract_deseq_results(dds.drop, alpha=alpha)
   resdf.nospike = extract_deseq_results(dds, alpha=alpha)
@@ -235,6 +231,10 @@ qual_ctrl = function(intable,
   plot_pca(pca.spikenorm, scree.spikenorm, rld)
   plot_pca(pca.libsizenorm, scree.libsizenorm, rld.nospike)
   
+  #plot correlations
+  plot_correlation(corrplot.spikenorm, dds.drop)
+  plot_correlation(corrplot.libsizenorm, dds)
+
   return(list(si.dds = si.dds,
               dds.spikenorm = dds.drop,
               dds.libsizenorm = dds,
