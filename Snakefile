@@ -7,8 +7,11 @@ SAMPLES = config["samples"]
 name_string = " ".join(SAMPLES)
 PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
 pass_string = " ".join(PASSING)
-controlgroups = config["comparisons"]["controls"]
-conditiongroups = config["comparisons"]["conditions"]
+
+controlgroups = config["comparisons"]["libsizenorm"]["controls"]
+conditiongroups = config["comparisons"]["libsizenorm"]["conditions"]
+controlgroups_si = config["comparisons"]["spikenorm"]["controls"]
+conditiongroups_si = config["comparisons"]["spikenorm"]["conditions"]
 
 localrules: all,
             make_stranded_genome,
@@ -26,11 +29,13 @@ localrules: all,
             de_bases_to_bed,
             merge_de_bases_to_clusters,
             cat_cluster_strands,
-            union_cluster_bedgraph,
+            #union_cluster_bedgraph,
+            get_cluster_counts,
             extract_base_distances,
             separate_de_clusters,
 	    de_clusters_to_bed,
-            map_counts_to_clusters
+            map_counts_to_clusters,
+            get_putative_intragenic
 
 rule all:
     input:
@@ -39,9 +44,13 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
-        expand(expand("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{{norm}}-up.bed", zip, condition = conditiongroups, control= controlgroups), norm=["spikenorm", "libsizenorm"])
-        #expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{{norm}}-{{direction}}.bed", zip, condition = conditiongroups, control = controlgroups), norm = ["spikenorm", "libsizenorm"], direction = ["up","down"])
-
+        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups),
+        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-down.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-down.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+       
 rule fastqc_raw:
     input: 
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
@@ -572,7 +581,7 @@ rule cat_cluster_strands:
     input:
         expand("diff_exp/{{condition}}-v-{{control}}/de_bases/allclusters/{{condition}}-v-{{control}}-allclusters-{{norm}}-{direction}.bed", direction = ["up", "down"]) 
     output:
-        "diff_exp/{condition}-v-{control}/de_bases/allclusters/{condition}-v-{control}-allclusters-{norm}.bed"
+        "diff_exp/{condition}-v-{control}/de_bases/allclusters/{condition}-v-{control}-allclusters-{norm}-combined.bed"
     log: "logs/cat_cluster_strands/cat_cluster_strands-{condition}-v-{control}-{norm}.log"
     shell: """
         (cat {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
@@ -580,54 +589,74 @@ rule cat_cluster_strands:
 
 rule map_counts_to_clusters:
     input:
-        bed = "diff_exp/{condition}-v-{control}/de_bases/allclusters/{condition}-v-{control}-allclusters-{norm}.bed",
+        bed = "diff_exp/{condition}-v-{control}/de_bases/allclusters/{condition}-v-{control}-allclusters-{norm}-combined.bed",
         bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
     output:
-        temp("diff_exp/{condition}-v-{control}/de_clusters/{sample}-allclusters-{norm}.bedgraph")
+        temp("diff_exp/{condition}-v-{control}/de_clusters/{sample}-allclusters-{norm}.tsv")
     log: "logs/map_counts_to_clusters/map_counts_to_clusters-{condition}-v-{control}-{sample}-{norm}.log"
+    #shell: """
+    #    (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | cut -f1,2,3,5 > {output}) &> {log}
+    #    """
     shell: """
-        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | cut -f1,2,3,5 > {output}) &> {log}
+        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $5}}' &> {output}) &> {log}
         """
 
-rule union_cluster_bedgraph:
+rule get_cluster_counts:
     input:
-        lambda wildcards : expand("diff_exp/{{condition}}-v-{{control}}/de_clusters/{sample}-allclusters-{{norm}}.bedgraph", sample=list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()))
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
     output:
-        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-union-bedgraph-clusters-{norm}.txt"
-    log: "logs/union_cluster_bedgraph/union_cluster_bedgraph-{condition}-v-{control}-{norm}.log"
+        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-{norm}-cluster-counts.tsv"
     shell: """
-        (bedtools unionbedg -i {input} > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp) &> {log}
-        (awk 'BEGIN{{FS="-|\t"; OFS=":"}} {{print $2, $1, $3, $4}}' diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp) &>> {log}
-        (cut -f4- diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp) &>> {log}
-        (paste diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp > {output}) &>> {log}
-        (rm diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}*temp) &>> {log}
+        bash scripts/recursivejoin.sh {input} > {output}
         """
 
-rule call_de_clusters:
+#rule union_cluster_bedgraph:
+#    input:
+#        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".bedgraph" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
+#    output:
+#        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-union-bedgraph-clusters-{norm}.txt"
+#    log: "logs/union_cluster_bedgraph/union_cluster_bedgraph-{condition}-v-{control}-{norm}.log"
+#    shell: """
+#        (bedtools unionbedg -i {input} > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp) &> {log}
+#        (awk 'BEGIN{{FS="-|\t"; OFS=":"}} {{print $2, $1, $3, $4}}' diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp) &>> {log}
+#        (cut -f4- diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp) &>> {log}
+#        (paste diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp > {output}) &>> {log}
+#        (rm diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}*temp) &>> {log}
+#        """
+
+rule call_de_clusters_spikenorm:
    input:
-        spikeclust = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-union-bedgraph-clusters-spikenorm.txt",
-        libsizeclust = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-union-bedgraph-clusters-libsizenorm.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+        clustercounts= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-spikenorm-cluster-counts.tsv",
+        libcounts = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
    params:
         alpha = config["deseq"]["fdr"],
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
    output:
-        #exp_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-experimental.png",
-        #si_size_v_sf = "qual_ctrl/passing/libsize-v-sizefactor-spikein.png",
-        #si_pct = "qual_ctrl/passing/spikein-pct.png",
-        corrplot_spikenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-spikenorm.png",
-        corrplot_libsizenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-libsizenorm.png",
-        count_heatmap_spikenorm = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-spikenorm.png",
-        count_heatmap_libsizenorm = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-libsizenorm.png",
-        dist_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-spikenorm.png",
-        dist_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-libsizenorm.png",
-        pca_spikenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-spikenorm.png",
-        scree_spikenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-spikenorm.png",
-        pca_libsizenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-libsizenorm.png",
-        scree_libsizenorm = "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-libsizenorm.png",
-        de_spikenorm_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv",
-        de_libsizenorm_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv"
+        corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-spikenorm.png",
+        count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-spikenorm.png",
+        dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-spikenorm.png",
+        pca= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-spikenorm.png",
+        scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-spikenorm.png",
+        de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv",
+   script:
+        "scripts/call_de_clusters.R"
+
+rule call_de_clusters_libsizenorm:
+   input:
+        clustercounts= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-libsizenorm-cluster-counts.tsv",
+        libcounts = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+   output:
+        corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-libsizenorm.png",
+        count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-libsizenorm.png",
+        dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-libsizenorm.png",
+        pca= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-libsizenorm.png",
+        scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-libsizenorm.png",
+        de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
 
@@ -645,12 +674,15 @@ rule separate_de_clusters:
 
 rule de_clusters_to_bed:
     input:
-        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.tsv"
+        up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.tsv",
+        down = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.tsv"
     output:
-       "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed" 
+       up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.bed", 
+       down= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.bed" 
     log: "logs/de_clusters_to_bed/de_clusters_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
-        (tail -n +2 {input} | awk -v awkdirect={wildcards.direction} -F '[:\t]' 'BEGIN{{OFS="\t"}} $1=="plus"{{print $2, $3, $4, awkdirect"_"NR, -log($10), "+"}} $1=="minus"{{print $2, $3, $4, awkdirect"_"NR, -log($10), "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &>> {log}
+        (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
+        (tail -n +2 {input.down} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}'| awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
 
 rule get_putative_intragenic:
@@ -658,8 +690,8 @@ rule get_putative_intragenic:
         peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
         orfs = config["orf-annotation"] 
     output:
-        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
+        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}}' | sort -k9,9nr > {output}) &> {log}
         """

@@ -17,7 +17,7 @@ get_countdata = function(table, samplenames){
 }
 
 extract_deseq_results = function(dds, alpha){
-  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
+  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj < alpha) %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){

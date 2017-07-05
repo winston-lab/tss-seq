@@ -5,10 +5,6 @@ library(ggrepel)
 library(viridis)
 library(GGally)
 
-import = function(path){
-    read_table2(path, col_names=FALSE) 
-}
-
 get_countdata = function(table, samplenames){
     df = data.frame(table[,-1], row.names=table$X1)
     names(df) = samplenames
@@ -50,7 +46,7 @@ plot_count_heatmap = function(path, counts, de_results, alpha){
              col = viridis(100),
              border_color=NA,
              width = ncol(assay(counts)),
-             height = 4+.008*nrow(data),
+             height = max(8, .0003*nrow(data)),
              fontsize=12,
              filename=path,
              main = paste("rlog-transformed counts for\n", nrow(data), "DE TSS clusters @ FDR =", alpha))
@@ -98,185 +94,61 @@ plot_pca = function(pcapath, screepath, counts){
     ggsave(screepath, scree, width = nrow(percentVar), height = 6, units = "cm")
 }
 
-plot_size_v_sf = function(path, title, dds){
-    sf = dds$sizeFactor %>% as.data.frame() %>% rownames_to_column(var="sample") %>% as_tibble()
-    names(sf) = c("sample", "sizefactor")
-    df = dds %>% counts() %>% as.data.frame() %>% rownames_to_column(var="base") %>%
-        gather(key=sample, value=counts, -base) %>% group_by(sample) %>% summarise(totalcounts = sum(counts)) %>%
-        left_join(sf, by="sample") 
-    
-    p = ggplot(data = df, aes(x=totalcounts/1e6, y=sizefactor)) +
-        geom_point() +
-        geom_smooth(method="lm", se=FALSE, color="red") +
-        geom_text_repel(aes(label = sample), size=4) +
-        xlab("library size (million reads)") +
-        ylab("DESeq2 size factor") +
-        ggtitle(title) +
-        theme_minimal() +
-        theme(axis.title = element_text(size=12, face="bold"),
-              axis.text = element_text(size=12),
-              title = element_text(size=12, face="bold"))
-    
-    ggsave(path, plot = p, width = 11, height = 7, units = "cm")
-    return(df)
-}
-
-plot_spikein_pct = function(sfpath1, sfpath2, sipctpath, dds, si.dds){
-    df = plot_size_v_sf(path = sfpath1, title = "experimental", dds)
-    df.si = plot_size_v_sf(path = sfpath2, title = "spike-in", si.dds)
-    
-    names(df.si) = c("sample", "spikecounts", "spikesizefactor")
-    
-    df = df %>% left_join(df.si, by="sample") %>% mutate(si.pct = spikecounts/(spikecounts+totalcounts))
-    
-    p = ggplot(data = df, aes(x=sample, y = round(si.pct*100, 2))) +
-        geom_col() +
-        geom_text(aes(label = round(si.pct*100, 1)), size=5, position = position_stack(vjust = .9)) +
-        theme_minimal() +
-        ylab("% spike-in\nreads") +
-        theme(axis.title = element_text(size=12, face="bold"),
-              axis.title.y = element_text(angle=0, vjust = 0.5),
-              axis.title.x = element_blank(),
-              axis.text = element_text(size=12, color="black"),
-              axis.text.x = element_text(angle=30, hjust = 0.8))
-    
-    ggsave(sipctpath, plot = p, width = 1.5+2*nrow(df), height = 6, units = "cm")
-    
-    #ggplot(data = df, aes(x=sample, y = spikesizefactor)) +
-    #        geom_col() +
-    #        geom_text(aes(label = round(spikesizefactor, 3)), size=5, position = position_stack(vjust = .9)) +
-    #        theme_minimal()
-    
-}
-
-qual_ctrl = function(intable.cluster.spike,
-                     intable.cluster.lib,
-                     intable.si,
+qual_ctrl = function(intable.cluster,
+                     intable.lib,
                      samplenames,
                      samplegroups,
-                     #sipath1,
-                     #sipath2,
-                     #sipctpath,
-                     corrplot.spikenorm,
-                     corrplot.libsizenorm,
+                     corrplot,
                      alpha,
-                     count.heatmap.spikenorm,
-                     count.heatmap.libsizenorm,
-                     dist.heatmap.spikenorm,
-                     dist.heatmap.libsizenorm,
-                     pca.spikenorm,
-                     scree.spikenorm,
-                     pca.libsizenorm,
-                     scree.libsizenorm,
-                     de.spikenorm.path,
-                     de.libsizenorm.path){
+                     count.heatmap,
+                     dist.heatmap,
+                     pca,
+                     scree,
+                     de.path){
     
-    raw.spikenorm = import(intable.cluster.spike)
-    raw.libsizenorm = import(intable.cluster.lib)
-    raw.si = import(intable.si)
-    
-    countdata.spikenorm = get_countdata(raw.spikenorm, samplenames = samplenames)
-    countdata.libsizenorm = get_countdata(raw.libsizenorm, samplenames = samplenames)
-    countdata.si = get_countdata(raw.si, samplenames = samplenames)
+    raw.clusters = read_table2(intable.cluster, col_names=FALSE)
+    raw.lib = read_table2(intable.lib, col_names=TRUE)
+    names(raw.lib)[1] = "X1" 
+    countdata.spikenorm = get_countdata(raw.clusters, samplenames = samplenames)
+    #countdata.libsizenorm = get_countdata(raw.libsizenorm, samplenames = samplenames)
+    countdata.si = get_countdata(raw.lib, samplenames = samplenames)
     
     coldata = data.frame(condition=factor(samplegroups, levels = unique(samplegroups)), row.names=names(countdata.spikenorm))
     
-    dds.spikenorm = DESeqDataSetFromMatrix(countData = countdata.spikenorm, colData = coldata, design = ~condition)
-    dds.libsizenorm = DESeqDataSetFromMatrix(countData = countdata.libsizenorm, colData = coldata, design = ~condition)
-    si.dds = DESeqDataSetFromMatrix(countData = countdata.si, colData = coldata, design= ~condition)
+    dds.clusters = DESeqDataSetFromMatrix(countData = countdata.spikenorm, colData = coldata, design = ~condition)
+    dds.lib = DESeqDataSetFromMatrix(countData = countdata.si, colData = coldata, design= ~condition)
     
     #get size factors from spike-in
-    si.dds = estimateSizeFactors(si.dds)
-    sizeFactors(dds.spikenorm) = sizeFactors(si.dds)
+    dds.lib = estimateSizeFactors(dds.lib)
+    sizeFactors(dds.clusters) = sizeFactors(dds.lib)
     
     #do differential expression +/- spike-in
-    dds.spikenorm = dds.spikenorm %>% estimateDispersions() %>% nbinomWaldTest()
+    dds.clusters = dds.clusters %>% estimateDispersions() %>% nbinomWaldTest()
     
-    dds.libsizenorm = dds.libsizenorm %>% estimateSizeFactors() %>% estimateDispersions() %>% nbinomWaldTest() 
+    plot_correlation(corrplot, dds.clusters)
     
-    #plot_spikein_pct(sipath1, sipath2, sipctpath, dds.nospike, si.dds)
-    
-    #plot correlations
-    plot_correlation(corrplot.spikenorm, dds.spikenorm)
-    plot_correlation(corrplot.libsizenorm, dds.libsizenorm)
-    
-    #get results
-    resdf = extract_deseq_results(dds.spikenorm, alpha=alpha)
-    resdf.nospike = extract_deseq_results(dds.libsizenorm, alpha=alpha)
-    
-    #write out DE clusters
-    write.table(resdf, file=de.spikenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
-    write.table(resdf.nospike, file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+    resdf = extract_deseq_results(dds.clusters, alpha=alpha)
+    write.table(resdf, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
     #transformations for datavis and quality control
     #blinding is FALSE for datavis purposes
-    rld = rlog(dds.spikenorm, blind=FALSE)
+    rld = rlog(dds.clusters, blind=FALSE)
     rld.df = rld %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
     
-    rld.nospike = rlog(dds.libsizenorm, blind=FALSE)
-    rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
-    
-    #plot transformed counts for significantly changed clusters
-    plot_count_heatmap(count.heatmap.spikenorm, rld, resdf, alpha)
-    plot_count_heatmap(count.heatmap.libsizenorm, rld.nospike, resdf.nospike, alpha)
-    
-    #plot heatmaps of sample-to-sample Euclidean distances
-    plot_dist_heatmap(dist.heatmap.spikenorm, rld)
-    plot_dist_heatmap(dist.heatmap.libsizenorm, rld.nospike)
-    
-    plot_pca(pca.spikenorm, scree.spikenorm, rld)
-    plot_pca(pca.libsizenorm, scree.libsizenorm, rld.nospike)
-    
-    return(list(si.dds = si.dds,
-                dds.spikenorm = dds.spikenorm,
-                dds.libsizenorm = dds.libsizenorm,
-                resdf.spikenorm = resdf,
-                resdf.libsizenorm = resdf.nospike,
-                rld.spikenorm = rld,
-                rld.df.spikenormsizenorm = rld.df,
-                rld.libsizenorm = rld.nospike,
-                rld.df.libsizenorm = rld.nospike.df))
+    plot_count_heatmap(count.heatmap, rld, resdf, alpha)
+    plot_dist_heatmap(dist.heatmap, rld)
+    plot_pca(pca, scree, rld)
 }
 
-qc = qual_ctrl(intable.cluster.spike = snakemake@input[["spikeclust"]],
-               intable.cluster.lib = snakemake@input[["libsizeclust"]],
-               intable.si = snakemake@input[["si"]],
+qc = qual_ctrl(intable.cluster = snakemake@input[["clustercounts"]],
+               intable.lib = snakemake@input[["libcounts"]],
                samplenames = snakemake@params[["samples"]],
                samplegroups = snakemake@params[["samplegroups"]],
-               #sipath1 = snakemake@output[["exp_size_v_sf"]],
-               #sipath2 = snakemake@output[["si_size_v_sf"]],
-               #sipctpath = snakemake@output[["si_pct"]],
-               corrplot.spikenorm = snakemake@output[["corrplot_spikenorm"]],
-               corrplot.libsizenorm = snakemake@output[["corrplot_libsizenorm"]],
-               alpha=snakemake@params[["alpha"]],
-               count.heatmap.spikenorm = snakemake@output[["count_heatmap_spikenorm"]],
-               count.heatmap.libsizenorm = snakemake@output[["count_heatmap_libsizenorm"]],
-               dist.heatmap.spikenorm = snakemake@output[["dist_heatmap_spikenorm"]],
-               dist.heatmap.libsizenorm = snakemake@output[["dist_heatmap_libsizenorm"]],
-               pca.spikenorm = snakemake@output[["pca_spikenorm"]],
-               scree.spikenorm = snakemake@output[["scree_spikenorm"]],
-               pca.libsizenorm = snakemake@output[["pca_libsizenorm"]],
-               scree.libsizenorm = snakemake@output[["scree_libsizenorm"]],
-               de.spikenorm.path = snakemake@output[["de_spikenorm_path"]],
-               de.libsizenorm.path = snakemake@output[["de_libsizenorm_path"]])
-#qc = qual_ctrl(intable.cluster.spike = 'union-bedgraph-clusters-spikenorm.txt',
-#               intable.cluster.lib = 'union-bedgraph-clusters-libsizenorm.txt',
-#               intable.si = 'union-bedgraph-si-bothstr-nozero.txt',
-#               samplenames = c("YPD-1", "YPD-2", "diamide-1", "diamide-2"),
-#               samplegroups = c("YPD","YPD","diamide","diamide"),
-#               sipath1 = "test_exp_sf.png",
-#               sipath2 = "test_si_sf.png",
-#               sipctpath = "test_sipct.png",
-#               corrplot.spikenorm = "test_corrplot-spikenorm.png",
-#               corrplot.libsizenorm = "test_corrplot-libsizenorm.png",
-#               alpha=0.1,
-#               count.heatmap.spikenorm = "test_count_heatmap-spikenorm.png",
-#               count.heatmap.libsizenorm = "test_count_heatmap-libsizenorm.png",
-#               dist.heatmap.spikenorm = 'test_dist_heatmap-spikenorm.png',
-#               dist.heatmap.libsizenorm = 'test_dist_heatmap-libsizenorm.png',
-#               pca.spikenorm = "pca-spikenorm.png",
-#               scree.spikenorm = "pca-scree-spikenorm.png",
-#               pca.libsizenorm = "pca-libsizenorm.png",
-#               scree.libsizenorm = "pca-scree-libsizenorm.png",
-#               de.spikenorm.path = "de-bases-spikenorm.tsv",
-#               de.libsizenorm.path = "de-bases-libsizenorm.tsv")
+               corrplot = snakemake@output[["corrplot"]],
+               alpha= snakemake@params[["alpha"]],
+               count.heatmap = snakemake@output[["count_heatmap"]],
+               dist.heatmap = snakemake@output[["dist_heatmap"]],
+               pca = snakemake@output[["pca"]],
+               scree = snakemake@output[["scree"]],
+               de.path = snakemake@output[["de_path"]])
+
