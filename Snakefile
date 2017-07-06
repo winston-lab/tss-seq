@@ -29,13 +29,13 @@ localrules: all,
             de_bases_to_bed,
             merge_de_bases_to_clusters,
             cat_cluster_strands,
-            #union_cluster_bedgraph,
             get_cluster_counts,
             extract_base_distances,
             separate_de_clusters,
 	    de_clusters_to_bed,
             map_counts_to_clusters,
-            get_putative_intragenic
+            get_putative_intragenic,
+            get_putative_antisense,
 
 rule all:
     input:
@@ -44,12 +44,10 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
-        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
-        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups),
-        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-down.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        #expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-down.bed", zip, condition=conditiongroups, control=controlgroups),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
        
 rule fastqc_raw:
     input: 
@@ -594,9 +592,6 @@ rule map_counts_to_clusters:
     output:
         temp("diff_exp/{condition}-v-{control}/de_clusters/{sample}-allclusters-{norm}.tsv")
     log: "logs/map_counts_to_clusters/map_counts_to_clusters-{condition}-v-{control}-{sample}-{norm}.log"
-    #shell: """
-    #    (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | cut -f1,2,3,5 > {output}) &> {log}
-    #    """
     shell: """
         (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $5}}' &> {output}) &> {log}
         """
@@ -606,23 +601,10 @@ rule get_cluster_counts:
         lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
     output:
         "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-{norm}-cluster-counts.tsv"
+    log: "logs/get_cluster_counts/get_cluster_counts-{condition}-v-{control}-{norm}.log"
     shell: """
-        bash scripts/recursivejoin.sh {input} > {output}
+        (bash scripts/recursivejoin.sh {input} > {output}) &> {log}
         """
-
-#rule union_cluster_bedgraph:
-#    input:
-#        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".bedgraph" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
-#    output:
-#        "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-union-bedgraph-clusters-{norm}.txt"
-#    log: "logs/union_cluster_bedgraph/union_cluster_bedgraph-{condition}-v-{control}-{norm}.log"
-#    shell: """
-#        (bedtools unionbedg -i {input} > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp) &> {log}
-#        (awk 'BEGIN{{FS="-|\t"; OFS=":"}} {{print $2, $1, $3, $4}}' diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp) &>> {log}
-#        (cut -f4- diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}.temp > diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp) &>> {log}
-#        (paste diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-base.temp diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-values.temp > {output}) &>> {log}
-#        (rm diff_exp/{wildcards.condition}-v-{wildcards.control}/de_clusters/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}*temp) &>> {log}
-#        """
 
 rule call_de_clusters_spikenorm:
    input:
@@ -694,4 +676,15 @@ rule get_putative_intragenic:
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}}' | sort -k9,9nr > {output}) &> {log}
+        """
+
+rule get_putative_antisense:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        transcripts = config["genome"]["transcripts"]
+    output:
+        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-{norm}-{direction}-antisense.tsv"
+    log : "logs/get_putative_antisense/get_putative_antisense-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
         """
