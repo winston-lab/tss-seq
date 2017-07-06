@@ -42,7 +42,7 @@ align:
 select_unique_mappers:
     time : "1:00"
     n : 1
-    mem : 2000
+    mem : 6000
 
 remove_PCR_duplicates:
     time : "1:00"

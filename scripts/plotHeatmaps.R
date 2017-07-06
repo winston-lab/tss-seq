@@ -20,10 +20,10 @@ downstream = snakemake@params[["dnstream"]]
 pcount = .01
 
 #percentile cutoff for heatmap visualization
-#cutoff = quantile(raw$cpm, probs=snakemake@params[["pct_cutoff"]], na.rm=TRUE)
+cutoff = quantile(raw$cpm, probs=snakemake@params[["pct_cutoff"]], na.rm=TRUE)
 
 #plot heatmap facetted by sample and group
-heatmap_base = ggplot(data = raw) +
+heatmap_base = ggplot(data = raw %>% filter(cpm <= cutoff)) +
   geom_tile(aes(x=position, y=index, fill=log2(cpm+pcount))) +
   scale_y_reverse(name=paste(nindices, snakemake@params[["ylabel"]])) +
   scale_x_continuous(breaks = c(-upstream/1000, 0, downstream/1000), labels=c(-upstream/1000, snakemake@params[["refpointlabel"]], downstream/1000)) +

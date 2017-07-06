@@ -359,7 +359,7 @@ rule r_datavis:
         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
         dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
-        #pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
+        pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
         heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["heatmap_colormap"],
         #metagene_palette = lambda wildcards : config["annotations"][wildcards.annotation]["metagene_palette"],
         #avg_heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["avg_heatmap_cmap"],
@@ -688,7 +688,7 @@ rule de_clusters_to_bed:
 rule get_putative_intragenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
-        orfs = config["orf-annotation"] 
+        orfs = config["genome"]["orf-annotation"] 
     output:
         "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
