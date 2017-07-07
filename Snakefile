@@ -36,6 +36,9 @@ localrules: all,
             map_counts_to_clusters,
             get_putative_intragenic,
             get_putative_antisense,
+            build_genic_annotation,
+            get_putative_genic,
+            get_putative_intergenic,
 
 rule all:
     input:
@@ -48,6 +51,10 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-genic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-genic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
        
 rule fastqc_raw:
     input: 
@@ -688,3 +695,65 @@ rule get_putative_antisense:
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
         """
+
+#currently, to make this list, a gene has to be in the ORF annotation AND the transcript annotation
+#TODO: modify so that genes with only transcript or only ORF annotations get genic annotations in a window around their TSS/start
+rule build_genic_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        orfs = config["genome"]["orf-annotation"],
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    params:
+        genic_up = config["genic-upstream"]
+    log : "logs/build_genic_annotation.log"
+    shell: """
+        (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
+        (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
+        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} $3>=$2{{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} > {output}) &>> {log}
+        (rm .transcriptanno.temp .orfanno.temp) &>> {log}
+        """        
+
+rule get_putative_genic:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-{norm}-{direction}-genic.tsv"
+    log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}}' | sort -k9,9nr > {output}) &> {log}
+        """
+
+rule build_intergenic_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        chrsizes = config["genome"]["chrsizes"] 
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
+    params:
+        genic_up = config["genic-upstream"]
+    log: "logs/build_intergenic_annotation.log"
+    shell: """
+        (sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
+        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools complement -i stdin -g .chrsizes.temp > {output}) &>> {log}
+        (rm .chrsizes.temp) &>> {log}
+        """
+
+rule get_putative_intergenic:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
+    output:
+        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intergenic.tsv"
+    log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | sort -k5,5nr > {output}) &> {log}
+        """
+
+
+
+
+
+
