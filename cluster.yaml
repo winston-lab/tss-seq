@@ -85,3 +85,6 @@ call_de_clusters_libsizenorm:
     time : "2:00"
     mem : 20000
 
+get_intra_orfs:
+    time : "11:59"
+    mem : 20000

@@ -55,6 +55,8 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-genic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"])
        
 rule fastqc_raw:
     input: 
@@ -752,7 +754,18 @@ rule get_putative_intergenic:
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | sort -k5,5nr > {output}) &> {log}
         """
 
-
+rule get_intra_orfs:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv",
+        fasta = config["genome"]["fasta"]
+    output:
+        "diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-{norm}-{direction}-intragenic-orfs.tsv"
+    params:
+        max_search_dist = 2000
+    log: "logs/get_intra_orfs/get_intra_orfs-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -o {output}) &> {log}
+        """
 
 
 
