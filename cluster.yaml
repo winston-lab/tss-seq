@@ -13,15 +13,15 @@ fastqc_raw:
     mem : 2000
 
 remove_adapter:
-    time : "1:00"
+    time : "3:00"
     mem : 1000
 
 remove_3p_barcode_and_qual_trim:
-    time : "1:00"
+    time : "3:00"
     mem : 1000
 
 remove_molec_barcode:
-    time : "1:00"
+    time : "3:00"
     n : 2
     mem : 2000
 
@@ -35,17 +35,17 @@ bowtie2_build:
     mem : 2000
 
 align:
-    time : "2:00"
+    time : "4:00"
     n : 4
     mem : 2000
 
 select_unique_mappers:
-    time : "1:00"
+    time : "3:00"
     n : 1
     mem : 6000
 
 remove_PCR_duplicates:
-    time : "1:00"
+    time : "3:00"
     mem : 2000
 
 get_coverage:
