@@ -713,7 +713,7 @@ rule build_genic_annotation:
     shell: """
         (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
         (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
-        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} $3>=$2{{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} > {output}) &>> {log}
+        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} > {output}) &>> {log}
         (rm .transcriptanno.temp .orfanno.temp) &>> {log}
         """        
 
