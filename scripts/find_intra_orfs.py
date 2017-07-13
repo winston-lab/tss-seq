@@ -22,7 +22,7 @@ peaks['frame'] = np.where(peaks['strand']=="+", (peaks['peakstart']-peaks['orfst
 
 #initialize output dataframe
 df = pd.DataFrame(index = np.arange(len(peaks)*1000), 
-                  columns = ['chrom', 'strand', 'orf_name', 'orf_start', 'orf_end', 'peak_name', 'peak_start', 'peak_end', 'peak_significance', 'intra_orf_5utr_length',  'intra_orf_frame', 'intra_orf_upstr_atg', 'intra_orf_start', 'intra_orf_end', 'intra_orf_length', 'intra_prot_molweight', 'intra_prot_tap_molweight'])
+                  columns = ['chrom', 'strand', 'orf_name', 'orf_start', 'orf_end', 'dist_atg_to_peak', 'peak_name', 'peak_start', 'peak_end', 'peak_significance', 'intra_orf_5utr_length',  'intra_orf_frame', 'intra_orf_upstr_atg', 'intra_orf_start', 'intra_orf_end', 'intra_orf_length', 'intra_prot_molweight', 'intra_prot_tap_molweight'])
 
 tt_out = 0 #counter for output df row
 
@@ -48,7 +48,7 @@ for index, row in peaks.iterrows():
                 intraprotein = seq[startpos:].translate(to_stop=True)
                 ntlen = (len(intraprotein) + 1) * 3
                 molecweight = molecular_weight(intraprotein)
-                df.iloc[tt_out,] = [row.chrom, row.strand, row.orfname, row.orfstart, row.orfend, row.peakname, row.peakstart, row.peakend, row.peaksig, startpos, frame, atg_counter, intra_orf_start, intra_orf_start+ntlen, ntlen,  molecweight/1000, (molecweight+tap_molweight)/1000]
+                df.iloc[tt_out,] = [row.chrom, row.strand, row.orfname, row.orfstart, row.orfend, row.ATGtoPeakDist, row.peakname, row.peakstart, row.peakend, row.peaksig, startpos, frame, atg_counter, intra_orf_start, intra_orf_start+ntlen, ntlen,  molecweight/1000, (molecweight+tap_molweight)/1000]
                 tt_out += 1
                 atg_counter += 1
                 startpos = seq.find("ATG", start = startpos + 1)
@@ -71,7 +71,7 @@ for index, row in peaks.iterrows():
                 intraprotein = seq[startpos:].translate(to_stop=True)
                 ntlen = (len(intraprotein) + 1) * 3
                 molecweight = molecular_weight(intraprotein)
-                df.iloc[tt_out,] = [row.chrom, row.strand, row.orfname, row.orfstart, row.orfend, row.peakname, row.peakstart, row.peakend, row.peaksig, startpos, frame, atg_counter, intra_orf_start-ntlen, intra_orf_start, ntlen, molecweight/1000, (molecweight+tap_molweight)/1000]
+                df.iloc[tt_out,] = [row.chrom, row.strand, row.orfname, row.orfstart, row.orfend, row.ATGtoPeakDist, row.peakname, row.peakstart, row.peakend, row.peaksig, startpos, frame, atg_counter, intra_orf_start-ntlen, intra_orf_start, ntlen, molecweight/1000, (molecweight+tap_molweight)/1000]
                 tt_out += 1
                 atg_counter += 1
                 startpos = seq.find("ATG", start = startpos + 1)
