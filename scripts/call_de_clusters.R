@@ -11,8 +11,8 @@ get_countdata = function(table, samplenames){
     return(df)
 }
 
-extract_deseq_results = function(dds, alpha){
-    results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj<alpha) %>% arrange(padj) %>% return()
+extract_deseq_results = function(dds, alpha, lfcThreshold){
+    results(dds, alpha=alpha, lfcThreshold=lfcThreshold, altHypothesis="greaterAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj<alpha) %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -100,6 +100,7 @@ qual_ctrl = function(intable.cluster,
                      samplegroups,
                      corrplot,
                      alpha,
+                     lfcThreshold,
                      count.heatmap,
                      dist.heatmap,
                      pca,
@@ -127,7 +128,7 @@ qual_ctrl = function(intable.cluster,
     
     plot_correlation(corrplot, dds.clusters)
     
-    resdf = extract_deseq_results(dds.clusters, alpha=alpha)
+    resdf = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
     write.table(resdf, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
     #transformations for datavis and quality control
@@ -146,6 +147,7 @@ qc = qual_ctrl(intable.cluster = snakemake@input[["clustercounts"]],
                samplegroups = snakemake@params[["samplegroups"]],
                corrplot = snakemake@output[["corrplot"]],
                alpha= snakemake@params[["alpha"]],
+               lfcThreshold = snakemake@params[["lfcThreshold"]],
                count.heatmap = snakemake@output[["count_heatmap"]],
                dist.heatmap = snakemake@output[["dist_heatmap"]],
                pca = snakemake@output[["pca"]],

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+from math import log2
 
 configfile: "config.yaml"
 
@@ -621,6 +622,7 @@ rule call_de_clusters_spikenorm:
         libcounts = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
    params:
         alpha = config["deseq"]["fdr"],
+        lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
    output:
@@ -639,6 +641,7 @@ rule call_de_clusters_libsizenorm:
         libcounts = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt"
    params:
         alpha = config["deseq"]["fdr"],
+        lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
    output:
