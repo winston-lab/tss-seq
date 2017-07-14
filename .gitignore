@@ -16,6 +16,7 @@ dag.svg
 Rplots.pdf
 
 config.yaml
+local_execute_cluster.sh
 
 !fastq/.gitkeep
 !logs/.gitkeep
