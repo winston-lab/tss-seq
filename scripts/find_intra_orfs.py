@@ -34,7 +34,7 @@ for index, row in peaks.iterrows():
     atg_counter = 0
 
     if row.strand == "+":
-        seq = fasta[row.chrom].seq[row.peakstart : row.orfend + args.max_orf_len]
+        seq = fasta[str(row.chrom)].seq[row.peakstart : row.orfend + args.max_orf_len]
         
         startpos = seq.find("ATG")
         intra_orf_start = row.peakstart
@@ -57,7 +57,7 @@ for index, row in peaks.iterrows():
 
 
     elif row.strand == "-":
-        seq = fasta[row.chrom].seq[row.orfstart - args.max_orf_len : row.peakend].reverse_complement()
+        seq = fasta[str(row.chrom)].seq[row.orfstart - args.max_orf_len : row.peakend].reverse_complement()
 
         startpos = seq.find("ATG")
         intra_orf_start = row.peakend 
