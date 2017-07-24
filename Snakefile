@@ -14,6 +14,8 @@ conditiongroups = config["comparisons"]["libsizenorm"]["conditions"]
 controlgroups_si = config["comparisons"]["spikenorm"]["controls"]
 conditiongroups_si = config["comparisons"]["spikenorm"]["conditions"]
 
+CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
+
 localrules: all,
             make_stranded_genome,
             make_stranded_bedgraph,
@@ -48,16 +50,10 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]), 
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]), 
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-antisense.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-genic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-genic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-intergenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        #expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]), 
+        #expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]), 
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-{{category}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
+         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-{{category}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"])
        
@@ -721,7 +717,7 @@ rule build_genic_annotation:
     shell: """
         (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
         (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
-        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} > {output}) &>> {log}
+        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $3>$2{{print $0}}' > {output}) &>> {log}
         (rm .transcriptanno.temp .orfanno.temp) &>> {log}
         """        
 
@@ -757,7 +753,7 @@ rule get_putative_intergenic:
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
     output:
         "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intergenic.tsv"
-    log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
+    log : "logs/get_putative_intergenic/get_putative_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | sort -k5,5nr > {output}) &> {log}
         """
@@ -774,6 +770,59 @@ rule get_intra_orfs:
     shell: """
         (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -o {output}) &> {log}
         """
+
+rule build_convergent_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"
+    params:
+        max_dist = config["max-convergent-dist"]
+    log: "logs/build_convergent_annotation.log"
+    shell: """
+        (awk -v adist={params.max_dist} 'BEGIN{{FS=OFS="\t"}} $6=="+" {{ if(($3-$2)>adist) print $1, $2, $2+adist, $4, $5, "-" ; else print $0 }} $6=="-" {{if (($3-$2)>adist) print $1, $3-adist, $3, $4, $5, "+"; else print $0}}' {input.transcripts} > {output}) &> {log}
+        """
+
+rule get_putative_convergent:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-convergent.tsv"
+    log : "logs/get_putative_convergent/get_putative_convergent-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
+        """
+
+rule build_divergent_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"
+    params:
+        max_dist = config["max-divergent-dist"]
+    log: "logs/build_divergent_annotation.log"
+    shell: """
+        (bedtools flank -l {params.max_dist} -r 0 -s -i {input.transcripts} -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $3, $4, $5, "-"}} $6=="-"{{print $1, $2, $3, $4, $5, "+"}}' > {output}) &> {log}
+        """
+
+rule get_putative_divergent:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-divergent.tsv"
+    log : "logs/get_putative_divergent/get_putative_divergent-{condition}-v-{control}-{norm}-{direction}.log"
+    shell: """
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
+        """
+
+
+
+
 
 
 
