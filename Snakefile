@@ -42,6 +42,10 @@ localrules: all,
             build_genic_annotation,
             get_putative_genic,
             get_putative_intergenic,
+            build_convergent_annotation,
+            get_putative_convergent,
+            build_divergent_annotation,
+            get_putative_divergent
 
 rule all:
     input:
@@ -707,19 +711,22 @@ rule get_putative_antisense:
 rule build_genic_annotation:
     input:
         transcripts = config["genome"]["transcripts"],
-        orfs = config["genome"]["orf-annotation"],
+        #orfs = config["genome"]["orf-annotation"],
         chrsizes = config["genome"]["chrsizes"]
     output:
         os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     params:
-        genic_up = config["genic-upstream"]
+        windowsize = config["genic-windowsize"]
     log : "logs/build_genic_annotation.log"
+#    shell: """
+#        (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
+#        (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
+#        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $3>$2{{print $0}}' > {output}) &>> {log}
+#        (rm .transcriptanno.temp .orfanno.temp) &>> {log}
+#        """        
     shell: """
-        (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
-        (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
-        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $3>$2{{print $0}}' > {output}) &>> {log}
-        (rm .transcriptanno.temp .orfanno.temp) &>> {log}
-        """        
+        awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $2+1, $4, $5, $6}} $6=="-"{{print $1, $3-1, $3, $4, $5, $6}}' {input.transcripts} | bedtools slop -b {params.windowsize} -i stdin -g {input.chrsizes} > {output}
+        """
 
 rule get_putative_genic:
     input:
@@ -739,7 +746,7 @@ rule build_intergenic_annotation:
     output:
         os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
     params:
-        genic_up = config["genic-upstream"]
+        genic_up = config["genic-windowsize"]
     log: "logs/build_intergenic_annotation.log"
     shell: """
         (sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
