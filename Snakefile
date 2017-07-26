@@ -54,12 +54,14 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
-        #expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]), 
-        #expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]), 
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-{{category}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
-         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-{{category}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]), 
+        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]), 
+#        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
+#         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
+         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
        
 rule fastqc_raw:
     input: 
@@ -706,8 +708,6 @@ rule get_putative_antisense:
         (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
         """
 
-#currently, to make this list, a gene has to be in the ORF annotation AND the transcript annotation
-#TODO: modify so that genes with only transcript or only ORF annotations get genic annotations in a window around their TSS/start
 rule build_genic_annotation:
     input:
         transcripts = config["genome"]["transcripts"],
@@ -762,7 +762,7 @@ rule get_putative_intergenic:
         "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intergenic.tsv"
     log : "logs/get_putative_intergenic/get_putative_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | sort -k5,5nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $6, $2, $3, $4, $8, $9, ".", $5}}'| sort -k9,9nr > {output}) &> {log}
         """
 
 rule get_intra_orfs:
@@ -827,9 +827,66 @@ rule get_putative_divergent:
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
         """
 
+rule get_category_bed:
+    input:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.tsv"
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.bed"
+    log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $9, $2}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
+        """
+
+rule get_peak_sequences:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.bed",
+        chrsizes = config["genome"]["chrsizes"],
+        fasta = config["genome"]["fasta"]
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa"
+    params:
+        upstr = config["meme-chip"]["upstream-dist"],
+        dnstr = config["meme-chip"]["downstream-dist"]
+    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log" 
+    shell: """
+        (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        """
+
+rule meme_chip:
+    input:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa"
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/index.html"
+    params:
+        ccut = config["meme-chip"]["max-frag-size"],
+        mode = config["meme-chip"]["meme-mode"],
+        nmotifs = config["meme-chip"]["meme-nmotifs"],
+    #threads: config["threads"]
+    shell: """
+        meme-chip {input} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2 
+        """
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+        
 
 
 

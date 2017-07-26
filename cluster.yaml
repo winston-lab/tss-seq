@@ -88,3 +88,9 @@ call_de_clusters_libsizenorm:
 get_intra_orfs:
     time : "11:59"
     mem : 20000
+
+meme_chip:
+    time : "11:59"
+    mem : 10000
+    n : 2 #this is hardcoded in the snakefile to run with two cores
+
