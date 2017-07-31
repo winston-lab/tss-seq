@@ -534,7 +534,9 @@ rule call_de_bases_cond_v_ctrl:
         scree_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-spikenorm.png",
         pca_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-libsizenorm.png",
         scree_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-libsizenorm.png",
+        all_spikenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-all-bases-spikenorm.tsv"),
         de_spikenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-spikenorm.tsv"),
+        all_libsizenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-all-bases-libsizenorm.tsv"),
         de_libsizenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-libsizenorm.tsv")
     script:
         "scripts/call_de_bases.R"
@@ -678,13 +680,14 @@ rule de_clusters_to_bed:
         up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.tsv",
         down = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.tsv"
     output:
-       up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.bed", 
-       down= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.bed" 
+        up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.bed", 
+        down= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.bed" 
     log: "logs/de_clusters_to_bed/de_clusters_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
-        (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
-        (tail -n +2 {input.down} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}'| awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
+        (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down}| awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
+#COLUMN 6 FOR DOWN TABLES VS COLUMN 5 FOR UP TABLES IS DUE TO THE NEGATIVE SIGNS
 
 rule get_putative_intragenic:
     input:
@@ -694,9 +697,9 @@ rule get_putative_intragenic:
         "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}}' | sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
         """
-
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\torf_start\torf_end\torf_name\tpeak_lfc\tpeak_significance\tdist_peak_to_atg\n$
 rule get_putative_antisense:
     input:
         peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
@@ -705,8 +708,9 @@ rule get_putative_antisense:
         "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-{norm}-{direction}-antisense.tsv"
     log : "logs/get_putative_antisense/get_putative_antisense-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
         """
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule build_genic_annotation:
     input:
@@ -736,8 +740,9 @@ rule get_putative_genic:
         "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-{norm}-{direction}-genic.tsv"
     log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}}' | sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}}' | sort -k10,10nr > {output}) &> {log}
         """
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\n$
 
 rule build_intergenic_annotation:
     input:
@@ -762,8 +767,9 @@ rule get_putative_intergenic:
         "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intergenic.tsv"
     log : "logs/get_putative_intergenic/get_putative_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $6, $2, $3, $4, $8, $9, ".", $5}}'| sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS="\t|:";OFS="\t"}}{{print $1, $7, $2, $3, $4, $9, $10, ".", $5, $6}}'| sort -k10,10nr > {output}) &> {log}
         """
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\tregion_start\tregion_end\tregion_name\tpeak_lfc\tpeak_significance\n
 
 rule get_intra_orfs:
     input:
@@ -799,8 +805,9 @@ rule get_putative_convergent:
         "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-convergent.tsv"
     log : "logs/get_putative_convergent/get_putative_convergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
         """
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule build_divergent_annotation:
     input:
@@ -824,8 +831,9 @@ rule get_putative_divergent:
         "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-divergent.tsv"
     log : "logs/get_putative_divergent/get_putative_divergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, $9-((($2+1)+$3)/2)}} $6=="-"{{print $1, $6, $2, $3, $4, $8, $9, $10, $5, ((($2+1)+$3)/2)-$8}}' | sort -k9,9nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
         """
+#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule get_category_bed:
     input:
@@ -834,7 +842,7 @@ rule get_category_bed:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.bed"
     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $9, $2}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $10, $2}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
         """
 
 rule get_peak_sequences:

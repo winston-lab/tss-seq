@@ -37,10 +37,10 @@ plotheatmaps = function(intable, upstream, downstream, pct_cutoff, refptlabel, y
             axis.ticks.length = unit(-2, "mm"))
     
     heatmap_samples = heatmap_base + facet_wrap(~sample, ncol=(nsamples/ngroups))
-    ggsave(samples_out , plot = heatmap_samples, height=3+round((nindices/1000)*(ngroups)), width = 3+.3*w*(nsamples/ngroups), units = "cm")
+    ggsave(samples_out , plot = heatmap_samples, height=10+round((nindices/1000)*(ngroups)), width = 10+.3*w*(nsamples/ngroups), units = "cm")
     rm(heatmap_samples)
     heatmap_groups = heatmap_base + facet_wrap(~group, ncol=ngroups)
-    ggsave(group_out, plot = heatmap_groups, height=3+round(nindices/600), width = 3+.3*w*ngroups, units = "cm")
+    ggsave(group_out, plot = heatmap_groups, height=10+round(nindices/600), width = 10+.3*w*ngroups, units = "cm")
 }
 
 plotheatmaps(intable= snakemake@input[["matrix"]],

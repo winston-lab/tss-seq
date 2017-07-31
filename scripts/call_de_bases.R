@@ -17,7 +17,7 @@ get_countdata = function(table, samplenames){
 }
 
 extract_deseq_results = function(dds, alpha){
-  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj < alpha) %>% arrange(padj) %>% return()
+  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -167,7 +167,9 @@ qual_ctrl = function(intable,
                      scree.spikenorm,
                      pca.libsizenorm,
                      scree.libsizenorm,
+                     all.spikenorm.path,
                      de.spikenorm.path,
+                     all.libsizenorm.path,
                      de.libsizenorm.path){
   raw = import(intable)
   countdata = get_countdata(raw, samplenames = samplenames)
@@ -187,7 +189,10 @@ qual_ctrl = function(intable,
       
       plot_correlation(corrplot.spikenorm, dds.spikenorm)
       resdf = extract_deseq_results(dds.spikenorm, alpha=alpha)
-      write.table(resdf, file=de.spikenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+      write.table(resdf, file=all.spikenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+      write.table(resdf %>% filter(padj < alpha), file=de.spikenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+
+
       rld = rlog(dds.spikenorm, blind=FALSE)
       rld.df = rld %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   
@@ -206,7 +211,8 @@ qual_ctrl = function(intable,
   
   plot_correlation(corrplot.libsizenorm, dds)
   resdf.nospike = extract_deseq_results(dds, alpha=alpha)
-  write.table(resdf.nospike, file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+  write.table(resdf.nospike, file=all.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+  write.table(resdf.nospike %>% filter(padj < alpha), file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
   rld.nospike = rlog(dds, blind=FALSE)
   rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   #plot_count_heatmap(count.heatmap.libsizenorm, rld.nospike, resdf.nospike, alpha)
@@ -230,5 +236,7 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     scree.spikenorm = snakemake@output[["scree_spikenorm"]],
                     pca.libsizenorm = snakemake@output[["pca_libsizenorm"]],
                     scree.libsizenorm = snakemake@output[["scree_libsizenorm"]],
+                    all.spikenorm.path = snakemake@output[["all_spikenorm_path"]],
                     de.spikenorm.path = snakemake@output[["de_spikenorm_path"]],
+                    all.libsizenorm.path = snakemake@output[["all_libsizenorm_path"]],
                     de.libsizenorm.path = snakemake@output[["de_libsizenorm_path"]])
