@@ -45,7 +45,9 @@ localrules: all,
             build_convergent_annotation,
             get_putative_convergent,
             build_divergent_annotation,
-            get_putative_divergent
+            get_putative_divergent,
+            get_category_bed,
+            get_peak_sequences
 
 rule all:
     input:
@@ -324,8 +326,11 @@ rule deeptools_matrix:
         binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
     threads : config["threads"]
     log: "logs/deeptools/computeMatrix-{annotation}-{sample}-{norm}-{strand}.log"
+    #shell: """
+    #    (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+    #    """
     shell: """
-        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
         """
 
 rule gzip_deeptools_table:
@@ -640,6 +645,7 @@ rule call_de_clusters_spikenorm:
         dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-spikenorm.png",
         pca= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-spikenorm.png",
         scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-spikenorm.png",
+        all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-spikenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
@@ -659,6 +665,7 @@ rule call_de_clusters_libsizenorm:
         dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-libsizenorm.png",
         pca= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-libsizenorm.png",
         scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-libsizenorm.png",
+        all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-libsizenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv",
    script:
         "scripts/call_de_clusters.R"

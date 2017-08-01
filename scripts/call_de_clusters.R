@@ -12,7 +12,7 @@ get_countdata = function(table, samplenames){
 }
 
 extract_deseq_results = function(dds, alpha, lfcThreshold){
-    results(dds, alpha=alpha, lfcThreshold=lfcThreshold, altHypothesis="greaterAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% filter(padj<alpha) %>% arrange(padj) %>% return()
+    results(dds, alpha=alpha, lfcThreshold=lfcThreshold, altHypothesis="greaterAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -128,15 +128,17 @@ qual_ctrl = function(intable.cluster,
     
     plot_correlation(corrplot, dds.clusters)
     
-    resdf = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
-    write.table(resdf, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+    resdf.all = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
+    resdf.filtered = resdf.all %>% filter(padj < alpha)
+    write.table(resdf, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+    write.table(resdf.filtered, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
     #transformations for datavis and quality control
     #blinding is FALSE for datavis purposes
     rld = rlog(dds.clusters, blind=FALSE)
     rld.df = rld %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
     
-    plot_count_heatmap(count.heatmap, rld, resdf, alpha)
+    plot_count_heatmap(count.heatmap, rld, resdf.filtered, alpha)
     plot_dist_heatmap(dist.heatmap, rld)
     plot_pca(pca, scree, rld)
 }
@@ -152,5 +154,6 @@ qc = qual_ctrl(intable.cluster = snakemake@input[["clustercounts"]],
                dist.heatmap = snakemake@output[["dist_heatmap"]],
                pca = snakemake@output[["pca"]],
                scree = snakemake@output[["scree"]],
+               all.path = snakemake@output[["all_path"]],
                de.path = snakemake@output[["de_path"]])
 
