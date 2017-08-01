@@ -105,6 +105,7 @@ qual_ctrl = function(intable.cluster,
                      dist.heatmap,
                      pca,
                      scree,
+                     all.path,
                      de.path){
     
     raw.clusters = read_table2(intable.cluster, col_names=FALSE)
