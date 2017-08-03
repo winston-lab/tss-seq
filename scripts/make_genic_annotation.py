@@ -57,6 +57,7 @@ for index, row in indf.iterrows():
         elif row.strand_orf == "-":
             outdf.iloc[index,] = [row.chrom_orf, row.end_orf, row.end_orf+args.dist, row['name'], 0, row.strand_orf]
 
+outdf['name'] = outdf['name'].astype(str)
 outdf[['start', 'end']] = outdf[['start', 'end']].astype(np.uint64)
 outdf['score'] = outdf['score'].astype(np.float64)
 bedout = pybt.BedTool.from_dataframe(outdf).truncate_to_chrom(chrom_dict).moveto(args.outpath)
