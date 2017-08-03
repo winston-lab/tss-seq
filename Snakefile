@@ -35,7 +35,7 @@ localrules: all,
             get_cluster_counts,
             extract_base_distances,
             separate_de_clusters,
-	    de_clusters_to_bed,
+            de_clusters_to_bed,
             map_counts_to_clusters,
             get_putative_intragenic,
             get_putative_antisense,
@@ -56,25 +56,25 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]), 
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]), 
+        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
 #        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
 #         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
          expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
-       
+
 rule fastqc_raw:
-    input: 
+    input:
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
     output:
         "qual_ctrl/fastqc/raw/{sample}"
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
     shell: """
-        #mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample} 
-        mkdir -p {output} 
+        #mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample}
+        mkdir -p {output}
         (fastqc -o {output} --noextract -t {threads} {input}) &> {log}
         """
 
@@ -730,7 +730,7 @@ rule build_genic_annotation:
         windowsize = config["genic-windowsize"]
     log : "logs/build_genic_annotation.log"
     shell: """
-        python scripts/make_genic_annotation.py -t {input.transcripts} -o {input.orfs} -d {params.windowsize} -g {input.chrsizes} -p {output}
+        (python scripts/make_genic_annotation.py -t {input.transcripts} -o {input.orfs} -d {params.windowsize} -g {input.chrsizes} -p {output}) &> {log}
         """
 
 rule get_putative_genic:
@@ -863,7 +863,8 @@ rule get_peak_sequences:
 
 rule meme_chip:
     input:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa"
+        seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa",
+        db = config["meme-chip"]["motif-database"]
     output:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/index.html"
     params:
@@ -872,31 +873,5 @@ rule meme_chip:
         nmotifs = config["meme-chip"]["meme-nmotifs"],
     #threads: config["threads"]
     shell: """
-        meme-chip {input} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2 
+        meme-chip {input.seq} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -db {input.db} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2
         """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-        
-
-
-
-
