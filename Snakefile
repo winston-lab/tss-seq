@@ -687,8 +687,8 @@ rule de_clusters_to_bed:
         up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.tsv",
         down = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.tsv"
     output:
-        up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.bed", 
-        down= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.bed" 
+        up = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-up.bed",
+        down= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-down.bed"
     log: "logs/de_clusters_to_bed/de_clusters_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
         (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
@@ -699,7 +699,7 @@ rule de_clusters_to_bed:
 rule get_putative_intragenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
-        orfs = config["genome"]["orf-annotation"] 
+        orfs = config["genome"]["orf-annotation"]
     output:
         "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
@@ -722,21 +722,15 @@ rule get_putative_antisense:
 rule build_genic_annotation:
     input:
         transcripts = config["genome"]["transcripts"],
-        #orfs = config["genome"]["orf-annotation"],
+        orfs = config["genome"]["orf-annotation"],
         chrsizes = config["genome"]["chrsizes"]
     output:
         os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     params:
         windowsize = config["genic-windowsize"]
     log : "logs/build_genic_annotation.log"
-#    shell: """
-#        (sort -k4,4 {input.transcripts} > .transcriptanno.temp) &> {log}
-#        (sort -k4,4 {input.orfs} > .orfanno.temp) &>> {log}
-#        (join -j 4 .transcriptanno.temp .orfanno.temp | awk 'BEGIN{{OFS="\t"}} $6=="+"{{print $2, $3, $8, $1, $5, $6}} $6=="-"{{print $2, $9, $4, $1, $5, $6}}' | awk 'BEGIN{{FS=OFS="\t"}} ($3>=$2 && $3!=0){{print $0}}'| sort -k1,1 -k2,2n | bedtools slop -s -l {params.genic_up} -r 0 -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $3>$2{{print $0}}' > {output}) &>> {log}
-#        (rm .transcriptanno.temp .orfanno.temp) &>> {log}
-#        """        
     shell: """
-        awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $2+1, $4, $5, $6}} $6=="-"{{print $1, $3-1, $3, $4, $5, $6}}' {input.transcripts} | bedtools slop -b {params.windowsize} -i stdin -g {input.chrsizes} > {output}
+        python scripts/make_genic_annotation.py -t {input.transcripts} -o {input.orfs} -d {params.windowsize} -g {input.chrsizes} -p {output}
         """
 
 rule get_putative_genic:
@@ -754,7 +748,7 @@ rule get_putative_genic:
 rule build_intergenic_annotation:
     input:
         transcripts = config["genome"]["transcripts"],
-        chrsizes = config["genome"]["chrsizes"] 
+        chrsizes = config["genome"]["chrsizes"]
     output:
         os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
     params:
