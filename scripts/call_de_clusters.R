@@ -131,7 +131,7 @@ qual_ctrl = function(intable.cluster,
     
     resdf.all = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
     resdf.filtered = resdf.all %>% filter(padj < alpha)
-    write.table(resdf, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+    write.table(resdf.all, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     write.table(resdf.filtered, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
     #transformations for datavis and quality control
