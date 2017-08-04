@@ -77,6 +77,14 @@ call_de_bases_cond_v_ctrl:
     time : "11:50"
     mem : 40000
 
+call_allgenic_spikenorm:
+    time : "2:00"
+    mem : 20000
+
+call_allgenic_libsizenorm:
+    time : "2:00"
+    mem : 20000
+
 call_de_clusters_spikenorm:
     time : "2:00"
     mem : 20000

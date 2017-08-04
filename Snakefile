@@ -47,7 +47,10 @@ localrules: all,
             build_divergent_annotation,
             get_putative_divergent,
             get_category_bed,
-            get_peak_sequences
+            get_peak_sequences,
+            make_stranded_genic_anno,
+            get_genic_counts,
+            map_counts_to_genic
 
 rule all:
     input:
@@ -58,12 +61,13 @@ rule all:
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
         expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-#        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
-#         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
+        #expand(expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-{{norm}}-genic-counts.tsv", zip, condition=conditiongroups, control=controlgroups), norm="libsizenorm"),
+        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
-         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
+         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
 
 rule fastqc_raw:
     input:
@@ -190,7 +194,7 @@ rule select_unique_mappers:
     log: "logs/select_unique_mappers/select_unique_mappers-{sample}.log"
     shell: """
         (samtools view -b -h -q 50 -@ {threads} {input} | samtools sort -@ {threads} - > {output}) &> {log}
-        """   
+        """
 
 rule remove_PCR_duplicates:
     input:
@@ -257,8 +261,8 @@ rule make_stranded_genome:
 
 rule make_stranded_bedgraph:
     input:
-        plus = "coverage/{norm}/{sample}-tss-{norm}-plus.bedgraph",        
-        minus = "coverage/{norm}/{sample}-tss-{norm}-minus.bedgraph"        
+        plus = "coverage/{norm}/{sample}-tss-{norm}-plus.bedgraph",
+        minus = "coverage/{norm}/{sample}-tss-{norm}-minus.bedgraph"
     output:
         sense = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph",
         antisense = "coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"
@@ -266,12 +270,12 @@ rule make_stranded_bedgraph:
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
-        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log} 
-        (rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp) &>> {log} 
+        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log}
+        (rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp) &>> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &>> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
-        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.antisense}) &>> {log} 
-        rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp 
+        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.antisense}) &>> {log}
+        rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp
         """
 
 rule make_stranded_sicounts_bedgraph:
@@ -284,7 +288,7 @@ rule make_stranded_sicounts_bedgraph:
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp) &> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp) &>> {log}
-        (cat coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log} 
+        (cat coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log}
         (rm coverage/counts/spikein/{wildcards.sample}-counts-*.tmp) &>> {log}
         """
 
@@ -395,9 +399,9 @@ rule union_bedgraph:
         pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
         pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
     output:
-        exp = "coverage/counts/union-bedgraph-allsamples.txt",    
+        exp = "coverage/counts/union-bedgraph-allsamples.txt",
         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
-        pass_exp = "coverage/counts/union-bedgraph-passing.txt",    
+        pass_exp = "coverage/counts/union-bedgraph-passing.txt",
         pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
     params:
         allminreads = config["minreads"]*len(SAMPLES),
@@ -563,8 +567,8 @@ rule de_bases_to_bed:
         up = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-up.tsv",
         down = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-down.tsv"
     output:
-        up = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-up.bed", 
-        down = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-down.bed" 
+        up = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-up.bed",
+        down = "diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-{norm}-down.bed"
     log: "logs/de_bases_to_bed/de_bases_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
         (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1"-"$2, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
@@ -601,13 +605,84 @@ rule merge_de_bases_to_clusters:
 
 rule cat_cluster_strands:
     input:
-        expand("diff_exp/{{condition}}-v-{{control}}/de_bases/allclusters/{{condition}}-v-{{control}}-allclusters-{{norm}}-{direction}.bed", direction = ["up", "down"]) 
+        expand("diff_exp/{{condition}}-v-{{control}}/de_bases/allclusters/{{condition}}-v-{{control}}-allclusters-{{norm}}-{direction}.bed", direction = ["up", "down"])
     output:
         "diff_exp/{condition}-v-{control}/de_bases/allclusters/{condition}-v-{control}-allclusters-{norm}-combined.bed"
     log: "logs/cat_cluster_strands/cat_cluster_strands-{condition}-v-{control}-{norm}.log"
     shell: """
         (cat {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
         """
+
+rule make_stranded_genic_anno:
+    input:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/stranded/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions-STRANDED.bed",
+    log : "logs/make_stranded_genic_anno.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $1"-plus", $2, $3, $4, $5, $6}} $6=="-"{{print $1"-minus", $2, $3, $4, $5, $6}}' {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+        """
+
+rule map_counts_to_genic:
+    input:
+        bed = os.path.dirname(config["genome"]["transcripts"]) + "/stranded/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions-STRANDED.bed",
+        bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
+    output:
+        temp("diff_exp/{condition}-v-{control}/all_genic/{sample}-allgenic-{norm}.tsv")
+    log: "logs/map_counts_to_genic/map_counts_to_genic-{condition}-v-{control}-{sample}-{norm}.log"
+    shell: """
+        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $4, $7}}' > {output}) &> {log}
+        """
+
+rule get_genic_counts:
+    input:
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/all_genic/" + x + "-allgenic-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
+    output:
+        "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-{norm}-genic-counts.tsv"
+    log: "logs/get_genic_counts/get_genic_counts-{condition}-v-{control}-{norm}.log"
+    shell: """
+        (bash scripts/recursivejoin.sh {input} > {output}) &> {log}
+        """
+
+rule call_allgenic_spikenorm:
+   input:
+        clustercounts= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-spikenorm-genic-counts.tsv",
+        libcounts = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+   output:
+        corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-spikenorm.png",
+        count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-spikenorm.png",
+        dist_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-sample-dists-spikenorm.png",
+        pca= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-spikenorm.png",
+        scree= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-scree-spikenorm.png",
+        all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv",
+        de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-spikenorm.tsv",
+   script:
+        "scripts/call_de_clusters.R"
+
+rule call_allgenic_libsizenorm:
+   input:
+        clustercounts= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-libsizenorm-genic-counts.tsv",
+        libcounts = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt"
+   params:
+        alpha = config["deseq"]["fdr"],
+        lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+   output:
+        corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-libsizenorm.png",
+        count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-libsizenorm.png",
+        dist_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-sample-dists-libsizenorm.png",
+        pca= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-libsizenorm.png",
+        scree= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-scree-libsizenorm.png",
+        all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv",
+        de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-libsizenorm.tsv",
+   script:
+        "scripts/call_de_clusters.R"
 
 rule map_counts_to_clusters:
     input:
@@ -856,7 +931,7 @@ rule get_peak_sequences:
     params:
         upstr = config["meme-chip"]["upstream-dist"],
         dnstr = config["meme-chip"]["downstream-dist"]
-    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log" 
+    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
         (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
@@ -875,3 +950,4 @@ rule meme_chip:
     shell: """
         meme-chip {input.seq} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -db {input.db} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2
         """
+
