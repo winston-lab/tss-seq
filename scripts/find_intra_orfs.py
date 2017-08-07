@@ -3,7 +3,7 @@
 import argparse
 import pandas as pd
 import numpy as np
-from Bio import SeqIO 
+from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 from Bio.SeqUtils import molecular_weight
@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description='Detect potential ORFs downstream o
 parser.add_argument('-p', dest = 'peaks', type=str, default = 'diamide-v-YPD-de-clusters-libsizenorm-up-intragenic.tsv')
 parser.add_argument('-f', dest = 'fasta', type=str, default = 'S_cerevisiae.R64-2-1.fa')
 parser.add_argument('-m', dest = 'max_orf_len', type=int, default = 10000)
+parser.add_argument('-a', dest = 'max_upstr_atg', type=int, default=3)
 parser.add_argument('-o', dest = 'outpath', type=str, default = 'output.tsv')
 args = parser.parse_args()
 
@@ -21,7 +22,7 @@ fasta = SeqIO.to_dict(SeqIO.parse(args.fasta, "fasta"))
 peaks['frame'] = np.where(peaks['strand']=="+", (peaks['peakstart']-peaks['orfstart']) % 3, (peaks['orfend']-peaks['peakend']) % 3)
 
 #initialize output dataframe
-df = pd.DataFrame(index = np.arange(len(peaks)*1000), 
+df = pd.DataFrame(index = np.arange(len(peaks)*1000),
                   columns = ['chrom', 'strand', 'orf_name', 'orf_start', 'orf_end', 'dist_atg_to_peak', 'peak_name', 'peak_start', 'peak_end', 'peak_lfc', 'peak_significance', 'intra_orf_5utr_length',  'intra_orf_frame', 'intra_orf_upstr_atg', 'intra_orf_start', 'intra_orf_end', 'intra_orf_length', 'intra_prot_molweight', 'intra_prot_tap_molweight'])
 
 tt_out = 0 #counter for output df row
@@ -35,12 +36,12 @@ for index, row in peaks.iterrows():
 
     if row.strand == "+":
         seq = fasta[str(row.chrom)].seq[row.peakstart : row.orfend + args.max_orf_len]
-        
+
         startpos = seq.find("ATG")
         intra_orf_start = row.peakstart
         frame = row.frame
-        
-        while (intra_orf_start < row.orfend and startpos > -1):
+
+        while (intra_orf_start < row.orfend and startpos > -1 and atg_counter <= args.max_upstr_atg):
             if startpos > -1:
                 intra_orf_start = row.peakstart + startpos
                 frame = (frame + startpos) % 3 #get reading frame of found start codon
@@ -65,10 +66,10 @@ for index, row in peaks.iterrows():
         seq = fasta[str(row.chrom)].seq[row.orfstart - args.max_orf_len : row.peakend].reverse_complement()
 
         startpos = seq.find("ATG")
-        intra_orf_start = row.peakend 
+        intra_orf_start = row.peakend
         frame = row.frame
 
-        while (intra_orf_start > row.orfstart):
+        while (intra_orf_start > row.orfstart and atg_counter <= args.max_upstr_atg):
             if startpos > -1:
                 intra_orf_start = row.peakend - startpos
                 frame = (frame + startpos) % 3 #get reading frame of found start codon
@@ -86,7 +87,7 @@ for index, row in peaks.iterrows():
                 atg_counter += 1
                 startpos = seq.find("ATG", start = startpos + 1)
             else:
-                intra_orf_start = row.orfstart   
+                intra_orf_start = row.orfstart
 
 df = df.iloc[:tt_out]
 

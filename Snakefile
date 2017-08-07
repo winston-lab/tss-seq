@@ -72,8 +72,8 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         #MEME-ChIP
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
 
 rule fastqc_raw:
     input:
@@ -780,13 +780,15 @@ rule de_clusters_to_bed:
 rule get_putative_intragenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
-        orfs = config["genome"]["orf-annotation"]
+        orfs = config["genome"]["orf-annotation"],
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
         "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
         """
+
 #(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\torf_start\torf_end\torf_name\tpeak_lfc\tpeak_significance\tdist_peak_to_atg\n$
 rule get_putative_antisense:
     input:
@@ -860,10 +862,11 @@ rule get_intra_orfs:
     output:
         "diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-{norm}-{direction}-intragenic-orfs.tsv"
     params:
+        max_upstr_atgs = config["max-upstr-atgs"],
         max_search_dist = 2000
     log: "logs/get_intra_orfs/get_intra_orfs-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -o {output}) &> {log}
+        (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -a {params.max_upstr_atgs} -o {output}) &> {log}
         """
 
 rule build_convergent_annotation:
