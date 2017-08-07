@@ -59,4 +59,5 @@ for index, row in indf.iterrows():
 
 outdf[['start', 'end']] = outdf[['start', 'end']].astype(np.uint64)
 outdf['score'] = outdf['score'].astype(np.float64)
-bedout = pybt.BedTool.from_dataframe(outdf).truncate_to_chrom(chrom_dict).moveto(args.outpath)
+outdf = outdf.query('(end-start)>0')
+bedout = pybt.BedTool.from_dataframe(outdf).truncate_to_chrom(chrom_dict).remove_invalid().moveto(args.outpath)
