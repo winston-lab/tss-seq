@@ -17,7 +17,7 @@ get_countdata = function(table, samplenames){
 }
 
 extract_deseq_results = function(dds, alpha){
-  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
+  results(dds, alpha=alpha) %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -212,7 +212,7 @@ qual_ctrl = function(intable,
   plot_correlation(corrplot.libsizenorm, dds)
   resdf.nospike = extract_deseq_results(dds, alpha=alpha)
   write.table(resdf.nospike, file=all.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
-  write.table(resdf.nospike %>% filter(padj < alpha), file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+  write.table(resdf.nospike %>% filter(padj != "NA" & padj < alpha), file=de.libsizenorm.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
   rld.nospike = rlog(dds, blind=FALSE)
   rld.nospike.df = rld.nospike %>% assay() %>% as.data.frame() %>% rownames_to_column() %>% as_data_frame()
   #plot_count_heatmap(count.heatmap.libsizenorm, rld.nospike, resdf.nospike, alpha)

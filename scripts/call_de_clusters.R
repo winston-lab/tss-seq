@@ -12,7 +12,7 @@ get_countdata = function(table, samplenames){
 }
 
 extract_deseq_results = function(dds, alpha, lfcThreshold){
-    results(dds, alpha=alpha, lfcThreshold=lfcThreshold, altHypothesis="greaterAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA") %>% arrange(padj) %>% return()
+    results(dds, alpha=alpha, lfcThreshold=lfcThreshold, altHypothesis="greaterAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% arrange(padj) %>% return()
 }
 
 plot_correlation = function(path, dds){
@@ -130,7 +130,7 @@ qual_ctrl = function(intable.cluster,
     plot_correlation(corrplot, dds.clusters)
     
     resdf.all = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
-    resdf.filtered = resdf.all %>% filter(padj < alpha)
+    resdf.filtered = resdf.all %>% filter(padj != "NA" & padj < alpha)
     write.table(resdf.all, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     write.table(resdf.filtered, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
