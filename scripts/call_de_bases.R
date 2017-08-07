@@ -205,6 +205,7 @@ qual_ctrl = function(intable,
                         dist.heatmap.spikenorm,
                         pca.spikenorm,
                         scree.spikenorm,
+                        all.spikenorm.path,
                         de.spikenorm.path)
   }
   dds  = dds %>% estimateSizeFactors() %>% estimateDispersions() %>% nbinomWaldTest()
