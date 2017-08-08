@@ -74,6 +74,8 @@ rule all:
         #MEME-ChIP
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
+        expand("diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-spikenorm.tsv", condition=conditiongroups_si, control=controlgroups_si, type=["antisense", "convergent", "divergent", "intragenic"]),
+        expand("diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-libsizenorm.tsv", condition=conditiongroups, control=controlgroups, type=["antisense", "convergent", "divergent", "intragenic"])
 
 rule fastqc_raw:
     input:
@@ -959,4 +961,14 @@ rule meme_chip:
     shell: """
         meme-chip {input.seq} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -db {input.db} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2
         """
-
+rule class_v_genic:
+    input:
+        pclass_up = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-de-clusters-{norm}-up-{type}.tsv",
+        pclass_dn = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-de-clusters-{norm}-down-{type}.tsv",
+        genic = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-{norm}.tsv",
+    output:
+        scatter_text = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scattertext.png" ,
+        scatter_nolabel = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scatternotext.png",
+        table = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}.tsv"
+    script:
+        "scripts/class_v_genic.R"
