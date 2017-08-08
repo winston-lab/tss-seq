@@ -102,3 +102,6 @@ meme_chip:
     mem : 10000
     n : 2 #this is hardcoded in the snakefile to run with two cores
 
+class_v_genic:
+    time : "6:00"
+    mem : 10000
