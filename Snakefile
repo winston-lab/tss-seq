@@ -74,8 +74,8 @@ rule all:
         #MEME-ChIP
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
-        expand("diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-spikenorm.tsv", condition=conditiongroups_si, control=controlgroups_si, type=["antisense", "convergent", "divergent", "intragenic"]),
-        expand("diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-libsizenorm.tsv", condition=conditiongroups, control=controlgroups, type=["antisense", "convergent", "divergent", "intragenic"])
+        expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"])
 
 rule fastqc_raw:
     input:
