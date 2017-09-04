@@ -78,7 +78,7 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         # intrafreq
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"])
 
 rule fastqc_raw:
     input:
