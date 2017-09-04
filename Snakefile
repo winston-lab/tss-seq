@@ -77,8 +77,8 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         # intrafreq
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"])
 
 rule fastqc_raw:
     input:
@@ -794,11 +794,22 @@ rule get_putative_intragenic:
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
         """
 
+rule get_intragenic_frequency:
+    input:
+        orfs = config["genome"]["orf-annotation"],
+        intrabed = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.bed"
+    output:
+        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-de-clusters-{norm}-{direction}-intrafreq.tsv"
+    shell: """
+        bedtools intersect -a {input.orfs} -b {input.intrabed} -c -s > {output}
+        """
+
+
 rule plot_intragenic_frequency:
     input:
-        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
+        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-de-clusters-{norm}-{direction}-intrafreq.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.png"
+        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.png"
     log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
     script: "scripts/intrafreq.R"
 
