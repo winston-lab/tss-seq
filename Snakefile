@@ -672,6 +672,7 @@ rule call_allgenic_spikenorm:
         scree= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-scree-spikenorm.png",
         all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-spikenorm.tsv",
+        unch_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-nonDEgenic-spikenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
 
@@ -692,6 +693,7 @@ rule call_allgenic_libsizenorm:
         scree= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pca-scree-libsizenorm.png",
         all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-libsizenorm.tsv",
+        unch_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-nonDEgenic-libsizenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
 
@@ -733,6 +735,7 @@ rule call_de_clusters_spikenorm:
         scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-spikenorm.png",
         all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-spikenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv",
+        unch_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-unchanged-clusters-spikenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
 
@@ -753,6 +756,7 @@ rule call_de_clusters_libsizenorm:
         scree= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pca-scree-libsizenorm.png",
         all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-libsizenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv",
+        unch_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-unchanged-clusters-libsizenorm.tsv",
    script:
         "scripts/call_de_clusters.R"
 

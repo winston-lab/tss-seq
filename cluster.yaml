@@ -1,6 +1,6 @@
 __default__:
     queue : "short"
-    time : "11:50"
+    time : 710
     n : 1
     mem : 2000
     name : "{rule}.{wildcards}"
@@ -8,100 +8,100 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_raw:
-    time : "1:00"
+    time : 60
     n : 1
     mem : 2000
 
 remove_adapter:
-    time : "3:00"
+    time : 180
     mem : 1000
 
 remove_3p_barcode_and_qual_trim:
-    time : "3:00"
+    time : 180
     mem : 1000
 
 remove_molec_barcode:
-    time : "3:00"
+    time : 180
     n : 2
     mem : 2000
 
 fastqc_cleaned:
-    time : "1:00"
+    time : 60
     n : 1
     mem : 2000
 
 bowtie2_build:
-    time : "1:00"
+    time : 60
     mem : 2000
 
 align:
-    time : "4:00"
+    time : 240
     n : 4
-    mem : 2000
+    mem : 8000
 
 select_unique_mappers:
-    time : "3:00"
+    time : 180
     n : 1
     mem : 6000
 
 remove_PCR_duplicates:
-    time : "3:00"
+    time : 180
     mem : 2000
 
 get_coverage:
-    time : "1:00"
+    time : 60
     mem : 2000
 
 normalize:
-    time : "1:00"
+    time : 60
     mem : 2000
  
 deeptools_matrix:
-    time : "1:00"
+    time : 60
     n : 1
     mem : 2000
 
 r_datavis:
-    time : "4:00"
+    time : 240
     mem : 60000
 
 deseq_initial_qc:
-    time : "11:59"
+    time : 719
     mem : 40000
 
 deseq_passing_qc:
-    time : "11:59"
+    time : 719
     mem : 40000
 
 call_de_bases_cond_v_ctrl:
-    time : "11:50"
+    time : 710
     mem : 40000
 
 call_allgenic_spikenorm:
-    time : "2:00"
+    time : 120
     mem : 20000
 
 call_allgenic_libsizenorm:
-    time : "2:00"
+    time : 120
     mem : 20000
 
 call_de_clusters_spikenorm:
-    time : "2:00"
+    time : 120
     mem : 20000
 
 call_de_clusters_libsizenorm:
-    time : "2:00"
+    time : 120
     mem : 20000
 
 get_intra_orfs:
-    time : "11:59"
+    time : 719
     mem : 20000
 
 meme_chip:
-    time : "11:59"
+    time : 719
     mem : 10000
     n : 2 #this is hardcoded in the snakefile to run with two cores
 
 class_v_genic:
-    time : "6:00"
+    time : 360
     mem : 10000

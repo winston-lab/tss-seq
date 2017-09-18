@@ -106,7 +106,8 @@ qual_ctrl = function(intable.cluster,
                      pca,
                      scree,
                      all.path,
-                     de.path){
+                     de.path,
+                     unchanged.path){
     
     raw.clusters = read_table2(intable.cluster, col_names=FALSE)
     raw.lib = read_table2(intable.lib, col_names=TRUE)
@@ -125,14 +126,19 @@ qual_ctrl = function(intable.cluster,
     sizeFactors(dds.clusters) = sizeFactors(dds.lib)
     
     #do differential expression +/- spike-in
-    dds.clusters = dds.clusters %>% estimateDispersions() %>% nbinomWaldTest()
+    dds.clusters = dds.clusters %>% estimateDispersions()
+    dds.clusters.noprior = dds.clusters %>% nbinomWaldTest(betaPrior=FALSE)
+    dds.clusters = dds.clusters %>% nbinomWaldTest()
     
     plot_correlation(corrplot, dds.clusters)
     
     resdf.all = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
     resdf.filtered = resdf.all %>% filter(padj != "NA" & padj < alpha)
+    resdf.unchanged = results(dds.clusters.noprior, alpha=alpha, lfcThreshold=lfcThreshold,  altHypothesis="lessAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% arrange(padj)
+    
     write.table(resdf.all, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     write.table(resdf.filtered, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
+    write.table(resdf.unchanged, file=unchanged.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     
     #transformations for datavis and quality control
     #blinding is FALSE for datavis purposes
@@ -156,5 +162,6 @@ qc = qual_ctrl(intable.cluster = snakemake@input[["clustercounts"]],
                pca = snakemake@output[["pca"]],
                scree = snakemake@output[["scree"]],
                all.path = snakemake@output[["all_path"]],
-               de.path = snakemake@output[["de_path"]])
+               de.path = snakemake@output[["de_path"]],
+               unchanged.path = snakemake@output[["unch_path"]])
 

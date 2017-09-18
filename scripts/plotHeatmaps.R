@@ -22,7 +22,7 @@ plotheatmaps = function(intable, upstream, downstream, pct_cutoff, refptlabel, y
     
     #plot heatmap facetted by sample and group
     heatmap_base = ggplot(data = raw %>% mutate_at(vars(cpm), funs(pmin(cutoff, .)))) +
-      geom_tile(aes(x=position, y=index, fill=log2(cpm+pcount))) +
+      geom_raster(aes(x=position, y=index, fill=log2(cpm+pcount))) +
       scale_y_reverse(name=paste(nindices, ylabel))+
       scale_x_continuous(breaks = c(-upstream/1000, 0, downstream/1000), labels=c(-upstream/1000, refptlabel, downstream/1000)) +
       xlab(paste("distance from", refptlabel, "(kb)")) +
