@@ -134,7 +134,7 @@ qual_ctrl = function(intable.cluster,
     
     resdf.all = extract_deseq_results(dds.clusters, alpha=alpha, lfcThreshold=lfcThreshold)
     resdf.filtered = resdf.all %>% filter(padj != "NA" & padj < alpha)
-    resdf.unchanged = results(dds.clusters.noprior, alpha=alpha, lfcThreshold=0.5,  altHypothesis="lessAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% arrange(padj)
+    resdf.unchanged = results(dds.clusters.noprior, alpha=alpha, lfcThreshold=0.5,  altHypothesis="lessAbs") %>% as.data.frame() %>% rownames_to_column(var='base') %>% as_data_frame() %>% filter(padj != "NA" & padj<alpha) %>% arrange(padj, pvalue, log2FoldChange, desc(baseMean))
     
     write.table(resdf.all, file=all.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
     write.table(resdf.filtered, file=de.path, quote=FALSE, sep = "\t", row.names=FALSE, col.names=TRUE)
