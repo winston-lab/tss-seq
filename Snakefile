@@ -17,40 +17,23 @@ conditiongroups_si = config["comparisons"]["spikenorm"]["conditions"]
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
 localrules: all,
-            make_stranded_genome,
-            make_stranded_bedgraph,
-            make_stranded_sicounts_bedgraph,
-            make_stranded_annotations,
-            make_bigwig_for_deeptools,
-            gzip_deeptools_table,
-            melt_matrix,
-            cat_matrices,
-            union_bedgraph,
-            union_bedgraph_cond_v_ctrl,
-            cat_strands,
-            separate_de_bases,
-            de_bases_to_bed,
-            merge_de_bases_to_clusters,
+            make_stranded_genome, make_stranded_bedgraph, make_stranded_sicounts_bedgraph,
+            make_stranded_annotations, make_stranded_genic_anno,
+            bg_to_bw,
+            # gzip_deeptools_table,
+            melt_matrix, cat_matrices,
+            union_bedgraph, union_bedgraph_cond_v_ctrl,
+            separate_de_bases, de_bases_to_bed, merge_de_bases_to_clusters,
             cat_cluster_strands,
-            get_cluster_counts,
-            extract_base_distances,
-            separate_de_clusters,
-            de_clusters_to_bed,
-            map_counts_to_clusters,
-            get_putative_intragenic,
-            get_putative_antisense,
-            build_genic_annotation,
-            get_putative_genic,
-            get_putative_intergenic,
-            build_convergent_annotation,
-            get_putative_convergent,
-            build_divergent_annotation,
-            get_putative_divergent,
+            map_counts_to_clusters, get_cluster_counts,
+            # extract_base_distances,
+            separate_de_clusters, de_clusters_to_bed,
+            build_genic_annotation, build_convergent_annotation, build_divergent_annotation,
+            get_putative_genic, get_putative_intragenic, get_putative_antisense,
+            get_putative_intergenic, get_putative_convergent, get_putative_divergent,
             get_category_bed,
             get_peak_sequences,
-            make_stranded_genic_anno,
-            get_genic_counts,
-            map_counts_to_genic
+            get_genic_counts, map_counts_to_genic
 
 rule all:
     input:
@@ -60,8 +43,11 @@ rule all:
         #datavis
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
+        "qual_ctrl/all/spikein-stats.tsv",
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
+        #coverage
+        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
         #differentially expressed clusters
         expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
@@ -88,9 +74,8 @@ rule fastqc_raw:
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
     shell: """
-        #mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample}
-        mkdir -p {output}
-        (fastqc -o {output} --noextract -t {threads} {input}) &> {log}
+        (mkdir -p {output}) &> {log}
+        (fastqc -o {output} --noextract -t {threads} {input}) &>> {log}
         """
 
 #in this order: remove adapter, remove 3' molecular barcode, do NextSeq quality trimming
@@ -130,7 +115,7 @@ rule remove_molec_barcode:
     log: "logs/remove_molec_barcode/removeMBC-{sample}.log"
     shell: """
         (python scripts/extractMolecularBarcode.py {input} fastq/cleaned/{wildcards.sample}-clean.fastq {output.barcodes} {output.ligation}) &> {log}
-        pigz -f fastq/cleaned/{wildcards.sample}-clean.fastq
+        (pigz -f fastq/cleaned/{wildcards.sample}-clean.fastq) &>> {log}
         """
 
 rule fastqc_cleaned:
@@ -142,15 +127,17 @@ rule fastqc_cleaned:
     threads : config["threads"]
     log: "logs/fastqc/cleaned/fastqc-cleaned-{sample}.log"
     shell: """
-        mkdir -p qual_ctrl/fastqc/cleaned/{wildcards.sample}
-        (fastqc -o qual_ctrl/fastqc/cleaned/{wildcards.sample} --noextract -t {threads} {input}) &> {log}
+        (mkdir -p qual_ctrl/fastqc/cleaned/{wildcards.sample}) &> {log}
+        (fastqc -o qual_ctrl/fastqc/cleaned/{wildcards.sample} --noextract -t {threads} {input}) &>> {log}
         """
 
+#align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
+#(because we don't always have a reference gff and it doesn't make much difference)
 rule bowtie2_build:
     input:
         fasta = config["combinedgenome"]["fasta"]
     output:
-        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num = [1,2,3,4]),
+        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2,3,4]),
         expand("../genome/bowtie2_indexes/{basename}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2])
     params:
         name = config["combinedgenome"]["name"]
@@ -163,7 +150,6 @@ rule align:
     input:
         expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num = [1,2,3,4]),
         expand("../genome/bowtie2_indexes/{basename}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
-        #gff = config["combinedgenome"]["gff"],
         fastq = "fastq/cleaned/{sample}-clean.fastq.gz"
     output:
         "alignment/{sample}/accepted_hits.bam"
@@ -189,9 +175,7 @@ rule align:
         "envs/tophat2.yaml"
     threads : config["threads"]
     log: "logs/align/align-{sample}.log"
-    shell:# """
-        #(tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive -G {input.gff} ../genome/bowtie2_indexes/{params.basename} {input.fastq}) &> {log}
-        #"""
+    shell:
         """
         (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive ../genome/bowtie2_indexes/{params.basename} {input.fastq}) &> {log}
         """
@@ -232,12 +216,12 @@ rule get_coverage:
         si_prefix = config["combinedgenome"]["spikein_prefix"]
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log};
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIpl}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SImin}) &>> {log};
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log};
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log};
+        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log}
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIpl}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SImin}) &>> {log}
+        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
 
 rule normalize:
@@ -253,11 +237,42 @@ rule normalize:
         libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
-        (scripts/libsizenorm.awk {input.SIplmin} {input.plus} > {output.spikePlus}) &> {log} 
+        (scripts/libsizenorm.awk {input.SIplmin} {input.plus} > {output.spikePlus}) &> {log}
         (scripts/libsizenorm.awk {input.SIplmin} {input.minus} > {output.spikeMinus}) &>> {log}
         (scripts/libsizenorm.awk {input.plmin} {input.plus} > {output.libnormPlus}) &>> {log}
         (scripts/libsizenorm.awk {input.plmin} {input.minus} > {output.libnormMinus}) &>> {log}
         """
+
+rule get_si_pct:
+    input:
+        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
+        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"
+    output:
+        temp("qual_ctrl/all/{sample}-spikeincounts.tsv")
+    params:
+        group = lambda wildcards: SAMPLES[wildcards.sample]["group"]
+    shell: """
+        echo {wildcards.sample} {params.group} $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {input.SIplmin} {input.plmin}) > {output}
+        """
+
+rule cat_si_pct:
+    input:
+        expand("qual_ctrl/all/{sample}-spikeincounts.tsv", sample=SAMPLES)
+    output:
+        "qual_ctrl/all/spikein-counts.tsv"
+    shell: """
+        cat {input} > {output}
+        """
+
+rule plot_si_pct:
+    input:
+        "qual_ctrl/all/spikein-counts.tsv"
+    output:
+        barplot = "qual_ctrl/all/spikein-barplot.png",
+        boxplot = "qual_ctrl/all/spikein-boxplot.png",
+        stats = "qual_ctrl/all/spikein-stats.tsv"
+    script: "plotsipct.R"
+
 
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
@@ -279,14 +294,8 @@ rule make_stranded_bedgraph:
         antisense = "coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"
     log : "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
-        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log}
-        (rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp) &>> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.minus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp) &>> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.plus} > coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp) &>> {log}
-        (cat coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-plus.tmp coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.antisense}) &>> {log}
-        rm coverage/{wildcards.norm}/{wildcards.sample}-{wildcards.norm}-*.tmp
+        (bash scripts/makeStrandedBedgraph.sh {input.plus} {input.minus} > {output.sense}) &> {log}
+        (bash scripts/makeStrandedBedgraph.sh {input.minus} {input.plus} > {output.antisense}) &>> {log}
         """
 
 rule make_stranded_sicounts_bedgraph:
@@ -297,10 +306,7 @@ rule make_stranded_sicounts_bedgraph:
         sense = "coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph"
     log: "logs/make_stranded_sicounts_bedgraph/make_stranded_sicounts_bedgraph-{sample}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2, $3, $4}}' {input.plus} > coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp) &> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-minus", $2, $3, $4}}' {input.minus} > coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp) &>> {log}
-        (cat coverage/counts/spikein/{wildcards.sample}-counts-plus.tmp coverage/counts/spikein/{wildcards.sample}-counts-minus.tmp | LC_COLLATE=C sort -k1,1 -k2,2n > {output.sense}) &>> {log}
-        (rm coverage/counts/spikein/{wildcards.sample}-counts-*.tmp) &>> {log}
+        (bash scripts/makeStrandedBedgraph.sh {input.plus} {input.minus} > {output.sense}) &> {log}
         """
 
 rule make_stranded_annotations:
@@ -313,13 +319,13 @@ rule make_stranded_annotations:
         (awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $1"-plus", $2, $3, $4, $5, $6}} $6=="-"{{print $1"-minus", $2, $3, $4, $5, $6}}' {input} > {output}) &> {log}
         """
 
-rule make_bigwig_for_deeptools:
+rule bg_to_bw:
     input:
         bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
         chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
     output:
         "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw",
-    log : "logs/make_bigwig_for_deeptools/make_bigwig_for_deeptools-{sample}-{norm}-{strand}.log"
+    log : "logs/bg_to_bw/bg_to_bw-{sample}-{norm}-{strand}.log"
     shell: """
         (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
         """
@@ -330,7 +336,7 @@ rule deeptools_matrix:
         bw = "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw"
     output:
         dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
-        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv")
+        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
     params:
         refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
         upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
@@ -346,18 +352,7 @@ rule deeptools_matrix:
     #    """
     shell: """
         (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
-        """
-
-rule gzip_deeptools_table:
-    input:
-        tsv = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv",
-        mat = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"
-    output:
-        "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
-    log: "logs/gzip_deeptools_table/gzip_deeptools_table-{annotation}-{sample}-{norm}-{strand}.log"
-    shell: """
-        (pigz -f {input.tsv}) &> {log}
-        (rm {input.mat}) &>> {log}
+        (pigz -f datavis/{wildcards.annotation}/{wildcards.norm}/{wildcards.annotation}-{wildcards.sample}-{wildcards.norm}-{wildcards.strand}.tsv) &>> {log}
         """
 
 rule melt_matrix:
@@ -372,7 +367,7 @@ rule melt_matrix:
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
         dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"]
     script:
-        "scripts/melt_matrix2.R"
+        "scripts/melt_matrix.R"
 
 rule cat_matrices:
     input:
@@ -450,6 +445,24 @@ rule union_bedgraph:
         (paste .positions.txt .values.txt > {output.pass_si}) &>> {log}
         (rm .union-bedgraph-si-passing.temp .positions.txt .values.txt) &>> {log}
         """
+
+#rule union_bedgraph:
+#    input:
+#        exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
+#        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
+#        pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
+#        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
+#    output:
+#        exp = "coverage/counts/union-bedgraph-allsamples.txt",
+#        si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
+#        pass_exp = "coverage/counts/union-bedgraph-passing.txt",
+#        pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+#    params:
+#        allminreads = config["minreads"]*len(SAMPLES),
+#        si_allminreads = config["minreads"]*len(SAMPLES)/10,
+#        passminreads = config["minreads"]*len(PASSING),
+#        si_passminreads = config["minreads"]*len(PASSING)/10
+
 
 rule union_bedgraph_cond_v_ctrl:
     input:

@@ -8,6 +8,7 @@ logs/cluster/*
 datavis/
 scripts/.snakemake*
 correlations/
+peakcalling/
 snakemake.err
 snakemake.log
 diff_exp/
