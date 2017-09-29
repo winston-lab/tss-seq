@@ -207,10 +207,10 @@ rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
     output:
-        SIplmin = temp("coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"),
+        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph",
         SIpl = "coverage/counts/spikein/{sample}-tss-SI-counts-plus.bedgraph",
         SImin = "coverage/counts/spikein/{sample}-tss-SI-counts-minus.bedgraph",
-        plmin = temp("coverage/counts/{sample}-tss-counts-plmin.bedgraph"),
+        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
         minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
     params:
@@ -442,30 +442,54 @@ rule plotcorrelations:
     script:
         "scripts/plotcorr.R"
 
-#TODO: this rule should be deprecated after the QC is revamped
+#TODO:
+#do for {status}, {norm}
+#how to get {group} information????
 rule union_bedgraph:
     input:
-        exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
-        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
-        pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
-        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
+        exp = expand("coverage/{{norm}}/{sample}-tss-{{norm}}-SENSE.bedgraph", sample=SAMPLES)
     output:
-        exp = "coverage/counts/union-bedgraph-allsamples.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
-        pass_exp = "coverage/counts/union-bedgraph-passing.txt",
-        pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+        exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv",
     params:
-        # allminreads = config["minreads"]*len(SAMPLES),
-        # si_allminreads = config["minreads"]*len(SAMPLES)/10,
-        # passminreads = config["minreads"]*len(PASSING),
-        # si_passminreads = config["minreads"]*len(PASSING)/10
     log: "logs/union_bedgraph.log"
     shell: """
         (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
-        (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
-        (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh  > {output.pass_exp}) &>> {log}
-        (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh > {output.pass_si}) &>> {log}
         """
+
+rule union_bedgraph_si_counts:
+    input:
+        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
+    output:
+        si = "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz",
+    params:
+    log: "logs/union_bedgraph_si_counts.log"
+    shell: """
+        (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.si}) &> {log}
+        """
+
+#rule union_bedgraph
+#     input:
+#         exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
+#         si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
+#         pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
+#         pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
+#     output:
+#         exp = "coverage/counts/union-bedgraph-allsamples.txt",
+#         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
+#         pass_exp = "coverage/counts/union-bedgraph-passing.txt",
+#         pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+#     params:
+#         # allminreads = config["minreads"]*len(SAMPLES),
+#         # si_allminreads = config["minreads"]*len(SAMPLES)/10,
+#         # passminreads = config["minreads"]*len(PASSING),
+#         # si_passminreads = config["minreads"]*len(PASSING)/10
+#     log: "logs/union_bedgraph.log"
+#     shell: """
+#         (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
+#         (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
+#         (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh  > {output.pass_exp}) &>> {log}
+#         (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh > {output.pass_si}) &>> {log}
+#         """
 
 #TODO: deprecate this and pull the information from the combined, filtering by group in R
 rule union_bedgraph_cond_v_ctrl:
