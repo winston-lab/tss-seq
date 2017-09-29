@@ -417,6 +417,7 @@ rule fixedstep_wig_for_corr:
         rm coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp
         """
 
+#TODO: revert back to unionbedgraph for making the table
 #here I throw away the base position information, which is okay for purposes of correlation
 #I also throw out bases that have zero coverage in all samples
 rule cat_fixedstep_wig:
@@ -441,8 +442,6 @@ rule plotcorrelations:
     script:
         "scripts/plotcorr.R"
 
-#TODO: plot correlations for all samples, as well as passing samples, as well as for each condition/control specified in config file
-
 #TODO: this rule should be deprecated after the QC is revamped
 rule union_bedgraph:
     input:
@@ -456,42 +455,19 @@ rule union_bedgraph:
         pass_exp = "coverage/counts/union-bedgraph-passing.txt",
         pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
     params:
-        allminreads = config["minreads"]*len(SAMPLES),
-        si_allminreads = config["minreads"]*len(SAMPLES)/10,
-        passminreads = config["minreads"]*len(PASSING),
-        si_passminreads = config["minreads"]*len(PASSING)/10
+        # allminreads = config["minreads"]*len(SAMPLES),
+        # si_allminreads = config["minreads"]*len(SAMPLES)/10,
+        # passminreads = config["minreads"]*len(PASSING),
+        # si_passminreads = config["minreads"]*len(PASSING)/10
     log: "logs/union_bedgraph.log"
-    #TODO: write this into a script
     shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {name_string} |
-        awk -v awkmin={params.allminreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-allsamples.temp) &> {log}
-        (cut -f1-3 .union-bedgraph-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
-        (cut -f4- .union-bedgraph-allsamples.temp > .values.txt) &>> {log}
-        (paste .positions.txt .values.txt > {output.exp}) &>> {log}
-        (rm .union-bedgraph-allsamples.temp .positions.txt .values.txt) &>> {log}
-
-        (bedtools unionbedg -i {input.si} -header -names {name_string} |
-        awk -v awkmin={params.si_allminreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-si-allsamples.temp) &>> {log}
-        (cut -f1-3 .union-bedgraph-si-allsamples.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
-        (cut -f4- .union-bedgraph-si-allsamples.temp > .values.txt) &>> {log}
-        (paste .positions.txt .values.txt > {output.si}) &>> {log}
-        (rm .union-bedgraph-si-allsamples.temp .positions.txt .values.txt) &>> {log}
-
-        (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} |
-        awk -v awkmin={params.passminreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-passing.temp) &>> {log}
-        (cut -f1-3 .union-bedgraph-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
-        (cut -f4- .union-bedgraph-passing.temp > .values.txt) &>> {log}
-        (paste .positions.txt .values.txt > {output.pass_exp}) &>> {log}
-        (rm .union-bedgraph-passing.temp .positions.txt .values.txt) &>> {log}
-
-        (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} |
-        awk -v awkmin={params.si_passminreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .union-bedgraph-si-passing.temp) &>> {log}
-        (cut -f1-3 .union-bedgraph-si-passing.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .positions.txt) &>> {log}
-        (cut -f4- .union-bedgraph-si-passing.temp > .values.txt) &>> {log}
-        (paste .positions.txt .values.txt > {output.pass_si}) &>> {log}
-        (rm .union-bedgraph-si-passing.temp .positions.txt .values.txt) &>> {log}
+        (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
+        (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
+        (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh  > {output.pass_exp}) &>> {log}
+        (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh > {output.pass_si}) &>> {log}
         """
 
+#TODO: deprecate this and pull the information from the combined, filtering by group in R
 rule union_bedgraph_cond_v_ctrl:
     input:
         exp = lambda wildcards : expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
@@ -501,23 +477,12 @@ rule union_bedgraph_cond_v_ctrl:
         si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
     params:
         names = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
-        si_minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})/10
+        # minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
+        # si_minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})/10
     log: "logs/union_bedgraph_cond_v_ctrl/union_bedgraph_{condition}-v-{control}.log"
     shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {params.names} |
-        awk -v awkmin={params.minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &> {log}
-        (cut -f1-3 .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .{wildcards.condition}-v-{wildcards.control}-positions.txt) &>> {log}
-        (cut -f4- .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp > .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
-        (paste .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt > {output.exp}) &>> {log}
-        (rm .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
-
-        (bedtools unionbedg -i {input.si} -header -names {params.names} |
-        awk -v awkmin={params.si_minreads} 'BEGIN{{FS=OFS="\t"}} NR==1{{print $0}} {{t=0; for(i=4; i<=NF; i++) t+=$i}} t>awkmin{{print $0}}' > .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp) &>> {log}
-        (cut -f1-3 .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp | awk 'BEGIN{{FS="\t"; OFS="-"}}{{print $1, $2, $3}}'  > .{wildcards.condition}-v-{wildcards.control}-positions.txt) &>> {log}
-        (cut -f4- .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp > .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
-        (paste .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt > {output.si}) &>> {log}
-        (rm .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
+        (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
+        (bedtools unionbedg -i {input.si} -header -names {params.names} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
         """
 
 #TODO: replace all of this...
@@ -574,7 +539,7 @@ rule deseq_passing_qc:
     script:
         "scripts/deseq2_qc.R"
 
-#NOTE: this may not actually be single-base level due to the union-bedgraph issue (vs )
+#NOTE: need to check whether the median of ratios normalization is okay (e.g. for spt6 samples)
 rule call_de_bases_cond_v_ctrl:
     input:
         exp = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt",
