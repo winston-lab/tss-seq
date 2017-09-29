@@ -19,9 +19,8 @@ CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "d
 localrules: all,
             make_stranded_genome, make_stranded_bedgraph, make_stranded_sicounts_bedgraph,
             make_stranded_annotations, make_stranded_genic_anno,
-            bg_to_bw,
-            # gzip_deeptools_table,
-            melt_matrix, cat_matrices,
+            get_si_pct, cat_si_pct,
+            bg_to_bw, melt_matrix, cat_matrices,
             union_bedgraph, union_bedgraph_cond_v_ctrl,
             separate_de_bases, de_bases_to_bed, merge_de_bases_to_clusters,
             cat_cluster_strands,
@@ -43,7 +42,9 @@ rule all:
         #datavis
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
-        "qual_ctrl/all/spikein-stats.tsv",
+        expand("qual_ctrl/{status}/{status}-spikein-plots.png", status=["all", "passing"]),
+        expand("qual_ctrl/{status}/{condition}-v-{control}-tss-libsizenorm-correlations.png", status=["all", "passing"], condition=conditiongroups.append("all"), control=controlgroups.append("all")),
+        expand("qual_ctrl/{status}/{condition}-v-{control}-tss-spikenorm-correlations.png", status=["all", "passing"], condition=conditiongroups_si.append("all"), control=controlgroups_si.append("all")),
         "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
         #coverage
@@ -64,7 +65,8 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         # intrafreq
         expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand("coverage/{norm}/bw/{sample}-tss-{norm}-SENSE.tsv", sample=SAMPLES, norm = ["libsizenorm", "spikenorm"])
 
 rule fastqc_raw:
     input:
@@ -251,8 +253,9 @@ rule get_si_pct:
         temp("qual_ctrl/all/{sample}-spikeincounts.tsv")
     params:
         group = lambda wildcards: SAMPLES[wildcards.sample]["group"]
+    log: "logs/get_si_pct/get_si_pct-{sample}.log"
     shell: """
-        echo {wildcards.sample} {params.group} $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {input.SIplmin} {input.plmin}) > {output}
+        (echo {wildcards.sample} {params.group} $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {input.SIplmin} {input.plmin}) > {output}) &> {log}
         """
 
 rule cat_si_pct:
@@ -260,18 +263,20 @@ rule cat_si_pct:
         expand("qual_ctrl/all/{sample}-spikeincounts.tsv", sample=SAMPLES)
     output:
         "qual_ctrl/all/spikein-counts.tsv"
+    log: "logs/cat_si_pct.log"
     shell: """
-        cat {input} > {output}
+        (cat {input} > {output}) &> {log}
         """
 
 rule plot_si_pct:
     input:
         "qual_ctrl/all/spikein-counts.tsv"
     output:
-        barplot = "qual_ctrl/all/spikein-barplot.png",
-        boxplot = "qual_ctrl/all/spikein-boxplot.png",
-        stats = "qual_ctrl/all/spikein-stats.tsv"
-    script: "plotsipct.R"
+        plot = "qual_ctrl/{status}/{status}-spikein-plots.png",
+        stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
+    params:
+        samplelist = lambda wildcards: SAMPLES.keys() if wildcards.status=="all" else PASSING.keys()
+    script: "scripts/plotsipct.R"
 
 
 #make 'stranded' genome for datavis purposes
@@ -316,7 +321,7 @@ rule make_stranded_annotations:
         "../genome/annotations/stranded/{annotation}-STRANDED.bed"
     log : "logs/make_stranded_annotations/make_stranded_annotations-{annotation}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $1"-plus", $2, $3, $4, $5, $6}} $6=="-"{{print $1"-minus", $2, $3, $4, $5, $6}}' {input} > {output}) &> {log}
+        (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """
 
 rule bg_to_bw:
@@ -398,6 +403,47 @@ rule r_datavis:
     script:
         "scripts/plotHeatmaps.R"
 
+#TODO:make the output temp files
+rule fixedstep_wig_for_corr:
+    input:
+        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
+    output:
+        wig = "coverage/{norm}/bw/{sample}-tss-{norm}-SENSE.tsv"
+    params:
+        group = lambda wildcards: SAMPLES[wildcards.sample]["group"]
+    shell: """
+        scripts/bedgraph_to_wig.pl --bedgraph {input.bedgraph} --wig coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp --step 1
+        tail -n +2 coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp | grep -v fixedStep | awk 'BEGIN{{FS=OFS="\t"}}{{print "{wildcards.sample}", "{params.group}", $1}}' > {output}
+        rm coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp
+        """
+
+#here I throw away the base position information, which is okay for purposes of correlation
+#I also throw out bases that have zero coverage in all samples
+rule cat_fixedstep_wig:
+    input:
+        expand("coverage/{{norm}}/bw/{sample}-tss-{{norm}}-SENSE.tsv", sample=SAMPLES)
+    output:
+        "coverage/{norm}/bw/allsamples-tss-{norm}-corrsignal.tsv.gz"
+    params:
+    shell: """
+        paste {input} | awk 'BEGIN{{FS=OFS="\t"}}{{sum=0; for(i=3;i<=NF;i+=3) sum+=$i}} sum>0{{for(i=3;i<=NF;i+=3) print NR, $(i-2), $(i-1), $i}}' | pigz -f > {output}
+        """
+
+rule plotcorrelations:
+    input:
+        "coverage/{norm}/bw/allsamples-tss-{norm}-corrsignal.tsv.gz"
+    output:
+        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
+    params:
+        pcount = 0.1,
+        samplelist = lambda wildcards: SAMPLES.keys() if wildcards.status=="all" else PASSING.keys(),
+        subset = lambda wildcards: "FALSE" if wildcards.condition=="all" else "TRUE"
+    script:
+        "scripts/plotcorr.R"
+
+#TODO: plot correlations for all samples, as well as passing samples, as well as for each condition/control specified in config file
+
+#TODO: this rule should be deprecated after the QC is revamped
 rule union_bedgraph:
     input:
         exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
@@ -446,24 +492,6 @@ rule union_bedgraph:
         (rm .union-bedgraph-si-passing.temp .positions.txt .values.txt) &>> {log}
         """
 
-#rule union_bedgraph:
-#    input:
-#        exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
-#        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
-#        pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
-#        pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
-#    output:
-#        exp = "coverage/counts/union-bedgraph-allsamples.txt",
-#        si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
-#        pass_exp = "coverage/counts/union-bedgraph-passing.txt",
-#        pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
-#    params:
-#        allminreads = config["minreads"]*len(SAMPLES),
-#        si_allminreads = config["minreads"]*len(SAMPLES)/10,
-#        passminreads = config["minreads"]*len(PASSING),
-#        si_passminreads = config["minreads"]*len(PASSING)/10
-
-
 rule union_bedgraph_cond_v_ctrl:
     input:
         exp = lambda wildcards : expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
@@ -492,6 +520,7 @@ rule union_bedgraph_cond_v_ctrl:
         (rm .unionbedg-{wildcards.condition}-v-{wildcards.control}.temp .{wildcards.condition}-v-{wildcards.control}-positions.txt .{wildcards.condition}-v-{wildcards.control}-values.txt) &>> {log}
         """
 
+#TODO: replace all of this...
 rule deseq_initial_qc:
     input:
         exp = "coverage/counts/union-bedgraph-allsamples.txt",
@@ -505,8 +534,8 @@ rule deseq_initial_qc:
         exp_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-experimental.png"),
         si_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-spikein.png"),
         si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
-        corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
-        corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
+        # corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
+        # corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
         #count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
         #count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
         dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
@@ -518,6 +547,7 @@ rule deseq_initial_qc:
     script:
        "scripts/deseq2_qc.R"
 
+#TODO: replace all of this...
 rule deseq_passing_qc:
     input:
         exp = "coverage/counts/union-bedgraph-passing.txt",
@@ -531,8 +561,8 @@ rule deseq_passing_qc:
         exp_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png"),
         si_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png"),
         si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
-        corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
-        corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
+        #corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
+        #corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
         #count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
         #count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
         dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
@@ -544,6 +574,7 @@ rule deseq_passing_qc:
     script:
         "scripts/deseq2_qc.R"
 
+#NOTE: this may not actually be single-base level due to the union-bedgraph issue (vs )
 rule call_de_bases_cond_v_ctrl:
     input:
         exp = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt",
@@ -644,7 +675,7 @@ rule make_stranded_genic_anno:
         os.path.dirname(config["genome"]["transcripts"]) + "/stranded/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions-STRANDED.bed",
     log : "logs/make_stranded_genic_anno.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $1"-plus", $2, $3, $4, $5, $6}} $6=="-"{{print $1"-minus", $2, $3, $4, $5, $6}}' {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+        (bash scripts/makeStrandedBed.sh {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
         """
 
 rule map_counts_to_genic:
@@ -820,7 +851,6 @@ rule get_intragenic_frequency:
     shell: """
         bedtools intersect -a {input.orfs} -b {input.intrabed} -c -s > {output}
         """
-
 
 rule plot_intragenic_frequency:
     input:

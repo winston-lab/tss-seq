@@ -124,33 +124,33 @@ plot_size_v_sf = function(path, title, dds){
   return(df)
 }
 
-plot_spikein_pct = function(sfpath1, sfpath2, sipctpath, dds, si.dds){
-  df = plot_size_v_sf(path = sfpath1, title = "experimental", dds)
-  df.si = plot_size_v_sf(path = sfpath2, title = "spike-in", si.dds)
-  
-  names(df.si) = c("sample", "spikecounts", "spikesizefactor")
-  
-  df = df %>% left_join(df.si, by="sample") %>% mutate(si.pct = spikecounts/(spikecounts+totalcounts))
-  
-  p = ggplot(data = df, aes(x=sample, y = round(si.pct*100, 2))) +
-    geom_col() +
-    geom_text(aes(label = round(si.pct*100, 1)), size=5, position = position_stack(vjust = .9)) +
-    theme_minimal() +
-    ylab("% spike-in\nreads") +
-    theme(axis.title = element_text(size=12, face="bold"),
-          axis.title.y = element_text(angle=0, vjust = 0.5),
-          axis.title.x = element_blank(),
-          axis.text = element_text(size=12, color="black"),
-          axis.text.x = element_text(angle=30, hjust = 0.8))
-  
-  ggsave(sipctpath, plot = p, width = 1.5+2*nrow(df), height = 6, units = "cm")
-  
-  #ggplot(data = df, aes(x=sample, y = spikesizefactor)) +
-  #        geom_col() +
-  #        geom_text(aes(label = round(spikesizefactor, 3)), size=5, position = position_stack(vjust = .9)) +
-  #        theme_minimal()
-  
-}
+#plot_spikein_pct = function(sfpath1, sfpath2, sipctpath, dds, si.dds){
+#  df = plot_size_v_sf(path = sfpath1, title = "experimental", dds)
+#  df.si = plot_size_v_sf(path = sfpath2, title = "spike-in", si.dds)
+#  
+#  names(df.si) = c("sample", "spikecounts", "spikesizefactor")
+#  
+#  df = df %>% left_join(df.si, by="sample") %>% mutate(si.pct = spikecounts/(spikecounts+totalcounts))
+#  
+#  p = ggplot(data = df, aes(x=sample, y = round(si.pct*100, 2))) +
+#    geom_col() +
+#    geom_text(aes(label = round(si.pct*100, 1)), size=5, position = position_stack(vjust = .9)) +
+#    theme_minimal() +
+#    ylab("% spike-in\nreads") +
+#    theme(axis.title = element_text(size=12, face="bold"),
+#          axis.title.y = element_text(angle=0, vjust = 0.5),
+#          axis.title.x = element_blank(),
+#          axis.text = element_text(size=12, color="black"),
+#          axis.text.x = element_text(angle=30, hjust = 0.8))
+#  
+#  ggsave(sipctpath, plot = p, width = 1.5+2*nrow(df), height = 6, units = "cm")
+#  
+#  #ggplot(data = df, aes(x=sample, y = spikesizefactor)) +
+#  #        geom_col() +
+#  #        geom_text(aes(label = round(spikesizefactor, 3)), size=5, position = position_stack(vjust = .9)) +
+#  #        theme_minimal()
+#  
+#}
 
 qual_ctrl = function(intable,
                      intable.si,
@@ -205,7 +205,7 @@ qual_ctrl = function(intable,
   
   dds  = dds %>% estimateSizeFactors() %>% estimateDispersions() %>% nbinomWaldTest()
   
-  plot_spikein_pct(sipath1, sipath2, sipctpath, dds.drop, si.dds)
+#  plot_spikein_pct(sipath1, sipath2, sipctpath, dds.drop, si.dds)
   
   #get results
   resdf = extract_deseq_results(dds.drop, alpha=alpha)
@@ -232,8 +232,8 @@ qual_ctrl = function(intable,
   plot_pca(pca.libsizenorm, scree.libsizenorm, rld.nospike)
   
   #plot correlations
-  plot_correlation(corrplot.spikenorm, dds.drop)
-  plot_correlation(corrplot.libsizenorm, dds)
+  #plot_correlation(corrplot.spikenorm, dds.drop)
+  #plot_correlation(corrplot.libsizenorm, dds)
 
   return(list(si.dds = si.dds,
               dds.spikenorm = dds.drop,
@@ -254,8 +254,8 @@ qc = qual_ctrl(intable = snakemake@input[["exp"]],
                     sipath1 = snakemake@output[["exp_size_v_sf"]],
                     sipath2 = snakemake@output[["si_size_v_sf"]],
                     sipctpath = snakemake@output[["si_pct"]],
-                    corrplot.spikenorm = snakemake@output[["corrplot_spikenorm"]],
-                    corrplot.libsizenorm = snakemake@output[["corrplot_libsizenorm"]],
+                    #corrplot.spikenorm = snakemake@output[["corrplot_spikenorm"]],
+                    #corrplot.libsizenorm = snakemake@output[["corrplot_libsizenorm"]],
                     alpha=snakemake@params[["alpha"]],
                     #count.heatmap.spikenorm = snakemake@output[["count_heatmap_spikenorm"]],
                     #count.heatmap.libsizenorm = snakemake@output[["count_heatmap_libsizenorm"]],
