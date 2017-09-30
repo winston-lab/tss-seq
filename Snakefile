@@ -43,30 +43,29 @@ rule all:
         expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
         expand("qual_ctrl/{status}/{status}-spikein-plots.png", status=["all", "passing"]),
-        expand("qual_ctrl/{status}/{condition}-v-{control}-tss-libsizenorm-correlations.png", status=["all", "passing"], condition=conditiongroups.append("all"), control=controlgroups.append("all")),
-        expand("qual_ctrl/{status}/{condition}-v-{control}-tss-spikenorm-correlations.png", status=["all", "passing"], condition=conditiongroups_si.append("all"), control=controlgroups_si.append("all")),
-        "qual_ctrl/all/all-pca-scree-libsizenorm.png",
-        "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.png", zip, condition=conditiongroups.append("all"), control=controlgroups.append("all")), status = ["all", "passing"],
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.png", zip, condition=conditiongroups_si.append("all"), control=controlgroups_si.append("all")), status = ["all", "passing"],
+        # "qual_ctrl/all/all-pca-scree-libsizenorm.png",
+        # "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
         #coverage
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
+        # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
         #differentially expressed clusters
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         #differential expresion for all genic regions
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups),
+        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups),
         #find intragenic ORFs
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         #MEME-ChIP
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         # intrafreq
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-SENSE.tsv", sample=SAMPLES, norm = ["libsizenorm", "spikenorm"])
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
 
 rule fastqc_raw:
     input:
@@ -657,15 +656,15 @@ rule get_genic_counts:
         """
 
 rule call_allgenic_spikenorm:
-   input:
+    input:
         clustercounts= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-spikenorm-genic-counts.tsv",
         libcounts = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
-   params:
+    params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
-   output:
+    output:
         corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-spikenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-spikenorm.png",
         dist_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-sample-dists-spikenorm.png",
@@ -674,19 +673,19 @@ rule call_allgenic_spikenorm:
         all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-spikenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-spikenorm.tsv",
         unch_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-nonDEgenic-spikenorm.tsv",
-   script:
+    script:
         "scripts/call_de_clusters.R"
 
 rule call_allgenic_libsizenorm:
-   input:
+    input:
         clustercounts= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-libsizenorm-genic-counts.tsv",
         libcounts = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt"
-   params:
+    params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
-   output:
+    output:
         corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-libsizenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-libsizenorm.png",
         dist_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-sample-dists-libsizenorm.png",
@@ -695,7 +694,7 @@ rule call_allgenic_libsizenorm:
         all_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-libsizenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-DEgenic-libsizenorm.tsv",
         unch_path = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-nonDEgenic-libsizenorm.tsv",
-   script:
+    script:
         "scripts/call_de_clusters.R"
 
 rule map_counts_to_clusters:
@@ -720,15 +719,15 @@ rule get_cluster_counts:
         """
 
 rule call_de_clusters_spikenorm:
-   input:
+    input:
         clustercounts= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-spikenorm-cluster-counts.tsv",
         libcounts = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
-   params:
+    params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
-   output:
+    output:
         corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-spikenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-spikenorm.png",
         dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-spikenorm.png",
@@ -737,19 +736,19 @@ rule call_de_clusters_spikenorm:
         all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-spikenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-spikenorm.tsv",
         unch_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-unchanged-clusters-spikenorm.tsv",
-   script:
+    script:
         "scripts/call_de_clusters.R"
 
 rule call_de_clusters_libsizenorm:
-   input:
+    input:
         clustercounts= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-libsizenorm-cluster-counts.tsv",
         libcounts = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt"
-   params:
+    params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
         samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
-   output:
+    output:
         corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-libsizenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-libsizenorm.png",
         dist_heatmap= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-sample-dists-libsizenorm.png",
@@ -758,7 +757,7 @@ rule call_de_clusters_libsizenorm:
         all_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-all-clusters-libsizenorm.tsv",
         de_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-libsizenorm.tsv",
         unch_path = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-unchanged-clusters-libsizenorm.tsv",
-   script:
+    script:
         "scripts/call_de_clusters.R"
 
 rule separate_de_clusters:
