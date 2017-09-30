@@ -40,11 +40,11 @@ rule all:
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         #datavis
-        expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
         expand("qual_ctrl/{status}/{status}-spikein-plots.png", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.png", zip, condition=conditiongroups.append("all"), control=controlgroups.append("all")), status = ["all", "passing"],
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.png", zip, condition=conditiongroups_si.append("all"), control=controlgroups_si.append("all")), status = ["all", "passing"],
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.png", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"],
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.png", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"],
         # "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         # "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
         #coverage
