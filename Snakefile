@@ -423,6 +423,18 @@ rule union_bedgraph_si_counts:
         (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.si}) &> {log}
         """
 
+def plotcorrsamples(wildcards):
+    dd = SAMPLES if wildcards.status=="all" else PASSING
+    if wildcards.condition=="all":
+        if wildcards.norm=="libsizenorm": #condition==all,norm==lib
+            return list(dd.keys())
+        else: #condition==all,norm==spike
+            return list({k:v for (k,v) in dd.items() if v["spikein"]=="y"}.keys())
+    elif wildcards.norm=="libsizenorm": #condition!=all;norm==lib
+        return list({k:v for (k,v) in dd.items() if v["group"]==wildcards.control or wildcards.condition}.keys())
+    else: #condition!=all;norm==spike
+        return list({k:v for (k,v) in dd.items() if (v["group"]==wildcards.control or wildcards.condition) and v["spikein"]=="y"}.keys())
+
 rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv"
@@ -430,7 +442,7 @@ rule plotcorrelations:
         "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
     params:
         pcount = 0.1,
-        samplelist = lambda wildcards : list(SAMPLES.keys()) if wildcards.status=="all" and wildcards.condition=="all" else list(PASSING.keys()) if wildcards.status!="all" and wildcards.condition=="all" else list({k:v for (k,v) in SAMPLES.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys()) if wildcards.status=="all" and wildcards.condition=="all" else list({k:v for (k,v) in PASSING.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys())
+        samplelist = plotcorrsamples
     script:
         "scripts/plotcorr.R"
 
@@ -461,8 +473,8 @@ rule plotcorrelations:
 #TODO: deprecate this and pull the information from the combined, filtering by group in R
 rule union_bedgraph_cond_v_ctrl:
     input:
-        exp = lambda wildcards : expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
-        si = lambda wildcards : expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})
+        exp = lambda wildcards : expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}),
+        si = lambda wildcards : expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)})
     output:
         exp = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt",
         si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
@@ -537,9 +549,9 @@ rule call_de_bases_cond_v_ctrl:
         si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
     params:
         alpha = config["deseq"]["fdr"],
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}],
-        nospikein = lambda wildcards : list({k:v for (k,v) in PASSING.items() if ((v["group"]== wildcards.control or v["group"]==wildcards.condition) and v["spikein"] == "n")}.keys())
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}],
+        nospikein = lambda wildcards : list({k:v for (k,v) in PASSING.items() if ((v["group"]== wildcards.control or wildcards.condition) and v["spikein"] == "n")}.keys())
     output:
         #exp_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-experimental.png",
         #si_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-spikein.png",
@@ -647,7 +659,7 @@ rule map_counts_to_genic:
 
 rule get_genic_counts:
     input:
-        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/all_genic/" + x + "-allgenic-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/all_genic/" + x + "-allgenic-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)})]
     output:
         "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-{norm}-genic-counts.tsv"
     log: "logs/get_genic_counts/get_genic_counts-{condition}-v-{control}-{norm}.log"
@@ -662,8 +674,8 @@ rule call_allgenic_spikenorm:
     params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}]
     output:
         corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-spikenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-spikenorm.png",
@@ -683,8 +695,8 @@ rule call_allgenic_libsizenorm:
     params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}]
     output:
         corrplot= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-pairwise-correlation-libsizenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-heatmap-libsizenorm.png",
@@ -710,7 +722,7 @@ rule map_counts_to_clusters:
 
 rule get_cluster_counts:
     input:
-        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})]
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/de_clusters/" + x + "-allclusters-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)})]
     output:
         "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-{norm}-cluster-counts.tsv"
     log: "logs/get_cluster_counts/get_cluster_counts-{condition}-v-{control}-{norm}.log"
@@ -725,8 +737,8 @@ rule call_de_clusters_spikenorm:
     params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}]
     output:
         corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-spikenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-spikenorm.png",
@@ -746,8 +758,8 @@ rule call_de_clusters_libsizenorm:
     params:
         alpha = config["deseq"]["fdr"],
         lfcThreshold = log2(config["deseq"]["fold-change-threshold"]),
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}]
+        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}.keys()),
+        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or wildcards.condition)}]
     output:
         corrplot= "qual_ctrl/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-pairwise-correlation-libsizenorm.png",
         count_heatmap= "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-heatmap-libsizenorm.png",

@@ -22,7 +22,7 @@ main = function(intable, pcount, samplelist, outpath){
                 c = cor(df[,i], df[,j], use = "complete.obs")
                 plot = ggplot(data = placeholder, aes(x, y)) +
                         geom_blank() +
-                        annotate("text", x=0.5, y=0.5, label=sprintf("%.2f",round(c,2)), size=5)
+                        annotate("text", x=0.5, y=0.5, label=sprintf("%.2f",round(c,2)), size=7)
                 plots[[idx]] = plot
             }
             #top left to bot right diag (density)
@@ -33,7 +33,7 @@ main = function(intable, pcount, samplelist, outpath){
                         scale_y_continuous(breaks=c(0,.5,1)) +
                         scale_x_log10(limit = c(pcount, maxsignal)) +
                         annotate("text", x=sqrt(maxsignal)/2, y=0.5,
-                                 label=unique(subdf$sample), size=2) 
+                                 label=unique(subdf$sample), size=3) 
                 plots[[idx]] = plot
             }
             #bottom left (scatter)
@@ -58,17 +58,17 @@ main = function(intable, pcount, samplelist, outpath){
     mat = ggmatrix(plots, nrow=ncol(df), ncol=ncol(df),
                    xAxisLabels = names(df), yAxisLabels = names(df), switch="both") +
                     theme_light() +
-                    theme(axis.text = element_text(size=6),
+                    theme(axis.text = element_text(size=9),
                           strip.background = element_blank(),
-                          strip.text = element_text(size=6, color="black"),
+                          strip.text = element_text(size=9, color="black"),
                           strip.text.y = element_text(angle=180, hjust=1),
                           strip.placement="outside",
                           strip.switch.pad.grid = unit(0, "points"),
                           strip.switch.pad.wrap = unit(0, "points"))
     w = 3+ncol(df)*3
     h = 9/16*w
-    ggsave(outpath, mat, width=w, height=h, units="cm")
-    warnings()
+    ggsave(outpath, mat, width=w, height=h, units="cm", type="cairo-png")
+    print(warnings())
 }    
 
 main(intable = snakemake@input[[1]],
