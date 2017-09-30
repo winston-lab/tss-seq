@@ -278,7 +278,6 @@ rule plot_si_pct:
         samplelist = lambda wildcards: SAMPLES.keys() if wildcards.status=="all" else PASSING.keys()
     script: "scripts/plotsipct.R"
 
-
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
     input:
@@ -403,48 +402,6 @@ rule r_datavis:
     script:
         "scripts/plotHeatmaps.R"
 
-#TODO:make the output temp files
-rule fixedstep_wig_for_corr:
-    input:
-        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph"
-    output:
-        wig = "coverage/{norm}/bw/{sample}-tss-{norm}-SENSE.tsv"
-    params:
-        group = lambda wildcards: SAMPLES[wildcards.sample]["group"]
-    shell: """
-        scripts/bedgraph_to_wig.pl --bedgraph {input.bedgraph} --wig coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp --step 1
-        tail -n +2 coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp | grep -v fixedStep | awk 'BEGIN{{FS=OFS="\t"}}{{print "{wildcards.sample}", "{params.group}", $1}}' > {output}
-        rm coverage/{wildcards.norm}/bw/{wildcards.sample}-tss-{wildcards.norm}-SENSE.tmp
-        """
-
-#TODO: revert back to unionbedgraph for making the table
-#here I throw away the base position information, which is okay for purposes of correlation
-#I also throw out bases that have zero coverage in all samples
-rule cat_fixedstep_wig:
-    input:
-        expand("coverage/{{norm}}/bw/{sample}-tss-{{norm}}-SENSE.tsv", sample=SAMPLES)
-    output:
-        "coverage/{norm}/bw/allsamples-tss-{norm}-corrsignal.tsv.gz"
-    params:
-    shell: """
-        paste {input} | awk 'BEGIN{{FS=OFS="\t"}}{{sum=0; for(i=3;i<=NF;i+=3) sum+=$i}} sum>0{{for(i=3;i<=NF;i+=3) print NR, $(i-2), $(i-1), $i}}' | pigz -f > {output}
-        """
-
-rule plotcorrelations:
-    input:
-        "coverage/{norm}/bw/allsamples-tss-{norm}-corrsignal.tsv.gz"
-    output:
-        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
-    params:
-        pcount = 0.1,
-        samplelist = lambda wildcards: SAMPLES.keys() if wildcards.status=="all" else PASSING.keys(),
-        subset = lambda wildcards: "FALSE" if wildcards.condition=="all" else "TRUE"
-    script:
-        "scripts/plotcorr.R"
-
-#TODO:
-#do for {status}, {norm}
-#how to get {group} information????
 rule union_bedgraph:
     input:
         exp = expand("coverage/{{norm}}/{sample}-tss-{{norm}}-SENSE.bedgraph", sample=SAMPLES)
@@ -466,6 +423,17 @@ rule union_bedgraph_si_counts:
     shell: """
         (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.si}) &> {log}
         """
+
+rule plotcorrelations:
+    input:
+        "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv"
+    output:
+        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
+    params:
+        pcount = 0.1,
+        samplelist = lambda wildcards : SAMPLES.keys() if wildcards.status=="all" and wildcards.condition=="all" else PASSING.keys() if wildcards.status!="all" and wildcards.condition=="all" else {k:v for (k,v) in SAMPLES.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys() if wildcards.status=="all" and wildcards.condition=="all" else {k:v for (k,v) in PASSING.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys()
+    script:
+        "scripts/plotcorr2.R"
 
 #rule union_bedgraph
 #     input:

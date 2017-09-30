@@ -2,32 +2,12 @@ library(tidyverse)
 library(GGally)
 library(viridis)
 
-main = function(intable, subset, pcount, samplelist, condition, control, outpath){
-    print(paste("subset:", subset))
-    print(paste("samplelist:", samplelist))
-    print(paste("condition:", condition))
-    print(paste("control:", control))
 
-    grouplist = c(condition, control)
+main = function(intable, pcount, samplelist, outpath){
+    df = intable %>% read_tsv() %>% gather(key=sample, value=signal, -name) %>%
+            filter(sample %in% samplelist) %>% spread(sample, signal) %>% select(-name)
     
-    df = read_tsv(intable, col_names = c('index', 'sample', 'group', 'signal'))
-    
-    maxsignal = max(df$signal) + pcount
-
-    if(subset=="TRUE"){
-        df = df %>% filter(group %in% grouplist)
-    }
-    df = df %>% filter(sample %in% samplelist) %>%
-            select(-group) %>% spread(sample, signal) 
-    #c = df %>% select(-index) %>% cor(use="pairwise.complete.obs") %>% as.data.frame() %>%
-    #        rownames_to_column(var="xsample") %>% as_tibble() %>%
-    #        gather(key=ysample, value=correlation, -xsample)
-    #
-    #cplot = ggplot(data = c, aes(x=xsample, y = ysample, fill=correlation)) +
-    #            geom_raster() +
-    #            scale_fill_viridis(option="inferno")
-    
-    df = df %>% select(-index)
+    maxsignal = max(df) + pcount
     plots = list()
     
     placeholder = data.frame(x=c(0,1), y=c(0,1))
@@ -58,9 +38,12 @@ main = function(intable, subset, pcount, samplelist, condition, control, outpath
             }
             #bottom left (scatter)
             else {
+                #the filtering is a quick hack to avoid the (0,0) bin taking up
+                #all of the colorspace
                 subdf = df %>% select(i,j) %>% gather(xsample, xvalue, -1) %>%
                             gather(ysample, yvalue, -c(2:3)) %>%
-                            filter(!(xvalue == 0 & yvalue == 0))
+                            #filter(!(xvalue == 0 & yvalue == 0))
+                            filter(!(xvalue < 5*pcount & yvalue < 5*pcount))
                 plot = ggplot(data = subdf, aes(x=xvalue+pcount, y=yvalue+pcount)) +
                             #geom_point(size=.5, shape=1, alpha=0.3) +
                             geom_hex(aes(fill=log10(..count..)), bins=50) +
@@ -82,16 +65,13 @@ main = function(intable, subset, pcount, samplelist, condition, control, outpath
                           strip.placement="outside",
                           strip.switch.pad.grid = unit(0, "points"),
                           strip.switch.pad.wrap = unit(0, "points"))
-    
-    ggsave(outpath, mat, width=1.5+ncol(df)*2, height=ncol(df)*4/3, units="cm")
+    w = 1.5+ncol(df)*2
+    h = 9/16*w
+    ggsave(outpath, mat, width=w, height=h, units="cm")
+    warnings()
 }    
 
 main(intable = snakemake@input[[1]],
-     subset = snakemake@params[["subset"]],
      pcount = snakemake@params[["pcount"]],
-     samplelist = snakemake@params[["samplelist"]], 
-     condition = snakemake@wildcards[["condition"]],
-     control = snakemake@wildcards[["control"]],
+     samplelist = snakemake@params[["samplelist"]],
      outpath = snakemake@output[[1]])
-
-warnings()
