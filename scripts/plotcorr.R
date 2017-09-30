@@ -65,7 +65,7 @@ main = function(intable, pcount, samplelist, outpath){
                           strip.placement="outside",
                           strip.switch.pad.grid = unit(0, "points"),
                           strip.switch.pad.wrap = unit(0, "points"))
-    w = 1.5+ncol(df)*2
+    w = 3+ncol(df)*3
     h = 9/16*w
     ggsave(outpath, mat, width=w, height=h, units="cm")
     warnings()

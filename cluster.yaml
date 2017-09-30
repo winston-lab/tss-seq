@@ -105,3 +105,7 @@ meme_chip:
 class_v_genic:
     time : 360
     mem : 10000
+
+plotcorrelations:
+    time : 60
+    mem : 10000
