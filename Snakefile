@@ -274,7 +274,7 @@ rule plot_si_pct:
         plot = "qual_ctrl/{status}/{status}-spikein-plots.png",
         stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
     params:
-        samplelist = lambda wildcards: SAMPLES.keys() if wildcards.status=="all" else PASSING.keys()
+        samplelist = lambda wildcards: list(SAMPLES.keys()) if wildcards.status=="all" else list(PASSING.keys())
     script: "scripts/plotsipct.R"
 
 #make 'stranded' genome for datavis purposes
@@ -430,9 +430,9 @@ rule plotcorrelations:
         "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
     params:
         pcount = 0.1,
-        samplelist = lambda wildcards : SAMPLES.keys() if wildcards.status=="all" and wildcards.condition=="all" else PASSING.keys() if wildcards.status!="all" and wildcards.condition=="all" else {k:v for (k,v) in SAMPLES.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys() if wildcards.status=="all" and wildcards.condition=="all" else {k:v for (k,v) in PASSING.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys()
+        samplelist = lambda wildcards : list(SAMPLES.keys()) if wildcards.status=="all" and wildcards.condition=="all" else list(PASSING.keys()) if wildcards.status!="all" and wildcards.condition=="all" else list({k:v for (k,v) in SAMPLES.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys()) if wildcards.status=="all" and wildcards.condition=="all" else list({k:v for (k,v) in PASSING.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys())
     script:
-        "scripts/plotcorr2.R"
+        "scripts/plotcorr.R"
 
 #rule union_bedgraph
 #     input:
