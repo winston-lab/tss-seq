@@ -1,11 +1,14 @@
 library(tidyverse)
 library(GGally)
 library(viridis)
+library(forcats)
 
 
 main = function(intable, pcount, samplelist, outpath){
     df = intable %>% read_tsv() %>% gather(key=sample, value=signal, -name) %>%
-            filter(sample %in% samplelist) %>% spread(sample, signal) %>% select(-name)
+            filter(sample %in% samplelist)
+    df$sample = fct_inorder(df$sample, ordered=TRUE)
+    df = df %>% spread(sample, signal) %>% select(-name)
     
     maxsignal = max(df) + pcount
     plots = list()
