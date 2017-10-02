@@ -275,7 +275,9 @@ rule plot_si_pct:
         plot = "qual_ctrl/{status}/{status}-spikein-plots.png",
         stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
     params:
-        samplelist = lambda wildcards : list({k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}.keys()) if wildcards.status=="all" else list({k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}.keys())
+        samplelist = lambda wildcards : list({k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}.keys()) if wildcards.status=="all" else list({k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}.keys()),
+        conditions = config["comparisons"]["spikenorm"]["conditions"],
+        controls = config["comparisons"]["spikenorm"]["controls"],
     script: "scripts/plotsipct.R"
 
 #make 'stranded' genome for datavis purposes

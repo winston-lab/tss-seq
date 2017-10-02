@@ -2,7 +2,7 @@ library(tidyverse)
 library(forcats)
 library(gridExtra)
 
-main = function(intable, samplelist, plotpath, statspath){
+main = function(intable, samplelist, controls, conditions, plotpath, statspath){
     df = read_table2(intable, col_names=c('sample', 'group',
                                           'total','exp', 'si')) %>%
             filter(sample %in% samplelist) %>%
@@ -53,12 +53,9 @@ main = function(intable, samplelist, plotpath, statspath){
                           sd_no_outlier = sd(sipct)) 
     write_tsv(outstats, path = statspath, col_names=TRUE)
     
-    #this is a really janky way to separate condition v/ control, 
-    #depends on controls being in odd rows with matching conditions in
-    #the corresponding even rows
-    controls = outstats[c(TRUE, FALSE), ]
-    conditions = outstats[c(FALSE, TRUE), ]
-    pct = bind_cols(controls, conditions) %>%
+    ctrl = outstats %>% inner_join(data_frame(c=controls), by=c("group"="c"))
+    cond = outstats %>% inner_join(data_frame(c=conditions), by=c("group"="c"))
+    pct = bind_cols(ctrl, cond) %>%
             select(group, group1, mean_no_outlier, mean_no_outlier1) %>%
             rename(control=group, condition=group1,
                    pct.ctrl = mean_no_outlier, pct.cond = mean_no_outlier1) %>%
@@ -73,7 +70,6 @@ main = function(intable, samplelist, plotpath, statspath){
     wl = 1+nsamples
     wr = 1+2*ngroups
     th = 1+ngroups/4
-    
     page = arrangeGrob(barplot, boxplot, pctdraw, ncol=2,
                         widths=unit(c(wl, wr), c("cm","cm")),
                         heights=unit(c(7,th,0,0), c("cm","cm","cm","cm")))
@@ -83,5 +79,7 @@ main = function(intable, samplelist, plotpath, statspath){
 
 df = main(intable = snakemake@input[[1]],
           samplelist = snakemake@params[["samplelist"]],
+          controls = snakemake@params[["controls"]],
+          conditions = snakemake@params[["conditions"]],
           plotpath = snakemake@output[["plot"]],
           statspath = snakemake@output[["stats"]])
