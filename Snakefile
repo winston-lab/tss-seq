@@ -225,6 +225,7 @@ rule get_coverage:
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
 
+#NOTE: should we scale the spikenorm values by the spike-in pct? right now the values are rpms, but this will be 10x the rpm values
 rule normalize:
     input:
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
@@ -489,58 +490,58 @@ rule union_bedgraph_cond_v_ctrl:
         """
 
 #TODO: replace all of this...
-rule deseq_initial_qc:
-    input:
-        exp = "coverage/counts/union-bedgraph-allsamples.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt"
-    params:
-        alpha = config["deseq"]["fdr"],
-        samples = list(SAMPLES.keys()),
-        samplegroups = [SAMPLES[x]["group"] for x in SAMPLES],
-        nospikein = list({k:v for (k,v) in SAMPLES.items() if (v["spikein"] == "n")}.keys())
-    output:
-        exp_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-experimental.png"),
-        si_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-spikein.png"),
-        si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
-        # corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
-        # corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
-        #count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
-        #count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
-        dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
-        dist_heatmap_libsizenorm = protected("qual_ctrl/all/all-sample-dists-libsizenorm.png"),
-        pca_spikenorm = protected("qual_ctrl/all/all-pca-spikenorm.png"),
-        scree_spikenorm = protected("qual_ctrl/all/all-pca-scree-spikenorm.png"),
-        pca_libsizenorm = protected("qual_ctrl/all/all-pca-libsizenorm.png"),
-        scree_libsizenorm = protected("qual_ctrl/all/all-pca-scree-libsizenorm.png")
-    script:
-       "scripts/deseq2_qc.R"
+# rule deseq_initial_qc:
+#     input:
+#         exp = "coverage/counts/union-bedgraph-allsamples.txt",
+#         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt"
+#     params:
+#         alpha = config["deseq"]["fdr"],
+#         samples = list(SAMPLES.keys()),
+#         samplegroups = [SAMPLES[x]["group"] for x in SAMPLES],
+#         nospikein = list({k:v for (k,v) in SAMPLES.items() if (v["spikein"] == "n")}.keys())
+#     output:
+#         exp_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-experimental.png"),
+#         si_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-spikein.png"),
+#         si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
+#         # corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
+#         # corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
+#         #count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
+#         #count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
+#         dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
+#         dist_heatmap_libsizenorm = protected("qual_ctrl/all/all-sample-dists-libsizenorm.png"),
+#         pca_spikenorm = protected("qual_ctrl/all/all-pca-spikenorm.png"),
+#         scree_spikenorm = protected("qual_ctrl/all/all-pca-scree-spikenorm.png"),
+#         pca_libsizenorm = protected("qual_ctrl/all/all-pca-libsizenorm.png"),
+#         scree_libsizenorm = protected("qual_ctrl/all/all-pca-scree-libsizenorm.png")
+#     script:
+#        "scripts/deseq2_qc.R"
 
-#TODO: replace all of this...
-rule deseq_passing_qc:
-    input:
-        exp = "coverage/counts/union-bedgraph-passing.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
-    params:
-        alpha = config["deseq"]["fdr"],
-        samples = list(PASSING.keys()),
-        samplegroups = [PASSING[x]["group"] for x in PASSING],
-        nospikein = list({k:v for (k,v) in PASSING.items() if v["spikein"] == "n"}.keys())
-    output:
-        exp_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png"),
-        si_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png"),
-        si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
-        #corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
-        #corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
-        #count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
-        #count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
-        dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
-        dist_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-sample-dists-libsizenorm.png"),
-        pca_spikenorm = protected("qual_ctrl/passing/passing-pca-spikenorm.png"),
-        scree_spikenorm = protected("qual_ctrl/passing/passing-pca-scree-spikenorm.png"),
-        pca_libsizenorm = protected("qual_ctrl/passing/passing-pca-libsizenorm.png"),
-        scree_libsizenorm = protected("qual_ctrl/passing/passing-pca-scree-libsizenorm.png")
-    script:
-        "scripts/deseq2_qc.R"
+# TODO: replace all of this...
+# rule deseq_passing_qc:
+#     input:
+#         exp = "coverage/counts/union-bedgraph-passing.txt",
+#         si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
+#     params:
+#         alpha = config["deseq"]["fdr"],
+#         samples = list(PASSING.keys()),
+#         samplegroups = [PASSING[x]["group"] for x in PASSING],
+#         nospikein = list({k:v for (k,v) in PASSING.items() if v["spikein"] == "n"}.keys())
+#     output:
+#         exp_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png"),
+#         si_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png"),
+#         si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
+#         #corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
+#         #corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
+#         #count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
+#         #count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
+#         dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
+#         dist_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-sample-dists-libsizenorm.png"),
+#         pca_spikenorm = protected("qual_ctrl/passing/passing-pca-spikenorm.png"),
+#         scree_spikenorm = protected("qual_ctrl/passing/passing-pca-scree-spikenorm.png"),
+#         pca_libsizenorm = protected("qual_ctrl/passing/passing-pca-libsizenorm.png"),
+#         scree_libsizenorm = protected("qual_ctrl/passing/passing-pca-scree-libsizenorm.png")
+#     script:
+#         "scripts/deseq2_qc.R"
 
 #NOTE: need to check whether the median of ratios normalization is okay (e.g. for spt6 samples)
 rule call_de_bases_cond_v_ctrl:
