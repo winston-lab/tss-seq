@@ -45,6 +45,9 @@ rule all:
         expand("qual_ctrl/{status}/{status}-spikein-plots.png", status=["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.png", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.png", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        #call DE bases
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-libsizenorm.png", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),
         # "qual_ctrl/all/all-pca-scree-libsizenorm.png",
         # "qual_ctrl/passing/passing-pca-scree-libsizenorm.png",
         #coverage
@@ -408,11 +411,11 @@ rule union_bedgraph:
     input:
         exp = expand("coverage/{{norm}}/{sample}-tss-{{norm}}-SENSE.bedgraph", sample=SAMPLES)
     output:
-        exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv",
+        exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz",
     params:
-    log: "logs/union_bedgraph.log"
+    log: "logs/union_bedgraph-{norm}.log"
     shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
+        (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
         """
 
 rule union_bedgraph_si_counts:
@@ -440,7 +443,7 @@ def plotcorrsamples(wildcards):
 
 rule plotcorrelations:
     input:
-        "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv"
+        "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
     output:
         "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
     params:
@@ -449,132 +452,23 @@ rule plotcorrelations:
     script:
         "scripts/plotcorr.R"
 
-#rule union_bedgraph
-#     input:
-#         exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=SAMPLES),
-#         si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
-#         pass_exp = expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample=PASSING),
-#         pass_si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=PASSING),
-#     output:
-#         exp = "coverage/counts/union-bedgraph-allsamples.txt",
-#         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt",
-#         pass_exp = "coverage/counts/union-bedgraph-passing.txt",
-#         pass_si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
-#     params:
-#         # allminreads = config["minreads"]*len(SAMPLES),
-#         # si_allminreads = config["minreads"]*len(SAMPLES)/10,
-#         # passminreads = config["minreads"]*len(PASSING),
-#         # si_passminreads = config["minreads"]*len(PASSING)/10
-#     log: "logs/union_bedgraph.log"
-#     shell: """
-#         (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
-#         (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
-#         (bedtools unionbedg -i {input.pass_exp} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh  > {output.pass_exp}) &>> {log}
-#         (bedtools unionbedg -i {input.pass_si} -header -names {pass_string} | bash scripts/cleanUnionbedg.sh > {output.pass_si}) &>> {log}
-#         """
-
-#TODO: deprecate this and pull the information from the combined, filtering by group in R
-rule union_bedgraph_cond_v_ctrl:
-    input:
-        exp = lambda wildcards : expand("coverage/counts/{sample}-tss-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}),
-        si = lambda wildcards : expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample = {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)})
-    output:
-        exp = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
-    params:
-        names = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}.keys()),
-        # minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)}),
-        # si_minreads = lambda wildcards : config["minreads"]*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]== wildcards.condition)})/10
-    log: "logs/union_bedgraph_cond_v_ctrl/union_bedgraph_{condition}-v-{control}.log"
-    shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh > {output.exp}) &> {log}
-        (bedtools unionbedg -i {input.si} -header -names {params.names} | bash scripts/cleanUnionbedg.sh > {output.si}) &>> {log}
-        """
-
-#TODO: replace all of this...
-# rule deseq_initial_qc:
-#     input:
-#         exp = "coverage/counts/union-bedgraph-allsamples.txt",
-#         si = "coverage/counts/spikein/union-bedgraph-si-allsamples.txt"
-#     params:
-#         alpha = config["deseq"]["fdr"],
-#         samples = list(SAMPLES.keys()),
-#         samplegroups = [SAMPLES[x]["group"] for x in SAMPLES],
-#         nospikein = list({k:v for (k,v) in SAMPLES.items() if (v["spikein"] == "n")}.keys())
-#     output:
-#         exp_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-experimental.png"),
-#         si_size_v_sf = protected("qual_ctrl/all/all-libsize-v-sizefactor-spikein.png"),
-#         si_pct = protected("qual_ctrl/all/all-spikein-pct.png"),
-#         # corrplot_spikenorm = protected("qual_ctrl/all/all-pairwise-correlation-spikenorm.png"),
-#         # corrplot_libsizenorm = protected("qual_ctrl/all/all-pairwise-correlation-libsizenorm.png"),
-#         #count_heatmap_spikenorm = protected("qual_ctrl/all/all-de-bases-heatmap-spikenorm.png"),
-#         #count_heatmap_libsizenorm = protected("qual_ctrl/all/all-de-bases-heatmap-libsizenorm.png"),
-#         dist_heatmap_spikenorm = protected("qual_ctrl/all/all-sample-dists-spikenorm.png"),
-#         dist_heatmap_libsizenorm = protected("qual_ctrl/all/all-sample-dists-libsizenorm.png"),
-#         pca_spikenorm = protected("qual_ctrl/all/all-pca-spikenorm.png"),
-#         scree_spikenorm = protected("qual_ctrl/all/all-pca-scree-spikenorm.png"),
-#         pca_libsizenorm = protected("qual_ctrl/all/all-pca-libsizenorm.png"),
-#         scree_libsizenorm = protected("qual_ctrl/all/all-pca-scree-libsizenorm.png")
-#     script:
-#        "scripts/deseq2_qc.R"
-
-# TODO: replace all of this...
-# rule deseq_passing_qc:
-#     input:
-#         exp = "coverage/counts/union-bedgraph-passing.txt",
-#         si = "coverage/counts/spikein/union-bedgraph-si-passing.txt"
-#     params:
-#         alpha = config["deseq"]["fdr"],
-#         samples = list(PASSING.keys()),
-#         samplegroups = [PASSING[x]["group"] for x in PASSING],
-#         nospikein = list({k:v for (k,v) in PASSING.items() if v["spikein"] == "n"}.keys())
-#     output:
-#         exp_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-experimental.png"),
-#         si_size_v_sf = protected("qual_ctrl/passing/passing-libsize-v-sizefactor-spikein.png"),
-#         si_pct = protected("qual_ctrl/passing/passing-spikein-pct.png"),
-#         #corrplot_spikenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-spikenorm.png"),
-#         #corrplot_libsizenorm = protected("qual_ctrl/passing/passing-pairwise-correlation-libsizenorm.png"),
-#         #count_heatmap_spikenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-spikenorm.png"),
-#         #count_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-de-bases-heatmap-libsizenorm.png"),
-#         dist_heatmap_spikenorm = protected("qual_ctrl/passing/passing-sample-dists-spikenorm.png"),
-#         dist_heatmap_libsizenorm = protected("qual_ctrl/passing/passing-sample-dists-libsizenorm.png"),
-#         pca_spikenorm = protected("qual_ctrl/passing/passing-pca-spikenorm.png"),
-#         scree_spikenorm = protected("qual_ctrl/passing/passing-pca-scree-spikenorm.png"),
-#         pca_libsizenorm = protected("qual_ctrl/passing/passing-pca-libsizenorm.png"),
-#         scree_libsizenorm = protected("qual_ctrl/passing/passing-pca-scree-libsizenorm.png")
-#     script:
-#         "scripts/deseq2_qc.R"
-
 #NOTE: need to check whether the median of ratios normalization is okay (e.g. for spt6 samples)
-rule call_de_bases_cond_v_ctrl:
+rule call_de_bases:
     input:
-        exp = "coverage/counts/union-bedgraph-{condition}-v-{control}.txt",
-        si = "coverage/counts/spikein/union-bedgraph-si-{condition}-v-{control}.txt"
+        counts = "coverage/counts/union-bedgraph-allsamples-counts.tsv.gz",
+        sicounts = "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz"
     params:
-        alpha = config["deseq"]["fdr"],
         samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()),
-        samplegroups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}],
-        nospikein = lambda wildcards : list({k:v for (k,v) in PASSING.items() if ((v["group"]== wildcards.control or v["group"]==wildcards.condition) and v["spikein"] == "n")}.keys())
+        groups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition)}],
+        alpha = config["deseq"]["fdr"],
     output:
-        #exp_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-experimental.png",
-        #si_size_v_sf = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-libsize-v-sizefactor-spikein.png",
-        #si_pct = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-spikein-pct.png",
-        corrplot_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pairwise-correlation-spikenorm.png",
-        corrplot_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pairwise-correlation-libsizenorm.png",
-        #count_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-spikenorm.png",
-        #count_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-de-bases-heatmap-libsizenorm.png",
-        dist_heatmap_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-sample-dists-spikenorm.png",
-        dist_heatmap_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-sample-dists-libsizenorm.png",
-        pca_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-spikenorm.png",
-        scree_spikenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-spikenorm.png",
-        pca_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-libsizenorm.png",
-        scree_libsizenorm = "qual_ctrl/{condition}-v-{control}/{condition}-v-{control}-pca-scree-libsizenorm.png",
-        all_spikenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-all-bases-spikenorm.tsv"),
-        de_spikenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-spikenorm.tsv"),
-        all_libsizenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-all-bases-libsizenorm.tsv"),
-        de_libsizenorm_path = protected("diff_exp/{condition}-v-{control}/de_bases/{condition}-v-{control}-de-bases-libsizenorm.tsv")
+        results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}.tsv",
+        #need to write out norm counts here or just in the total qc?
+        normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-sfnorm-{norm}.tsv",
+        rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-rlog-{norm}.tsv",
+        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-{norm}.png"
     script:
-        "scripts/call_de_bases.R"
+        "scripts/call_de_bases2.R"
 
 rule separate_de_bases:
     input:
