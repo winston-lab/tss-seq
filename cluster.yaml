@@ -73,9 +73,6 @@ deseq_passing_qc:
     time : 719
     mem : 40000
 
-call_de_bases_cond_v_ctrl:
-    time : 710
-    mem : 40000
 
 call_allgenic_spikenorm:
     time : 120
@@ -108,4 +105,8 @@ class_v_genic:
 
 plotcorrelations:
     time : 60
-    mem : 10000
+    mem : 20000
+
+call_de_bases:
+    time : 120 
+    mem : 20000
