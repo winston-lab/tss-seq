@@ -79,17 +79,17 @@ class_v_genic:
     mem : 10000
 
 plotcorrelations:
-    time : 60
-    mem : 10000
+    time : 15
+    mem : 6000
 
 call_de_bases:
-    time : 120 
-    mem : 20000
+    time : 60 
+    mem : 6000
 
 call_de_clusters:
-    time : 60
-    mem : 10000
+    time : 15 
+    mem : 4000
 
 call_de_genic:
-    time : 60
-    mem : 10000
+    time : 15 
+    mem : 4000

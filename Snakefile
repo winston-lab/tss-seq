@@ -17,30 +17,45 @@ conditiongroups_si = config["comparisons"]["spikenorm"]["conditions"]
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
 localrules: all,
-            make_stranded_genome, make_stranded_bedgraph, make_stranded_sicounts_bedgraph,
-            make_stranded_annotations, make_stranded_genic_anno,
-            get_si_pct, cat_si_pct,
-            bg_to_bw, melt_matrix, cat_matrices,
-            union_bedgraph, union_bedgraph_cond_v_ctrl,
-            de_bases_to_bed, merge_de_bases_to_clusters,
-            cat_cluster_strands,
-            map_counts_to_clusters, get_cluster_counts,
-            # extract_base_distances,
-            separate_de_results, de_clusters_to_bed,
-            build_genic_annotation, build_convergent_annotation, build_divergent_annotation,
-            get_putative_genic, get_putative_intragenic, get_putative_antisense,
-            get_putative_intergenic, get_putative_convergent, get_putative_divergent,
-            get_category_bed,
-            get_peak_sequences,
-            get_genic_counts, map_counts_to_genic
-
+    bowtie2_build,
+    get_si_pct,
+    cat_si_pct,
+    plot_si_pct,
+    make_stranded_annotations,
+    separate_de_results,
+    de_bases_to_bed,
+    merge_de_bases_to_clusters,
+    map_counts_to_clusters,
+    get_cluster_counts,
+    de_clusters_to_bed,
+    extract_base_cluster_dist,
+    map_counts_to_genic,
+    get_genic_counts,
+    get_putative_intragenic,
+    get_intragenic_frequency,
+    # plot_intragenic_frequency,
+    get_putative_antisense,
+    build_genic_annotation,
+    get_putative_genic,
+    build_intergenic_annotation,
+    get_putative_intergenic,
+    # get_intra_orfs,
+    build_convergent_annotation,
+    get_putative_convergent,
+    build_divergent_annotation,
+    get_putative_divergent,
+    get_category_bed,
+    # get_peak_sequences,
+    # meme_chip,
+    # class_v_genic,
 rule all:
     input:
         #FastQC
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         #coverage
-        # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
+        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
         # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
@@ -50,13 +65,16 @@ rule all:
         #call DE bases/clusters 
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.png", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
+        #base and cluster distances
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-libsizenorm-{{direction}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"]),
         #call DE genic
         expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.png", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),
         #
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"])
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up","down"], category=CATEGORIES),
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -239,12 +257,13 @@ rule normalize:
         spikeMinus = "coverage/spikenorm/{sample}-tss-spikenorm-minus.bedgraph",
         libnormPlus = "coverage/libsizenorm/{sample}-tss-libsizenorm-plus.bedgraph",
         libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
+    params: scalefactor = config["spikein-pct"]
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
-        (scripts/libsizenorm.awk {input.SIplmin} {input.plus} > {output.spikePlus}) &> {log}
-        (scripts/libsizenorm.awk {input.SIplmin} {input.minus} > {output.spikeMinus}) &>> {log}
-        (scripts/libsizenorm.awk {input.plmin} {input.plus} > {output.libnormPlus}) &>> {log}
-        (scripts/libsizenorm.awk {input.plmin} {input.minus} > {output.libnormMinus}) &>> {log}
+        (bash scripts/libsizenorm.sh {input.SIplmin} {input.plus} {params.scalefactor} > {output.spikePlus}) &> {log}
+        (bash scripts/libsizenorm.sh {input.SIplmin} {input.minus} > {output.spikeMinus} {params.scalefactor}) &>> {log}
+        (bash scripts/libsizenorm.sh {input.plmin} {input.plus} 1 > {output.libnormPlus}) &>> {log}
+        (bash scripts/libsizenorm.sh {input.plmin} {input.minus} 1 > {output.libnormMinus}) &>> {log}
         """
 
 rule get_si_pct:
@@ -548,6 +567,7 @@ rule call_de_clusters:
     script:
         "scripts/call_de_clusters2.R"
 
+#NOTE: column 5 for down tables vs column 5 for up tables is to the negative sign in the fold-change
 rule de_clusters_to_bed:
     input:
         up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-up.tsv",
@@ -560,24 +580,27 @@ rule de_clusters_to_bed:
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
-#COLUMN 6 FOR DOWN TABLES VS COLUMN 5 FOR UP TABLES IS DUE TO THE NEGATIVE SIGNS
 
-#TODO: rewrite this to extract base and cluster distances
-rule extract_base_cluster_dist:
-    input:
-        bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.bed",
-    output:
-        bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}.tsv",
-    log: "logs/extract_base_cluster_dist/extract_base_cluster_dist-{condition}-v-{control}-{norm}.log"
-    shell: """
-        (bedtools closest -s -d -io -t first -a {input.bases} -b {input.bases} | cut -f13 > {output.bases}) &> {log}
-        """
-
+#NOTE: the clusters are 'all' clusters, not just those that turn out to be DE (though this is most of them)
+# rule extract_base_cluster_dist:
+#     input:
+#         bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.bed",
+#         clusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-{direction}.bed",
+#     output:
+#         bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-{direction}.tsv",
+#         clusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-{direction}.tsv",
+#     log: "logs/extract_base_cluster_dist/extract_base_cluster_dist-{condition}-v-{control}-{norm}-{direction}.log"
+#     shell: """
+#         (bedtools closest -s -d -io -t first -a {input.bases} -b {input.bases} | cut -f13 > {output.bases}) &> {log}
+#         (bedtools closest -d -io -t first -a {input.clusters} -b {input.clusters} | cut -f9> {output.clusters}) &>> {log}
+#         """
 # rule vis_base_cluster_dist:
 #     input:
-#         bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}.tsv",
+#         upbases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-up.tsv",
+#         dnbases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-down.tsv",
+#         upclusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-up.tsv",
+#         dnclusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-down.tsv",
 #     output:
-#       ""
 
 rule map_counts_to_genic:
     input:
@@ -620,6 +643,7 @@ rule call_de_genic:
     script:
         "scripts/call_de_clusters2.R"
 
+#TODO: add a cat statement to add a header for all 'class' tsv (make sure to check class to bed afterwards)
 rule get_putative_intragenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
@@ -654,10 +678,10 @@ rule plot_intragenic_frequency:
 #(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\torf_start\torf_end\torf_name\tpeak_lfc\tpeak_significance\tdist_peak_to_atg\n$
 rule get_putative_antisense:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         transcripts = config["genome"]["transcripts"]
     output:
-        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-de-clusters-{norm}-{direction}-antisense.tsv"
+        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-cluster-results-{norm}-{direction}-antisense.tsv"
     log : "logs/get_putative_antisense/get_putative_antisense-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
@@ -680,10 +704,10 @@ rule build_genic_annotation:
 
 rule get_putative_genic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-de-clusters-{norm}-{direction}-genic.tsv"
+        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-cluster-results-{norm}-{direction}-genic.tsv"
     log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}}' | sort -k10,10nr > {output}) &> {log}
@@ -700,17 +724,17 @@ rule build_intergenic_annotation:
         genic_up = config["genic-windowsize"]
     log: "logs/build_intergenic_annotation.log"
     shell: """
-        (sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
-        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools complement -i stdin -g .chrsizes.temp > {output}) &>> {log}
-        (rm .chrsizes.temp) &>> {log}
+        (sort -k1,1 {input.chrsizes} | bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g stdin | sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
         """
+        #(sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
+        #(rm .chrsizes.temp) &>> {log}
 
 rule get_putative_intergenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intergenic.tsv"
+        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-cluster-results-{norm}-{direction}-intergenic.tsv"
     log : "logs/get_putative_intergenic/get_putative_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS="\t|:";OFS="\t"}}{{print $1, $7, $2, $3, $4, $9, $10, ".", $5, $6}}'| sort -k10,10nr > {output}) &> {log}
@@ -745,11 +769,11 @@ rule build_convergent_annotation:
 
 rule get_putative_convergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-convergent.tsv"
+        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-cluster-results-{norm}-{direction}-convergent.tsv"
     log : "logs/get_putative_convergent/get_putative_convergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
@@ -771,11 +795,11 @@ rule build_divergent_annotation:
 
 rule get_putative_divergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-de-clusters-{norm}-{direction}-divergent.tsv"
+        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-cluster-results-{norm}-{direction}-divergent.tsv"
     log : "logs/get_putative_divergent/get_putative_divergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
@@ -784,9 +808,9 @@ rule get_putative_divergent:
 
 rule get_category_bed:
     input:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.tsv"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.bed"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.bed"
     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $10, $2}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
@@ -794,11 +818,11 @@ rule get_category_bed:
 
 rule get_peak_sequences:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.bed",
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.fa"
     params:
         upstr = config["meme-chip"]["upstream-dist"],
         dnstr = config["meme-chip"]["downstream-dist"]
@@ -809,7 +833,7 @@ rule get_peak_sequences:
 
 rule meme_chip:
     input:
-        seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-de-clusters-{norm}-{direction}-{category}.fa",
+        seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.fa",
         db = config["meme-chip"]["motif-database"]
     output:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/index.html"
@@ -821,11 +845,12 @@ rule meme_chip:
     shell: """
         meme-chip {input.seq} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -db {input.db} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2
         """
+
 rule class_v_genic:
     input:
-        pclass_up = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-de-clusters-{norm}-up-{type}.tsv",
-        pclass_dn = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-de-clusters-{norm}-down-{type}.tsv",
-        genic = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-genic-{norm}.tsv",
+        pclass_up = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-cluster-results-{norm}-up-{category}.tsv",
+        pclass_dn = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-cluster-results-{norm}-down-{category}.tsv",
+        genic = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-results-{norm}-all.tsv",
     output:
         scatter_text = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scattertext.png" ,
         scatter_nolabel = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scatternotext.png",
