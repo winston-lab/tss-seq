@@ -65,15 +65,6 @@ r_datavis:
     time : 240
     mem : 60000
 
-call_allgenic_spikenorm:
-    time : 120
-    mem : 20000
-
-call_allgenic_libsizenorm:
-    time : 120
-    mem : 20000
-
-
 get_intra_orfs:
     time : 719
     mem : 20000
@@ -96,5 +87,9 @@ call_de_bases:
     mem : 20000
 
 call_de_clusters:
+    time : 60
+    mem : 10000
+
+call_de_genic:
     time : 60
     mem : 10000

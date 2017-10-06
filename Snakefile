@@ -22,11 +22,11 @@ localrules: all,
             get_si_pct, cat_si_pct,
             bg_to_bw, melt_matrix, cat_matrices,
             union_bedgraph, union_bedgraph_cond_v_ctrl,
-            separate_de_bases, de_bases_to_bed, merge_de_bases_to_clusters,
+            de_bases_to_bed, merge_de_bases_to_clusters,
             cat_cluster_strands,
             map_counts_to_clusters, get_cluster_counts,
             # extract_base_distances,
-            separate_de_clusters, de_clusters_to_bed,
+            separate_de_results, de_clusters_to_bed,
             build_genic_annotation, build_convergent_annotation, build_divergent_annotation,
             get_putative_genic, get_putative_intragenic, get_putative_antisense,
             get_putative_intergenic, get_putative_convergent, get_putative_divergent,
@@ -40,7 +40,7 @@ rule all:
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         #coverage
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
+        # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm = ["spikenorm", "libsizenorm"], sample=SAMPLES, strand = ["SENSE", "ANTISENSE", "plus", "minus"]),
         #datavis
         # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
@@ -55,6 +55,8 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),
         #
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-intragenic.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"])
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -480,14 +482,14 @@ rule separate_de_results:
         (awk -v fdr={params.alpha} -v uout={output.up} -v dout={output.down} 'BEGIN{{FS=OFS="\t"}} $7<fdr{{if ($3<0) {{print > dout}} else {{print > uout}} }}' {input}) &> {log}
         """
 
-rule de_results_to_bed:
+rule de_bases_to_bed:
     input:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-results-{norm}-{direction}.tsv",
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.tsv",
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-results-{norm}-{direction}.bed",
-    log: "logs/de_results_to_bed/de_results_to_bed-{condition}-v-{control}-{type}-{norm}-{direction}.log"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.bed",
+    log: "logs/de_results_to_bed/de_results_to_bed-{condition}-v-{control}-base-{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' | awk -v dir={wildcards.direction} -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "+"}} $2=="minus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' {input} | awk -v dir={wildcards.direction} -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "+"}} $2=="minus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
         """
 
 rule merge_de_bases_to_clusters:
@@ -546,6 +548,19 @@ rule call_de_clusters:
     script:
         "scripts/call_de_clusters2.R"
 
+rule de_clusters_to_bed:
+    input:
+        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-up.tsv",
+        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-down.tsv",
+    output:
+        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-up.bed",
+        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-down.bed",
+    log: "logs/de_results_to_bed/de_results_to_bed-{condition}-v-{control}-base-{norm}.log"
+    shell: """
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
+        """
+#COLUMN 6 FOR DOWN TABLES VS COLUMN 5 FOR UP TABLES IS DUE TO THE NEGATIVE SIGNS
 
 #TODO: rewrite this to extract base and cluster distances
 rule extract_base_cluster_dist:
@@ -605,14 +620,13 @@ rule call_de_genic:
     script:
         "scripts/call_de_clusters2.R"
 
-#COLUMN 6 FOR DOWN TABLES VS COLUMN 5 FOR UP TABLES IS DUE TO THE NEGATIVE SIGNS
 rule get_putative_intragenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/de_clusters/{condition}-v-{control}-de-clusters-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv"
+        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-cluster-results-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
