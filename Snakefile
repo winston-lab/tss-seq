@@ -54,8 +54,7 @@ rule all:
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         #coverage
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
         # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
@@ -245,7 +244,6 @@ rule get_coverage:
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
 
-#NOTE: should we scale the spikenorm values by the spike-in pct? right now the values are rpms, but this will be 10x the rpm values
 rule normalize:
     input:
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
@@ -349,7 +347,7 @@ rule make_stranded_annotations:
 rule bg_to_bw:
     input:
         bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
-        chrsizes = lambda wildcards: config["genome"]["chrsizes"] if wildcards.strand=="plus" or "minus" else os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+        chrsizes = lambda wildcards: config["genome"]["chrsizes"] if (wildcards.strand=="plus" or wildcards.strand=="minus") else os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
     output:
         "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw",
     log : "logs/bg_to_bw/bg_to_bw-{sample}-{norm}-{strand}.log"
@@ -724,7 +722,7 @@ rule build_intergenic_annotation:
         genic_up = config["genic-windowsize"]
     log: "logs/build_intergenic_annotation.log"
     shell: """
-        (sort -k1,1 {input.chrsizes} | bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g stdin | sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
+        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g <(sort -k1,1 {input.chrsizes})| sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
         """
         #(sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
         #(rm .chrsizes.temp) &>> {log}
