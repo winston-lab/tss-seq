@@ -56,19 +56,19 @@ rule all:
         #coverage
         # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
-        expand("qual_ctrl/{status}/{status}-spikein-plots.png", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.png", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.png", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #call DE bases/clusters 
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.png", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
         #base and cluster distances
         # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-libsizenorm-{{direction}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"]),
         #call DE genic
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.png", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.png", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
@@ -83,8 +83,8 @@ rule all:
         # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         # intrafreq
-        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.png", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
 
 rule fastqc_raw:
     input:
@@ -291,7 +291,7 @@ rule plot_si_pct:
     input:
         "qual_ctrl/all/spikein-counts.tsv"
     output:
-        plot = "qual_ctrl/{status}/{status}-spikein-plots.png",
+        plot = "qual_ctrl/{status}/{status}-spikein-plots.svg",
         stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
     params:
         samplelist = lambda wildcards : list({k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}.keys()) if wildcards.status=="all" else list({k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}.keys()),
@@ -408,8 +408,8 @@ rule r_datavis:
     input:
         matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     output:
-        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bysample.png",
-        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.png",
+        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bysample.svg",
+        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg",
     params:
         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
@@ -461,7 +461,7 @@ rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
     output:
-        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.png"
+        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.svg"
     params:
         pcount = 0.1,
         samplelist = plotcorrsamples
@@ -482,7 +482,7 @@ rule call_de_bases:
         #need to write out norm counts here or just in the total qc?
         normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-counts-sfnorm-{norm}.tsv",
         rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-{norm}.png"
+        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-{norm}.svg"
     script:
         "scripts/call_de_bases2.R"
 
@@ -561,7 +561,7 @@ rule call_de_clusters:
         #need to write out norm counts here or just in the total qc?
         normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-counts-sfnorm-{norm}.tsv",
         rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-qcplots-{norm}.png"
+        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-qcplots-{norm}.svg"
     script:
         "scripts/call_de_clusters2.R"
 
@@ -637,7 +637,7 @@ rule call_de_genic:
         #need to write out norm counts here or just in the total qc?
         normcounts = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts-sfnorm-{norm}.tsv",
         rldcounts = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-{norm}.png"
+        qcplots = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-{norm}.svg"
     script:
         "scripts/call_de_clusters2.R"
 
@@ -668,7 +668,7 @@ rule plot_intragenic_frequency:
     input:
         "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-de-clusters-{norm}-{direction}-intrafreq.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.png"
+        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.svg"
     log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
     script: "scripts/intrafreq.R"
 
@@ -850,8 +850,8 @@ rule class_v_genic:
         pclass_dn = "diff_exp/{condition}-v-{control}/{type}/{condition}-v-{control}-cluster-results-{norm}-down-{category}.tsv",
         genic = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-results-{norm}-all.tsv",
     output:
-        scatter_text = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scattertext.png" ,
-        scatter_nolabel = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scatternotext.png",
+        scatter_text = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scattertext.svg" ,
+        scatter_nolabel = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}-scatternotext.svg",
         table = "diff_exp/{condition}-v-{control}/{type}/{type}-v-genic/{condition}-v-{control}-{type}-v-genic-{norm}.tsv"
     script:
         "scripts/class_v_genic.R"
