@@ -49,7 +49,7 @@ main = function(intable, pcount, samplelist, outpath){
                             filter(!(xvalue < 5*pcount & yvalue < 5*pcount))
                 plot = ggplot(data = subdf, aes(x=xvalue+pcount, y=yvalue+pcount)) +
                             #geom_point(size=.5, shape=1, alpha=0.3) +
-                            geom_hex(aes(fill=log10(..count..)), bins=50, color="FFFFFF00", size=0) +
+                            geom_hex(aes(fill=log10(..count..), color=log10(..count..)), bins=50) +
                             scale_fill_viridis(option="inferno") +
                             scale_x_log10(limit = c(pcount, maxsignal)) +
                             scale_y_log10(limit = c(pcount, maxsignal))
