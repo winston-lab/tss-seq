@@ -44,11 +44,11 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
               panel.grid.minor.y = element_blank(),
               panel.spacing.x = unit(.5, "cm"))
     
-    hmap.width = max(12, ((upstream+dnstream)/200)*(nsamples/ngroups))
+    hmap.width = max(12, ((upstream+dnstream)/200)*ngroups)
 
-    heatmap_samples = heatmap_base + facet_wrap(~sample, ncol=(nsamples/ngroups))
+    heatmap_samples = heatmap_base + facet_wrap(~sample, dir="v", ncol=ngroups)
     ggsave(samples_out , plot = heatmap_samples,
-           height= (.0005*nindices+7.5)*ngroups,
+           height= (.0005*nindices+7.5)*nsamples/ngroups,
            width = hmap.width, units = "cm")
     rm(heatmap_samples)
     gc()
