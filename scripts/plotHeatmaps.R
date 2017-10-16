@@ -54,7 +54,7 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
     gc()
     heatmap_groups = heatmap_base + facet_wrap(~group, ncol=ngroups)
     ggsave(group_out, plot = heatmap_groups,
-           height= .002*nindices+14.75,
+           height= .0013*nindices+13,
            width = hmap.width, units = "cm", limitsize=FALSE)
 }
 
