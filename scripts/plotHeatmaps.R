@@ -44,18 +44,18 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
               panel.grid.minor.y = element_blank(),
               panel.spacing.x = unit(.5, "cm"))
     
-    hmap.width = max(12, ((upstream+dnstream)/200)*ngroups)
+    hmap.width = max(12, (.0008*(upstream+dnstream)+3.4)*ngroups)
 
     heatmap_samples = heatmap_base + facet_wrap(~sample, dir="v", ncol=ngroups)
     ggsave(samples_out , plot = heatmap_samples,
            height= (.0005*nindices+7.5)*nsamples/ngroups,
-           width = hmap.width, units = "cm")
+           width = hmap.width, units = "cm", limitsize=FALSE)
     rm(heatmap_samples)
     gc()
     heatmap_groups = heatmap_base + facet_wrap(~group, ncol=ngroups)
     ggsave(group_out, plot = heatmap_groups,
            height= .002*nindices+14.75,
-           width = hmap.width, units = "cm")
+           width = hmap.width, units = "cm", limitsize=FALSE)
 }
 
 plotheatmaps(intable= snakemake@input[["matrix"]],
