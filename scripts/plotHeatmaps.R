@@ -2,7 +2,7 @@ library(tidyverse)
 library(forcats)
 library(viridis)
 
-plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlabel, ylabel, cmap, samples_out, group_out){
+plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabel, cmap, samples_out, group_out){
     raw = read_tsv(intable,
     	 col_names=c("group", "sample", "index", "position","cpm"),
     	 col_types=cols(group=col_character(), sample=col_character(), index=col_integer(), position=col_double(), cpm=col_double())) %>% filter(cpm != "NA")
@@ -29,7 +29,7 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlabel, yla
                                   refptlab,
                                   ifelse(dnstream>200, dnstream/1000, '')),
                          minor_breaks = scales::pretty_breaks(n=10),
-                         name=paste("distance from", refptlabel, "(kb)")) +
+                         name=paste("distance from", refptlab, "(kb)")) +
       scale_fill_viridis(option = cmap, na.value="#FFFFFF00", name=expression(paste(log[2], '(TSS-seq signal)')), guide=guide_colorbar(title.position="top", barwidth=15, barheight=1, title.hjust=0.5)) +
       theme_minimal() +
       theme(text = element_text(size=12, face="bold", color="black"),
@@ -62,7 +62,7 @@ plotheatmaps(intable= snakemake@input[["matrix"]],
              upstream = snakemake@params[["upstream"]],
              dnstream= snakemake@params[["dnstream"]],
              pct_cutoff = snakemake@params[["pct_cutoff"]],
-             refptlabel = snakemake@params[["refpointlabel"]],
+             refptlab = snakemake@params[["refpointlabel"]],
              ylabel = snakemake@params[["ylabel"]],
              cmap = snakemake@params[["heatmap_cmap"]],
              samples_out = snakemake@output[["heatmap_sample"]],
