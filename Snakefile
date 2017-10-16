@@ -56,7 +56,7 @@ rule all:
         #coverage
         # expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        # expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
         #quality control
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
@@ -361,7 +361,7 @@ rule deeptools_matrix:
         bw = "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw"
     output:
         dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
-        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
+        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv")
     params:
         refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
         upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"],
@@ -372,12 +372,19 @@ rule deeptools_matrix:
         binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
     threads : config["threads"]
     log: "logs/deeptools/computeMatrix-{annotation}-{sample}-{norm}-{strand}.log"
-    #shell: """
-    #    (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
-    #    """
+    run:
+        if config["annotations"][wildcards.annotation]["nan_afterend"]=="y":
+            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}")
+        else:
+            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}")
+
+rule gzip_deeptools_matrix:
+    input:
+        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv"
+    output:
+        "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
     shell: """
-        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}
-        (pigz -f datavis/{wildcards.annotation}/{wildcards.norm}/{wildcards.annotation}-{wildcards.sample}-{wildcards.norm}-{wildcards.strand}.tsv) &>> {log}
+        pigz -f {input}
         """
 
 rule melt_matrix:
@@ -386,7 +393,6 @@ rule melt_matrix:
     output:
         temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}-melted.tsv.gz")
     params:
-        name = lambda wildcards : wildcards.sample,
         group = lambda wildcards : SAMPLES[wildcards.sample]["group"],
         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],

@@ -61,9 +61,14 @@ deeptools_matrix:
     n : 1
     mem : 2000
 
+gzip_deeptools_matrix:
+    time : 20
+    n : 1
+    mem : 2000
+
 r_datavis:
     time : 240
-    mem : 60000
+    mem : 20000
 
 get_intra_orfs:
     time : 719
