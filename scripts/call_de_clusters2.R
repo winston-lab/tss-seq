@@ -20,7 +20,7 @@ extract_deseq_results = function(dds, alpha){
 
 mean_sd_plot = function(df, ymax){
     ggplot(data = df, aes(x=rank, y=sd)) +
-        geom_hex(aes(fill=log10(..count..)), bins=40) +
+        geom_hex(aes(fill=log10(..count..), color=log10(..count..)), bins=40) +
         geom_smooth(color="#4292c6") +
         scale_fill_viridis(option="inferno", name=expression(log[10](count)), guide=FALSE) +
         scale_x_continuous(trans=reverselog_trans(10), name="rank(mean expression)") +
