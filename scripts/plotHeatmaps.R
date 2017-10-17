@@ -30,10 +30,11 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
                                   ifelse(dnstream>200, dnstream/1000, '')),
                          minor_breaks = scales::pretty_breaks(n=10),
                          name=paste("distance from", refptlab, "(kb)")) +
-      scale_fill_viridis(option = cmap, na.value="#FFFFFF00", name=expression(paste(log[2], '(TSS-seq signal)')), guide=guide_colorbar(title.position="top", barwidth=15, barheight=1, title.hjust=0.5)) +
+      scale_fill_viridis(option = cmap, na.value="#FFFFFF00", name=expression(bold(paste(log[2], '(TSS-seq signal)'))), guide=guide_colorbar(title.position="top", barwidth=15, barheight=1, title.hjust=0.5)) +
       theme_minimal() +
       theme(text = element_text(size=12, face="bold", color="black"),
               legend.position = "top",
+              legend.title = element_text(size=12, face="bold", color="black"),
               legend.text = element_text(size=8, face="plain"),
               strip.text = element_text(size=12, face="bold", color="black"),
               axis.text.y = element_blank(),
@@ -54,7 +55,7 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
     gc()
     heatmap_groups = heatmap_base + facet_wrap(~group, ncol=ngroups)
     ggsave(group_out, plot = heatmap_groups,
-           height= .0013*nindices+13,
+           height= .0009*nindices+11.5,
            width = hmap.width, units = "cm", limitsize=FALSE)
 }
 

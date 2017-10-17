@@ -259,7 +259,7 @@ rule normalize:
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
         (bash scripts/libsizenorm.sh {input.SIplmin} {input.plus} {params.scalefactor} > {output.spikePlus}) &> {log}
-        (bash scripts/libsizenorm.sh {input.SIplmin} {input.minus} > {output.spikeMinus} {params.scalefactor}) &>> {log}
+        (bash scripts/libsizenorm.sh {input.SIplmin} {input.minus} {params.scalefactor} > {output.spikeMinus}) &>> {log}
         (bash scripts/libsizenorm.sh {input.plmin} {input.plus} 1 > {output.libnormPlus}) &>> {log}
         (bash scripts/libsizenorm.sh {input.plmin} {input.minus} 1 > {output.libnormMinus}) &>> {log}
         """
