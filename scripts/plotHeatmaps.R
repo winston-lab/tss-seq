@@ -2,17 +2,16 @@ library(tidyverse)
 library(forcats)
 library(viridis)
 
-plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabel, cmap, samples_out, group_out){
+plotheatmaps = function(intable, samplelist, upstream, dnstream, pct_cutoff, refptlab, ylabel, cmap, samples_out, group_out){
     raw = read_tsv(intable,
     	 col_names=c("group", "sample", "index", "position","cpm"),
-    	 col_types=cols(group=col_character(), sample=col_character(), index=col_integer(), position=col_double(), cpm=col_double())) %>% filter(cpm != "NA")
+    	 col_types=cols(group=col_character(), sample=col_character(), index=col_integer(), position=col_double(), cpm=col_double())) %>% filter(sample %in% samplelist & cpm != "NA")
     raw$sample = fct_inorder(raw$sample, ordered = TRUE)
     raw$group = fct_inorder(raw$group, ordered = TRUE)
     
     nindices = max(raw$index, na.rm=TRUE)
     nsamples = length(fct_unique(raw$sample))
     ngroups = length(fct_unique(raw$group))
-    #w = round((max(raw$position) - min(raw$position))*1000/148)
     
     #pseudocount for log-transform
     pcount = .01
@@ -60,6 +59,7 @@ plotheatmaps = function(intable, upstream, dnstream, pct_cutoff, refptlab, ylabe
 }
 
 plotheatmaps(intable= snakemake@input[["matrix"]],
+             samplelist = snakemake@params[["samplelist"]],
              upstream = snakemake@params[["upstream"]],
              dnstream= snakemake@params[["dnstream"]],
              pct_cutoff = snakemake@params[["pct_cutoff"]],

@@ -56,7 +56,8 @@ rule all:
         #coverage
         expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        expand("datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg", annotation = config["annotations"], norm = ["spikenorm", "libsizenorm"], strand = ["SENSE", "ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}-{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}-{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
@@ -85,6 +86,18 @@ rule all:
         # intrafreq
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+
+def plotcorrsamples(wildcards):
+    dd = SAMPLES if wildcards.status=="all" else PASSING
+    if wildcards.condition=="all":
+        if wildcards.norm=="libsizenorm": #condition==all,norm==lib
+            return list(dd.keys())
+        else: #condition==all,norm==spike
+            return list({k:v for (k,v) in dd.items() if v["spikein"]=="y"}.keys())
+    elif wildcards.norm=="libsizenorm": #condition!=all;norm==lib
+        return list({k:v for (k,v) in dd.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys())
+    else: #condition!=all;norm==spike
+        return list({k:v for (k,v) in dd.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition) and v["spikein"]=="y"}.keys())
 
 rule fastqc_raw:
     input:
@@ -414,9 +427,10 @@ rule r_datavis:
     input:
         matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     output:
-        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bysample.svg",
-        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{strand}-heatmap-bygroup.svg",
+        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}-{condition}-v-{control}-{strand}-heatmap-bysample.svg",
+        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}-{condition}-v-{control}-{strand}-heatmap-bygroup.svg"
     params:
+        samplelist = plotcorrsamples,
         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
         dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
@@ -448,18 +462,6 @@ rule union_bedgraph_si_counts:
     shell: """
         (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.si}) &> {log}
         """
-
-def plotcorrsamples(wildcards):
-    dd = SAMPLES if wildcards.status=="all" else PASSING
-    if wildcards.condition=="all":
-        if wildcards.norm=="libsizenorm": #condition==all,norm==lib
-            return list(dd.keys())
-        else: #condition==all,norm==spike
-            return list({k:v for (k,v) in dd.items() if v["spikein"]=="y"}.keys())
-    elif wildcards.norm=="libsizenorm": #condition!=all;norm==lib
-        return list({k:v for (k,v) in dd.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys())
-    else: #condition!=all;norm==spike
-        return list({k:v for (k,v) in dd.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition) and v["spikein"]=="y"}.keys())
 
 rule plotcorrelations:
     input:
