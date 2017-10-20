@@ -2,6 +2,18 @@ library(tidyverse)
 library(forcats)
 library(viridis)
 
+axislabel = function(up, dn, xlab){
+    if (up < (1/3)*dn){
+        return( c('', xlab, (dn/1000)))
+    }
+    else if (dn < (1/3)*up){
+        return( c((-up/1000), xlab, ''))
+    }
+    else {
+        return( c((-up/1000), xlab, (dn/1000)))
+    }
+}
+
 plotheatmaps = function(intable, samplelist, upstream, dnstream, pct_cutoff, refptlab, ylabel, cmap, samples_out, group_out){
     raw = read_tsv(intable, col_names=c("group", "sample", "index", "position","cpm")) %>%
             filter(sample %in% samplelist & !is.na(cpm))
@@ -23,9 +35,7 @@ plotheatmaps = function(intable, samplelist, upstream, dnstream, pct_cutoff, ref
       geom_raster(aes(x=position, y=index, fill=log2(cpm+pcount))) +
       scale_y_reverse(name=paste(nindices, ylabel), expand=c(0.01, 0))+
       scale_x_continuous(breaks = c(-upstream/1000, 0, dnstream/1000),
-                         labels=c(ifelse(upstream>200, -upstream/1000, ''),
-                                  refptlab,
-                                  ifelse(dnstream>200, dnstream/1000, '')),
+                         labels= axislabel(up = upstream, dn=dnstream, xlab=refptlab),
                          minor_breaks = scales::pretty_breaks(n=10),
                          name=paste("distance from", refptlab, "(kb)")) +
       scale_fill_viridis(option = cmap, na.value="#FFFFFF00", name=expression(bold(paste(log[2], '(TSS-seq signal)'))), guide=guide_colorbar(title.position="top", barwidth=15, barheight=1, title.hjust=0.5)) +
