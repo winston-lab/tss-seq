@@ -3,9 +3,8 @@ library(forcats)
 library(viridis)
 
 plotheatmaps = function(intable, samplelist, upstream, dnstream, pct_cutoff, refptlab, ylabel, cmap, samples_out, group_out){
-    raw = read_tsv(intable,
-    	 col_names=c("group", "sample", "index", "position","cpm"),
-    	 col_types=cols(group=col_character(), sample=col_character(), index=col_integer(), position=col_double(), cpm=col_double())) %>% filter(sample %in% samplelist & cpm != "NA")
+    raw = read_tsv(intable, col_names=c("group", "sample", "index", "position","cpm")) %>%
+            filter(sample %in% samplelist & !is.na(cpm))
     raw$sample = fct_inorder(raw$sample, ordered = TRUE)
     raw$group = fct_inorder(raw$group, ordered = TRUE)
     
