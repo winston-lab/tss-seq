@@ -83,6 +83,14 @@ class_v_genic:
     time : 360
     mem : 10000
 
+union_bedgraph:
+    time: 30
+    mem: 4000
+
+union_bedgraph_si_counts:
+    time: 30
+    mem: 4000
+
 plotcorrelations:
     time : 15
     mem : 6000
