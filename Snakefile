@@ -9,10 +9,14 @@ name_string = " ".join(SAMPLES)
 PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
 pass_string = " ".join(PASSING)
 
-controlgroups = config["comparisons"]["libsizenorm"]["controls"]
-conditiongroups = config["comparisons"]["libsizenorm"]["conditions"]
-controlgroups_si = config["comparisons"]["spikenorm"]["controls"]
-conditiongroups_si = config["comparisons"]["spikenorm"]["conditions"]
+#groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
+validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
+controlgroups = [g for g in config["comparisons"]["libsizenorm"]["controls"] if g in validgroups]
+conditiongroups = [g for g in config["comparisons"]["libsizenorm"]["conditions"] if g in validgroups]
+controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups]
+conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"] if g in validgroups]
+allcontrols = set(controlgroups + controlgroups_si)
+allconditions = set(conditiongroups + conditiongroups_si)
 
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
@@ -22,11 +26,8 @@ localrules: all,
     cat_si_pct,
     plot_si_pct,
     make_stranded_annotations,
-    separate_de_results,
-    de_bases_to_bed,
-    merge_de_bases_to_clusters,
-    map_counts_to_clusters,
-    get_cluster_counts,
+    map_counts_to_peaks,
+    get_peak_counts,
     de_clusters_to_bed,
     extract_base_cluster_dist,
     map_counts_to_genic,
@@ -63,18 +64,16 @@ rule all:
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #call DE bases/clusters 
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
-        #base and cluster distances
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-libsizenorm-{{direction}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
         #call DE genic
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
+        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
+        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up","down"], category=CATEGORIES),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up","down"], category=CATEGORIES),
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -86,6 +85,11 @@ rule all:
         # intrafreq
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand("peakcalling/{sample}-allpeaks.narrowPeak", sample=SAMPLES),
+        #IDR for all groups which have at least two passing samples
+        expand("peakcalling/{group}-idrpeaks.{type}", group = validgroups, type=["tsv", "bed"]),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed", zip, condition=allconditions, control=allcontrols),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv",  zip, condition=allconditions, control=allcontrols)
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -93,11 +97,11 @@ def plotcorrsamples(wildcards):
         if wildcards.norm=="libsizenorm": #condition==all,norm==lib
             return list(dd.keys())
         else: #condition==all,norm==spike
-            return list({k:v for (k,v) in dd.items() if v["spikein"]=="y"}.keys())
+            return [k for k,v in dd.items() if v["spikein"]=="y"]
     elif wildcards.norm=="libsizenorm": #condition!=all;norm==lib
-        return list({k:v for (k,v) in dd.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition}.keys())
+        return [k for k,v in dd.items() if v["group"]==wildcards.control or v["group"]==wildcards.condition]
     else: #condition!=all;norm==spike
-        return list({k:v for (k,v) in dd.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition) and v["spikein"]=="y"}.keys())
+        return [k for k,v in dd.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition) and v["spikein"]=="y"]
 
 rule fastqc_raw:
     input:
@@ -307,7 +311,7 @@ rule plot_si_pct:
         plot = "qual_ctrl/{status}/{status}-spikein-plots.svg",
         stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
     params:
-        samplelist = lambda wildcards : list({k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}.keys()) if wildcards.status=="all" else list({k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}.keys()),
+        samplelist = lambda wildcards : [k for k,v in SAMPLES.items() if v["spikein"]=="y"] if wildcards.status=="all" else [k for k,v in PASSING.items() if v["spikein"]=="y"],
         conditions = config["comparisons"]["spikenorm"]["conditions"],
         controls = config["comparisons"]["spikenorm"]["controls"],
     script: "scripts/plotsipct.R"
@@ -474,93 +478,85 @@ rule plotcorrelations:
     script:
         "scripts/plotcorr.R"
 
-#NOTE: need to check whether the median of ratios normalization is okay (e.g. for spt6 samples)
-rule call_de_bases:
+rule call_tss_peaks:
     input:
-        counts = "coverage/counts/union-bedgraph-allsamples-counts.tsv.gz",
-        sicounts = "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz"
-    params:
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()),
-        groups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]==wildcards.control or v["group"]==wildcards.condition)}],
-        alpha = config["deseq"]["fdr"],
+        bw = "coverage/counts/bw/{sample}-tss-counts-SENSE.bw"
     output:
-        results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-all.tsv",
-        #need to write out norm counts here or just in the total qc?
-        normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-counts-sfnorm-{norm}.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-qcplots-{norm}.svg"
-    script:
-        "scripts/call_de_bases2.R"
-
-rule separate_de_results:
-    input:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-results-{norm}-all.tsv",
-    output:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-results-{norm}-up.tsv",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-results-{norm}-down.tsv",
+        smoothed = expand("peakcalling/{{sample}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/{sample}-allpeaks.narrowPeak"
     params:
-        alpha = config["deseq"]["fdr"]
-    log: "logs/separate_de_results/separate_de_results-{condition}-v-{control}-{type}-{norm}.log"
+        bandwidth = config["peakcalling"]["bandwidth"],
+        window = config["peakcalling"]["local-bg-window"]
+    log: "logs/call_tss_peaks/call_tss_peaks-{sample}.log"
     shell: """
-        (awk -v fdr={params.alpha} -v uout={output.up} -v dout={output.down} 'BEGIN{{FS=OFS="\t"}} $7<fdr{{if ($3<0) {{print > dout}} else {{print > uout}} }}' {input}) &> {log}
+        (python scripts/tss-peakcalling.py -i {input.bw} -n {wildcards.sample} -w {params.window} -b {params.bandwidth} -o peakcalling) &> {log}
         """
 
-rule de_bases_to_bed:
+rule tss_peaks_idr:
     input:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.tsv",
+        #NOTE: for now we take the first two samples since the IDR script only takes two
+        #change this if we find a better way to aggregate results
+        lambda wildcards: ["peakcalling/" + x + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wildcards.group][0:2]
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.bed",
-    log: "logs/de_results_to_bed/de_results_to_bed-{condition}-v-{control}-base-{norm}-{direction}.log"
-    shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, -log($7)/log(10)}}' {input} | awk -v dir={wildcards.direction} -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "+"}} $2=="minus"{{print $1"-"$2, $3, $4, dir"_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
-        """
-
-rule merge_de_bases_to_clusters:
-    input:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-up.bed",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-down.bed"
-    output:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-up.bed",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-down.bed",
-        combined = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-combined.bed"
+        "peakcalling/{group}-idrpeaks.tsv"
     params:
-        mergedist = config["cluster-merge-distance"]
-    log: "logs/merge_de_bases_to_clusters/merge_de_bases_to_clusters-{condition}-v-{control}-{norm}.log"
+        idr = config["peakcalling"]["idr"]
+    log: "logs/tss_peaks_idr/tss_peaks_idr-{group}.log"
     shell: """
-        (bedtools merge -s -d {params.mergedist} -i {input.up} | LC_COLLATE=C sort -k1,1 -k2,2n | tee {output.up} | cat - <(bedtools merge -s -d {params.mergedist} -i {input.down} | LC_COLLATE=C sort -k1,1 -k2,2n | tee {output.down}) | LC_COLLATE=C sort -k1,1 -k2,2n > {output.combined}) &> {log}
+        idr -s {input} --input-file-type narrowPeak --rank q.value -o {output} -l {log} -i {params.idr} --plot --peak-merge-method max
         """
 
-rule map_counts_to_clusters:
+#these are bed files for visualization (lack stranded chromosomes)
+rule tss_peaks_to_bed:
     input:
-        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-combined.bed",
+        "peakcalling/{group}-idrpeaks.tsv"
+    output:
+        "peakcalling/{group}-idrpeaks.bed"
+    shell: """
+        cut -f1-6 {input} | sed -e 's/-minus//g' -e 's/-plus//g' > {output}
+        """
+
+rule combine_tss_peaks:
+    input:
+        cond = "peakcalling/{condition}-idrpeaks.tsv",
+        ctrl = "peakcalling/{control}-idrpeaks.tsv",
+    output:
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed"
+    shell: """
+        sort -k1,1 -k2,2n {input.cond} | bedtools multiinter -i stdin <(sort -k1,1 -k2,2n {input.ctrl}) -cluster | cut -f1-3 | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
+        """
+
+rule map_counts_to_peaks:
+    input:
+        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed",
         bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
     output:
-        temp("diff_exp/{condition}-v-{control}/{sample}-allclustercounts-{norm}.tsv")
-    log: "logs/map_counts_to_clusters/map_counts_to_clusters-{condition}-v-{control}-{sample}-{norm}.log"
+        temp("diff_exp/{condition}-v-{control}/{sample}-allpeakcounts.tsv")
+    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}-{sample}.log"
     shell: """
-        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $5}}' &> {output}) &> {log}
+        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
         """
 
-rule get_cluster_counts:
+rule get_peak_counts:
     input:
-        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + x + "-allclustercounts-" + wildcards.norm + ".tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)})]
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + x + "-allpeakcounts.tsv" for x in [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]]
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-counts.tsv"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv"
     params:
-        n = lambda wildcards: 2*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}),
-        names = lambda wildcards: "\t".join(list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()))
-    log: "logs/get_cluster_counts/get_cluster_counts-{condition}-v-{control}-{norm}.log"
+        n = lambda wildcards: 2*len([k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]),
+        names = lambda wildcards: "\t".join([k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)])
+    log: "logs/get_cluster_counts/get_cluster_counts-{condition}-v-{control}.log"
     shell: """
         (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
         """
 
-rule call_de_clusters:
+rule call_de_peaks:
     input:
-        clustercounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-counts.tsv",
+        clustercounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv",
         libcounts = lambda wildcards : "coverage/counts/union-bedgraph-allsamples-counts.tsv.gz" if wildcards.norm=="libsizenorm" else "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz",
     params:
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()),
-        groups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}],
+        samples = lambda wildcards : [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)],
+        groups = lambda wildcards : [PASSING[x]["group"] for x in [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]],
         alpha = config["deseq"]["fdr"]
     output:
         results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-all.tsv",
@@ -584,68 +580,6 @@ rule de_clusters_to_bed:
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
-
-#NOTE: the clusters are 'all' clusters, not just those that turn out to be DE (though this is most of them)
-# rule extract_base_cluster_dist:
-#     input:
-#         bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-results-{norm}-{direction}.bed",
-#         clusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-allclusters-{norm}-{direction}.bed",
-#     output:
-#         bases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-{direction}.tsv",
-#         clusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-{direction}.tsv",
-#     log: "logs/extract_base_cluster_dist/extract_base_cluster_dist-{condition}-v-{control}-{norm}-{direction}.log"
-#     shell: """
-#         (bedtools closest -s -d -io -t first -a {input.bases} -b {input.bases} | cut -f13 > {output.bases}) &> {log}
-#         (bedtools closest -d -io -t first -a {input.clusters} -b {input.clusters} | cut -f9> {output.clusters}) &>> {log}
-#         """
-# rule vis_base_cluster_dist:
-#     input:
-#         upbases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-up.tsv",
-#         dnbases = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-base-distances-{norm}-down.tsv",
-#         upclusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-up.tsv",
-#         dnclusters = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-distances-{norm}-down.tsv",
-#     output:
-
-rule map_counts_to_genic:
-    input:
-        bed = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
-    output:
-        temp("diff_exp/{condition}-v-{control}/all_genic/{sample}-allgeniccounts.tsv")
-    log: "logs/map_counts_to_genic/map_counts_to_genic-{condition}-v-{control}-{sample}.log"
-    shell: """
-        (bash scripts/makeStrandedBed.sh {input.bed} | LC_COLLATE=C sort -k1,1 -k2,2n | bedtools map -a stdin -b {input.bg} -c 4 -o sum | cut -f4,7 > {output}) &> {log}
-        """
-
-rule get_genic_counts:
-    input:
-        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/all_genic/" + x + "-allgeniccounts.tsv" for x in list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)})]
-    output:
-        "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts.tsv"
-    params:
-        n = lambda wildcards: 2*len({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}),
-        names = lambda wildcards: "\t".join(list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()))
-    log: "logs/get_genic_counts/get_genic_counts-{condition}-v-{control}.log"
-    shell: """
-        (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
-        """
-
-rule call_de_genic:
-    input:
-        clustercounts = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts.tsv",
-        libcounts = lambda wildcards : "coverage/counts/union-bedgraph-allsamples-counts.tsv.gz" if wildcards.norm=="libsizenorm" else "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz",
-    params:
-        samples = lambda wildcards : list({k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}.keys()),
-        groups = lambda wildcards : [PASSING[x]["group"] for x in {k:v for (k,v) in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)}],
-        alpha = config["deseq"]["fdr"]
-    output:
-        results = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-results-{norm}-all.tsv",
-        #need to write out norm counts here or just in the total qc?
-        normcounts = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts-sfnorm-{norm}.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-{norm}.svg"
-    script:
-        "scripts/call_de_clusters2.R"
 
 #TODO: add a cat statement to add a header for all 'class' tsv (make sure to check class to bed afterwards)
 rule get_putative_intragenic:
