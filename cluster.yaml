@@ -52,6 +52,14 @@ get_coverage:
     time : 60
     mem : 2000
 
+make_stranded_bedgraph:
+    time: 10
+    mem: 1000
+
+bg_to_bw:
+    time: 10
+    mem: 1000
+
 normalize:
     time : 60
     mem : 2000

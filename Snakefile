@@ -5,16 +5,18 @@ from math import log2
 configfile: "config.yaml"
 
 SAMPLES = config["samples"]
+sisamples = {k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}
 PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
+sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"] == "y"}
+
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
+validsigroups = [z for z in validgroups if PASSING[z]["spikein"]=="y"]
 controlgroups = [g for g in config["comparisons"]["libsizenorm"]["controls"] if g in validgroups]
 conditiongroups = [g for g in config["comparisons"]["libsizenorm"]["conditions"] if g in validgroups]
 controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups]
 conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"] if g in validgroups]
-allcontrols = set(controlgroups + controlgroups_si)
-allconditions = set(conditiongroups + conditiongroups_si)
 
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
@@ -76,11 +78,16 @@ rule all:
         # intrafreq
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand("peakcalling/{sample}-{type}-allpeaks.narrowPeak", sample=SAMPLES, type=["exp", "si"]),
+        #TODO: fix for samples that don't have spikein
+        expand("peakcalling/{sample}-{type}-allpeaks.narrowPeak", zip, sample=[SAMPLES,sisamples], type=["exp", "si"]),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}-{type}-idrpeaks.{fmt}", group = validgroups, type=["exp","si"], fmt=["tsv", "bed"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-peaks.bed", zip, condition=allconditions, control=allcontrols),type=["exp","si"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-peak-counts.tsv",  zip, condition=allconditions, control=allcontrols), type=["exp","si"]),
+        expand(expand("peakcalling/{group}-{type}-idrpeaks.{{fmt}}", zip, group = [validgroups, validsigroups], type=["exp","si"]), fmt=["tsv", "bed"]),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",  zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv",  zip, condition=conditiongroups_si, control=controlgroups_si),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.tsv", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.tsv", zip, condition=conditiongroups_si, control=controlgroups_si)
 
