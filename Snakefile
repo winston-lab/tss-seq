@@ -55,21 +55,14 @@ rule all:
         expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
         expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
         #coverage
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
-        expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
-        #call DE bases/clusters 
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),type=["base", "cluster"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base", "cluster"]),
-        #call DE genic
-        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
-        # expand("diff_exp/{condition}-v-{control}/all_genic/{condition}-v-{control}-allgenic-qcplots-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
-        #
+        # expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
@@ -85,11 +78,13 @@ rule all:
         # intrafreq
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand("peakcalling/{sample}-allpeaks.narrowPeak", sample=SAMPLES),
+        expand("peakcalling/{sample}-{type}-allpeaks.narrowPeak", sample=SAMPLES, type=["exp", "si"]),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}-idrpeaks.{type}", group = validgroups, type=["tsv", "bed"]),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed", zip, condition=allconditions, control=allcontrols),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv",  zip, condition=allconditions, control=allcontrols)
+        expand("peakcalling/{group}-{type}-idrpeaks.{fmt}", group = validgroups, type=["exp","si"], fmt=["tsv", "bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-peaks.bed", zip, condition=allconditions, control=allcontrols),type=["exp","si"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-peak-counts.tsv",  zip, condition=allconditions, control=allcontrols), type=["exp","si"]),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.tsv", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.tsv", zip, condition=conditiongroups_si, control=controlgroups_si)
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -242,9 +237,9 @@ rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
     output:
-        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph",
-        SIpl = "coverage/counts/spikein/{sample}-tss-SI-counts-plus.bedgraph",
-        SImin = "coverage/counts/spikein/{sample}-tss-SI-counts-minus.bedgraph",
+        SIplmin = "coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph",
+        SIpl = "coverage/sicounts/{sample}-tss-sicounts-plus.bedgraph",
+        SImin = "coverage/sicounts/{sample}-tss-sicounts-minus.bedgraph",
         plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
         minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
@@ -266,13 +261,14 @@ rule normalize:
         plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
         minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph",
         plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"
+        SIplmin = "coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph"
     output:
         spikePlus = "coverage/spikenorm/{sample}-tss-spikenorm-plus.bedgraph",
         spikeMinus = "coverage/spikenorm/{sample}-tss-spikenorm-minus.bedgraph",
         libnormPlus = "coverage/libsizenorm/{sample}-tss-libsizenorm-plus.bedgraph",
         libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
-    params: scalefactor = config["spikein-pct"]
+    params:
+        scalefactor = config["spikein-pct"]
     log: "logs/normalize/normalize-{sample}.log"
     shell: """
         (bash scripts/libsizenorm.sh {input.SIplmin} {input.plus} {params.scalefactor} > {output.spikePlus}) &> {log}
@@ -284,7 +280,7 @@ rule normalize:
 rule get_si_pct:
     input:
         plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        SIplmin = "coverage/counts/spikein/{sample}-tss-SI-counts-plmin.bedgraph"
+        SIplmin = "coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph"
     output:
         temp("qual_ctrl/all/{sample}-spikeincounts.tsv")
     params:
@@ -319,12 +315,15 @@ rule plot_si_pct:
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
     input:
-        config["genome"]["chrsizes"]
+        exp = config["genome"]["chrsizes"],
+        si = config["genome"]["sichrsizes"]
     output:
-        os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+        exp = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv",
+        si = os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv",
     log: "logs/make_stranded_genome.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input} > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.exp} > {output.exp}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.si} > {output.si}) &>> {log}
         """
 
 rule make_stranded_bedgraph:
@@ -340,17 +339,6 @@ rule make_stranded_bedgraph:
         (bash scripts/makeStrandedBedgraph.sh {input.minus} {input.plus} > {output.antisense}) &>> {log}
         """
 
-rule make_stranded_sicounts_bedgraph:
-    input:
-        plus = "coverage/counts/spikein/{sample}-tss-SI-counts-plus.bedgraph",
-        minus = "coverage/counts/spikein/{sample}-tss-SI-counts-minus.bedgraph"
-    output:
-        sense = "coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph"
-    log: "logs/make_stranded_sicounts_bedgraph/make_stranded_sicounts_bedgraph-{sample}.log"
-    shell: """
-        (bash scripts/makeStrandedBedgraph.sh {input.plus} {input.minus} > {output.sense}) &> {log}
-        """
-
 rule make_stranded_annotations:
     input:
         lambda wildcards : config["annotations"][wildcards.annotation]["path"]
@@ -361,10 +349,19 @@ rule make_stranded_annotations:
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """
 
+def selectchrom(wildcards):
+    if wildcards.strand in ["plus", "minus"]:
+        if wildcards.norm=="sicounts":
+            return config["genome"]["sichrsizes"]
+        return config["genome"]["chrsizes"]
+    if wildcards.norm=="sicounts":
+        return os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv"
+    return os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+
 rule bg_to_bw:
     input:
         bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
-        chrsizes = lambda wildcards: config["genome"]["chrsizes"] if (wildcards.strand=="plus" or wildcards.strand=="minus") else os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
+        chrsizes = selectchrom
     output:
         "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw",
     log : "logs/bg_to_bw/bg_to_bw-{sample}-{norm}-{strand}.log"
@@ -456,17 +453,6 @@ rule union_bedgraph:
         (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
         """
 
-rule union_bedgraph_si_counts:
-    input:
-        si = expand("coverage/counts/spikein/{sample}-tss-SI-counts-SENSE.bedgraph", sample=SAMPLES),
-    output:
-        si = "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz",
-    params:
-    log: "logs/union_bedgraph_si_counts.log"
-    shell: """
-        (bedtools unionbedg -i {input.si} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.si}) &> {log}
-        """
-
 rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
@@ -480,28 +466,29 @@ rule plotcorrelations:
 
 rule call_tss_peaks:
     input:
-        bw = "coverage/counts/bw/{sample}-tss-counts-SENSE.bw"
+        bw = lambda wildcards: "coverage/counts/bw/" + wildcards.sample + "-tss-counts-SENSE.bw" if wildcards.type=="exp" else "coverage/sicounts/bw/" + wildcards.sample + "-tss-sicounts-SENSE.bw"
     output:
-        smoothed = expand("peakcalling/{{sample}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
-        peaks = "peakcalling/{sample}-allpeaks.narrowPeak"
+        smoothed = expand("peakcalling/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/{sample}-{type}-allpeaks.narrowPeak"
     params:
+        name = lambda wildcards: wildcards.sample + "-" + wildcards.type,
         bandwidth = config["peakcalling"]["bandwidth"],
         window = config["peakcalling"]["local-bg-window"]
-    log: "logs/call_tss_peaks/call_tss_peaks-{sample}.log"
+    log: "logs/call_tss_peaks/call_tss_peaks-{sample}-{type}.log"
     shell: """
-        (python scripts/tss-peakcalling.py -i {input.bw} -n {wildcards.sample} -w {params.window} -b {params.bandwidth} -o peakcalling) &> {log}
+        (python scripts/tss-peakcalling.py -i {input.bw} -n {params.name} -w {params.window} -b {params.bandwidth} -o peakcalling) &> {log}
         """
 
 rule tss_peaks_idr:
     input:
         #NOTE: for now we take the first two samples since the IDR script only takes two
         #change this if we find a better way to aggregate results
-        lambda wildcards: ["peakcalling/" + x + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wildcards.group][0:2]
+        lambda wildcards: ["peakcalling/" + x + "-" + wildcards.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wildcards.group][0:2]
     output:
-        "peakcalling/{group}-idrpeaks.tsv"
+        "peakcalling/{group}-{type}-idrpeaks.tsv"
     params:
         idr = config["peakcalling"]["idr"]
-    log: "logs/tss_peaks_idr/tss_peaks_idr-{group}.log"
+    log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
         idr -s {input} --input-file-type narrowPeak --rank q.value -o {output} -l {log} -i {params.idr} --plot --peak-merge-method max
         """
@@ -509,73 +496,76 @@ rule tss_peaks_idr:
 #these are bed files for visualization (lack stranded chromosomes)
 rule tss_peaks_to_bed:
     input:
-        "peakcalling/{group}-idrpeaks.tsv"
+        "peakcalling/{group}-{type}-idrpeaks.tsv"
     output:
-        "peakcalling/{group}-idrpeaks.bed"
+        "peakcalling/{group}-{type}-idrpeaks.bed"
     shell: """
         cut -f1-6 {input} | sed -e 's/-minus//g' -e 's/-plus//g' > {output}
         """
 
 rule combine_tss_peaks:
     input:
-        cond = "peakcalling/{condition}-idrpeaks.tsv",
-        ctrl = "peakcalling/{control}-idrpeaks.tsv",
+        cond = "peakcalling/{condition}-{type}-idrpeaks.tsv",
+        ctrl = "peakcalling/{control}-{type}-idrpeaks.tsv",
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed"
     shell: """
         sort -k1,1 -k2,2n {input.cond} | bedtools multiinter -i stdin <(sort -k1,1 -k2,2n {input.ctrl}) -cluster | cut -f1-3 | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
         """
 
 rule map_counts_to_peaks:
     input:
-        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peaks.bed",
-        bg = "coverage/counts/{sample}-tss-counts-SENSE.bedgraph"
+        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed",
+        bg = lambda wildcards: "coverage/counts/" + wildcards.sample + "-tss-counts-SENSE.bedgraph" if wildcards.type=="exp" else "coverage/sicounts/" + wildcards.sample + "-tss-sicounts-SENSE.bedgraph"
     output:
-        temp("diff_exp/{condition}-v-{control}/{sample}-allpeakcounts.tsv")
-    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}-{sample}.log"
+        temp("diff_exp/{condition}-v-{control}/{sample}-{type}-allpeakcounts.tsv")
+    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}-{sample}-{type}.log"
     shell: """
         (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
         """
 
+def getsamples(ctrl, cond):
+    return [k for k,v in PASSING.items() if (v["group"]==ctrl or v["group"]==cond)]
+
 rule get_peak_counts:
     input:
-        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + x + "-allpeakcounts.tsv" for x in [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]]
+        lambda wildcards : ["diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + x + "-" + wildcards.type + "-allpeakcounts.tsv" for x in getsamples(wildcards.control, wildcards.condition)]
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peak-counts.tsv"
     params:
-        n = lambda wildcards: 2*len([k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]),
-        names = lambda wildcards: "\t".join([k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)])
-    log: "logs/get_cluster_counts/get_cluster_counts-{condition}-v-{control}.log"
+        n = lambda wildcards: 2*len(getsamples(wildcards.control, wildcards.condition)),
+        names = lambda wildcards: "\t".join(getsamples(wildcards.control, wildcards.condition))
+    log: "logs/get_peak_counts/get_peak_counts-{condition}-v-{control}-{type}.log"
     shell: """
         (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
         """
 
 rule call_de_peaks:
     input:
-        clustercounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-peak-counts.tsv",
-        libcounts = lambda wildcards : "coverage/counts/union-bedgraph-allsamples-counts.tsv.gz" if wildcards.norm=="libsizenorm" else "coverage/counts/spikein/union-bedgraph-allsamples-si-counts.tsv.gz",
+        expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
+        sicounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv",
     params:
-        samples = lambda wildcards : [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)],
-        groups = lambda wildcards : [PASSING[x]["group"] for x in [k for k,v in PASSING.items() if (v["group"]== wildcards.control or v["group"]==wildcards.condition)]],
+        samples = lambda wildcards : getsamples(wildcards.control, wildcards.condition),
+        groups = lambda wildcards : [PASSING[x]["group"] for x in getsamples(wildcards.control, wildcards.condition)],
         alpha = config["deseq"]["fdr"]
     output:
-        results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-all.tsv",
+        results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
         #need to write out norm counts here or just in the total qc?
-        normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-counts-sfnorm-{norm}.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-qcplots-{norm}.svg"
+        normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-sfnorm-{norm}.tsv",
+        rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-rlog-{norm}.tsv",
+        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-qcplots-{norm}.svg"
     script:
-        "scripts/call_de_clusters2.R"
+        "scripts/call_de_peaks.R"
 
 #NOTE: column 5 for down tables vs column 5 for up tables is to the negative sign in the fold-change
-rule de_clusters_to_bed:
+rule de_peaks_to_bed:
     input:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-up.tsv",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-down.tsv",
+        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
+        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
     output:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-up.bed",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-down.bed",
-    log: "logs/de_results_to_bed/de_results_to_bed-{condition}-v-{control}-base-{norm}.log"
+        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.bed",
+        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.bed",
+    log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}

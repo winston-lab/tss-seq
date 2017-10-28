@@ -142,7 +142,7 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     ggsave(qcplots, out, height=18, width = 16, units="cm")
 }
 
-qc = call_de_bases(intable = snakemake@input[["counts"]],
+qc = call_de_bases(intable = snakemake@input[["expcounts"]],
                    norm = snakemake@wildcards[["norm"]],
                    sitable = snakemake@input[["sicounts"]],
                    samples = snakemake@params[["samples"]],
