@@ -5,9 +5,7 @@ from math import log2
 configfile: "config.yaml"
 
 SAMPLES = config["samples"]
-name_string = " ".join(SAMPLES)
 PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
-pass_string = " ".join(PASSING)
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
@@ -60,9 +58,9 @@ rule all:
         # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
-        # expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
@@ -448,9 +446,10 @@ rule union_bedgraph:
     output:
         exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz",
     params:
+        names = " ".join(SAMPLES)
     log: "logs/union_bedgraph-{norm}.log"
     shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {name_string} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
+        (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
         """
 
 rule plotcorrelations:
