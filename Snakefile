@@ -9,14 +9,13 @@ sisamples = {k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}
 PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
 sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"] == "y"}
 
-
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
-validsigroups = set([z for z in [PASSING[x]['group'] for x in PASSING if PASSING[x]['spikein']=="y"] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
+validgroups_si = set([z for z in [PASSING[x]['group'] for x in PASSING if PASSING[x]['spikein']=="y"] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
 controlgroups = [g for g in config["comparisons"]["libsizenorm"]["controls"] if g in validgroups]
 conditiongroups = [g for g in config["comparisons"]["libsizenorm"]["conditions"] if g in validgroups]
-controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups]
-conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"] if g in validgroups]
+controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups_si]
+conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"] if g in validgroups_si]
 
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
@@ -63,10 +62,6 @@ rule all:
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
         expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-libsizenorm-{{direction}}.bed", zip, condition=conditiongroups, control=controlgroups),type=["base","cluster"], direction=["up","down"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-{{type}}-results-spikenorm-{{direction}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si),type=["base","cluster"], direction=["up","down"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-cluster-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up","down"], category=CATEGORIES),
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -79,17 +74,21 @@ rule all:
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         #TODO: fix for samples that don't have spikein
-        expand("peakcalling/{sample}-{type}-allpeaks.narrowPeak", zip, sample=[SAMPLES,sisamples], type=["exp", "si"]),
+        expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
+        expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
         #IDR for all groups which have at least two passing samples
-        expand(expand("peakcalling/{group}-{type}-idrpeaks.{{fmt}}", zip, group = [validgroups, validsigroups], type=["exp","si"]), fmt=["tsv", "bed"]),
+        expand("peakcalling/{group}-exp-idrpeaks.{fmt}", group = validgroups, fmt=["tsv", "bed"]),
+        expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "bed"]),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",  zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv",  zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.tsv", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.tsv", zip, condition=conditiongroups_si, control=controlgroups_si)
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","down"], fmt=["tsv","bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","down"], fmt=["tsv","bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["up","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up","down"], category=CATEGORIES),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -549,7 +548,7 @@ rule get_peak_counts:
 rule call_de_peaks:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
-        sicounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv",
+        sicounts = lambda wildcards: "diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + wildcards.condition + "-v-" + wildcards.control + "-si-peak-counts.tsv" if wildcards.norm=="spikenorm" else "."
     params:
         samples = lambda wildcards : getsamples(wildcards.control, wildcards.condition),
         groups = lambda wildcards : [PASSING[x]["group"] for x in getsamples(wildcards.control, wildcards.condition)],
@@ -563,7 +562,19 @@ rule call_de_peaks:
     script:
         "scripts/call_de_peaks.R"
 
-#NOTE: column 5 for down tables vs column 5 for up tables is to the negative sign in the fold-change
+rule separate_de_peaks:
+    input:
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
+    output:
+        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
+        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
+    params:
+        fdr = config["deseq"]["fdr"]
+    shell: """
+        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.down}" }} NR>1 && $7<afdr && $3>0 {{print > "{output.up}"}} NR>1 && $7<afdr && $3<0 {{print > "{output.down}"}}' {input}
+        """
+
+#NOTE: column 6 for down tables vs column 5 for up tables is to the negative sign in the fold-change
 rule de_peaks_to_bed:
     input:
         up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
@@ -573,21 +584,21 @@ rule de_peaks_to_bed:
         down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.bed",
     log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.up} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' {input.down} | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
+        (tail -n +2 {input.up} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "up_"NR, $5, "+"}} $2=="minus"{{print $1, $3, $4, "up_"NR, $5, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.up}) &> {log}
+        (tail -n +2 {input.down} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3":"(-log($7)/log(10))}}' | awk -F '[-\t]' 'BEGIN{{OFS="\t"}} $2=="plus"{{print $1, $3, $4, "down_"NR, $6, "+"}} $2=="minus"{{print $1, $3, $4, "down_"NR, $6, "-"}}' | LC_COLLATE=C sort -k1,1 -k2,2n > {output.down}) &>> {log}
         """
 
 #TODO: add a cat statement to add a header for all 'class' tsv (make sure to check class to bed afterwards)
 rule get_putative_intragenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-cluster-results-{norm}-{direction}-intragenic.tsv"
+        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.tsv"
     log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr | cat <(echo -e "chrom\tstrand\tpeak_start\tpeak_end\tpeak_name\tORF_start\tORF_end\tORF_name\tpeak_lfc\tpeak_significance\tdist_atg_to_peak") - > {output}) &> {log}
         """
 
 rule get_intragenic_frequency:
@@ -608,19 +619,16 @@ rule plot_intragenic_frequency:
     log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
     script: "scripts/intrafreq.R"
 
-
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\torf_start\torf_end\torf_name\tpeak_lfc\tpeak_significance\tdist_peak_to_atg\n$
 rule get_putative_antisense:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         transcripts = config["genome"]["transcripts"]
     output:
-        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-cluster-results-{norm}-{direction}-antisense.tsv"
+        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-results-{norm}-{direction}-antisense.tsv"
     log : "logs/get_putative_antisense/get_putative_antisense-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule build_genic_annotation:
     input:
@@ -638,15 +646,14 @@ rule build_genic_annotation:
 
 rule get_putative_genic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-cluster-results-{norm}-{direction}-genic.tsv"
+        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-results-{norm}-{direction}-genic.tsv"
     log : "logs/get_putative_genic/get_putative_genic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}}' | sort -k10,10nr | cat <(echo -e "chrom\tstrand\tpeak_start\tpeak_end\tpeak_name\tgenic_start\tgenic_end\tgenic_name\tpeak_lfc\tpeak_significance") - > {output}) &> {log}
         """
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\n$
 
 rule build_intergenic_annotation:
     input:
@@ -658,22 +665,19 @@ rule build_intergenic_annotation:
         genic_up = config["genic-windowsize"]
     log: "logs/build_intergenic_annotation.log"
     shell: """
-        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g <(sort -k1,1 {input.chrsizes})| sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
+        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g <(sort -k1,1 {input.chrsizes}) | sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
         """
-        #(sort -k1,1 {input.chrsizes} > .chrsizes.temp) &> {log}
-        #(rm .chrsizes.temp) &>> {log}
 
 rule get_putative_intergenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-cluster-results-{norm}-{direction}-intergenic.tsv"
+        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-results-{norm}-{direction}-intergenic.tsv"
     log : "logs/get_putative_intergenic/get_putative_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS="\t|:";OFS="\t"}}{{print $1, $7, $2, $3, $4, $9, $10, ".", $5, $6}}'| sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS="\t|:";OFS="\t"}}{{print $1, $7, $2, $3, $4, $9, $10, ".", $5, $6}}'| sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\tregion_start\tregion_end\tregion_name\tpeak_lfc\tpeak_significance") - > {output}) &> {log}
         """
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\tregion_start\tregion_end\tregion_name\tpeak_lfc\tpeak_significance\n
 
 rule get_intra_orfs:
     input:
@@ -703,16 +707,15 @@ rule build_convergent_annotation:
 
 rule get_putative_convergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-cluster-results-{norm}-{direction}-convergent.tsv"
+        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-results-{norm}-{direction}-convergent.tsv"
     log : "logs/get_putative_convergent/get_putative_convergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule build_divergent_annotation:
     input:
@@ -729,25 +732,24 @@ rule build_divergent_annotation:
 
 rule get_putative_divergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-cluster-results-{norm}-{direction}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-cluster-results-{norm}-{direction}-divergent.tsv"
+        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-results-{norm}-{direction}-divergent.tsv"
     log : "logs/get_putative_divergent/get_putative_divergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
-#(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS\n$
 
 rule get_category_bed:
     input:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.tsv"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.bed"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed"
     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $10, $2}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
+        (tail -n +2 {input} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $3, $4, $5, $10, $2}}' | sort -k1,1 -k2,2n  > {output}) &> {log}
         """
 
 rule get_peak_sequences:
