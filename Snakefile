@@ -12,7 +12,7 @@ sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"] == "y"}
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
-validsigroups = [z for z in validgroups if PASSING[z]["spikein"]=="y"]
+validsigroups = set([z for z in [PASSING[x]['group'] for x in PASSING if PASSING[x]['spikein']=="y"] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
 controlgroups = [g for g in config["comparisons"]["libsizenorm"]["controls"] if g in validgroups]
 conditiongroups = [g for g in config["comparisons"]["libsizenorm"]["conditions"] if g in validgroups]
 controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups]
