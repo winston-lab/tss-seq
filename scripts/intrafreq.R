@@ -1,7 +1,7 @@
 library(tidyverse)
 library(gridExtra)
 
-raw = read_table2(snakemake@input[[1]],
+raw = read_tsv(snakemake@input[[1]],
                   col_names = c('chrom', 'orfstart','orfend','orfname','score','strand','nintra'))
 
 p1= ggplot(data = raw, aes(nintra)) +
