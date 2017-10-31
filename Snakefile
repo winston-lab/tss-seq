@@ -78,7 +78,7 @@ rule all:
         expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "narrowPeak"]),
         #classify peaks into categories
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
-        "peakcalling/peakdistances.svg",
+        expand("peakcalling/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
@@ -632,11 +632,11 @@ rule peakstats:
     input:
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
     output:
-        table = "peakcalling/peaknumbers.tsv",
-        size = "peakcalling/peaksizes.svg",
-        dist = "peakcalling/peakdistances.svg"
+        table = "peakcalling/{condition}-v-{control}-peaknumbers.tsv",
+        size = "peakcalling/{condition}-v-{control}-peaksizes.svg",
+        dist = "peakcalling/{condition}-v-{control}-peakdistances.svg"
     params:
-        groups = [g for sublist in zip(controlgroups, conditiongroups) for g in sublist]
+        groups = lambda wildcards: [g for sublist in zip(controlgroups, conditiongroups) for g in sublist] if wildcards.condition=="all" else [wildcards.control, wildcards.condition]
     script:
         "scripts/peakstats.R"
 
