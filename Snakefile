@@ -78,6 +78,7 @@ rule all:
         expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "narrowPeak"]),
         #classify peaks into categories
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        "peakcalling/peakdistances.svg",
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
@@ -554,7 +555,7 @@ rule classify_peaks_antisense:
     output:
         "peakcalling/antisense/{group}-exp-idrpeaks-antisense.tsv"
     shell: """
-        bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $13-$2+$10}}' > {output}
+        bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
         """
 
 rule build_convergent_annotation:
@@ -577,7 +578,7 @@ rule classify_peaks_convergent:
     output:
         "peakcalling/convergent/{group}-exp-idrpeaks-convergent.tsv"
     shell: """
-        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $13-$2+$10}}' > {output}
+        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
         """
 
 rule build_divergent_annotation:
@@ -601,7 +602,7 @@ rule classify_peaks_divergent:
     output:
         "peakcalling/divergent/{group}-exp-idrpeaks-divergent.tsv"
     shell: """
-        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}}$6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12-$2+$10}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+ $10-$13}}' > {output}
+        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}}$6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $12-$2+$10}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$13}}' > {output}
         """
 
 rule build_intergenic_annotation:
@@ -626,6 +627,19 @@ rule classify_peaks_intergenic:
     shell: """
         bedtools intersect -a {input.peaks} -b {input.annotation} -wa > {output}
         """
+
+rule peakstats:
+    input:
+        expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+    output:
+        table = "peakcalling/peaknumbers.tsv",
+        size = "peakcalling/peaksizes.svg",
+        dist = "peakcalling/peakdistances.svg"
+    params:
+        groups = [g for sublist in zip(controlgroups, conditiongroups) for g in sublist]
+    script:
+        "scripts/peakstats.R"
+
 
 rule combine_tss_peaks:
     input:
@@ -667,7 +681,7 @@ rule get_peak_counts:
 rule call_de_peaks:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
-        sicounts = lambda wildcards: "diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + wildcards.condition + "-v-" + wildcards.control + "-si-peak-counts.tsv" if wildcards.norm=="spikenorm" else "."
+        sicounts = lambda wildcards: "diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + wildcards.condition + "-v-" + wildcards.control + "-si-peak-counts.tsv" if wildcards.norm=="spikenorm" else "diff_exp/" + wildcards.condition + "-v-" + wildcards.control + "/" + wildcards.condition + "-v-" + wildcards.control + "-exp-peak-counts.tsv"
     params:
         samples = lambda wildcards : getsamples(wildcards.control, wildcards.condition),
         groups = lambda wildcards : [PASSING[x]["group"] for x in getsamples(wildcards.control, wildcards.condition)],
