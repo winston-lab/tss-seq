@@ -25,7 +25,7 @@ main = function(intable, pcount, samplelist, outpath){
                 c = cor(df[,i], df[,j], use = "complete.obs")
                 plot = ggplot(data = placeholder, aes(x, y)) +
                         geom_blank() +
-                        annotate("text", x=0.5, y=0.5, label=sprintf("%.2f",round(c,2)), size=7)
+                        annotate("text", x=0.5, y=0.5, label=sprintf("%.2f",round(c,2)), size=7*c)
                 plots[[idx]] = plot
             }
             #top left to bot right diag (density)
@@ -36,7 +36,7 @@ main = function(intable, pcount, samplelist, outpath){
                         scale_y_continuous(breaks=c(0,.5,1)) +
                         scale_x_log10(limit = c(pcount, maxsignal)) +
                         annotate("text", x=sqrt(maxsignal)/2, y=0.5,
-                                 label=bold(unique(subdf$sample)), size=3) 
+                                 label=unique(subdf$sample), size=3, fontface="bold") 
                 plots[[idx]] = plot
             }
             #bottom left (scatter)
