@@ -74,8 +74,10 @@ rule all:
         expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}-exp-idrpeaks.{fmt}", group = validgroups, fmt=["tsv", "bed"]),
-        expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "bed"]),
+        expand("peakcalling/{group}-exp-idrpeaks.{fmt}", group = validgroups, fmt=["tsv", "narrowPeak"]),
+        expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "narrowPeak"]),
+        #classify peaks into categories
+        expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
@@ -501,14 +503,128 @@ rule tss_peaks_idr:
         idr -s {input} --input-file-type narrowPeak --rank q.value -o {output} -l {log} -i {params.idr} --plot --peak-merge-method max
         """
 
-#these are bed files for visualization (lack stranded chromosomes)
-rule tss_peaks_to_bed:
+rule tss_peaks_to_narrowpeak:
     input:
         "peakcalling/{group}-{type}-idrpeaks.tsv"
     output:
-        "peakcalling/{group}-{type}-idrpeaks.bed"
+        "peakcalling/{group}-{type}-idrpeaks.narrowPeak"
     shell: """
-        cut -f1-6 {input} | sed -e 's/-minus//g' -e 's/-plus//g' > {output}
+        awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' {input} | sed -e "s/-minus//g" -e "s/-plus//g" > {output}
+        """
+
+rule build_genic_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        orfs = config["genome"]["orf-annotation"],
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    params:
+        windowsize = config["genic-windowsize"]
+    log : "logs/build_genic_annotation.log"
+    shell: """
+        (python scripts/make_genic_annotation.py -t {input.transcripts} -o {input.orfs} -d {params.windowsize} -g {input.chrsizes} -p {output}) &> {log}
+        """
+
+rule classify_peaks_genic:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "peakcalling/genic/{group}-exp-idrpeaks-genic.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | cut --complement -f11-13,15-17 > {output}
+        """
+
+rule classify_peaks_intragenic:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        orfs = config["genome"]["orf-annotation"],
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "peakcalling/intragenic/{group}-exp-idrpeaks-intragenic.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
+        """
+
+rule classify_peaks_antisense:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        transcripts = config["genome"]["transcripts"]
+    output:
+        "peakcalling/antisense/{group}-exp-idrpeaks-antisense.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $13-$2+$10}}' > {output}
+        """
+
+rule build_convergent_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"
+    params:
+        max_dist = config["max-convergent-dist"]
+    log: "logs/build_convergent_annotation.log"
+    shell: """
+        (awk -v adist={params.max_dist} 'BEGIN{{FS=OFS="\t"}} $6=="+" {{ if(($3-$2)>adist) print $1, $2, $2+adist, $4, $5, "-" ; else print $0 }} $6=="-" {{if (($3-$2)>adist) print $1, $3-adist, $3, $4, $5, "+"; else print $0}}' {input.transcripts} > {output}) &> {log}
+        """
+
+rule classify_peaks_convergent:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "peakcalling/convergent/{group}-exp-idrpeaks-convergent.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $13-$2+$10}}' > {output}
+        """
+
+rule build_divergent_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"
+    params:
+        max_dist = config["max-divergent-dist"]
+    log: "logs/build_divergent_annotation.log"
+    shell: """
+        (bedtools flank -l {params.max_dist} -r 0 -s -i {input.transcripts} -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $3, $4, $5, "-"}} $6=="-"{{print $1, $2, $3, $4, $5, "+"}}' > {output}) &> {log}
+        """
+
+rule classify_peaks_divergent:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
+    output:
+        "peakcalling/divergent/{group}-exp-idrpeaks-divergent.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}}$6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12-$2+$10}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $2+ $10-$13}}' > {output}
+        """
+
+rule build_intergenic_annotation:
+    input:
+        transcripts = config["genome"]["transcripts"],
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
+    params:
+        genic_up = config["genic-windowsize"]
+    log: "logs/build_intergenic_annotation.log"
+    shell: """
+        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g <(sort -k1,1 {input.chrsizes}) | sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
+        """
+
+rule classify_peaks_intergenic:
+    input:
+        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
+    output:
+        "peakcalling/intergenic/{group}-exp-idrpeaks-intergenic.tsv"
+    shell: """
+        bedtools intersect -a {input.peaks} -b {input.annotation} -wa > {output}
         """
 
 rule combine_tss_peaks:
@@ -592,7 +708,7 @@ rule de_peaks_to_bed:
         """
 
 #TODO: add a cat statement to add a header for all 'class' tsv (make sure to check class to bed afterwards)
-rule get_putative_intragenic:
+rule get_de_intragenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         orfs = config["genome"]["orf-annotation"],
@@ -604,7 +720,7 @@ rule get_putative_intragenic:
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr | cat <(echo -e "chrom\tstrand\tpeak_start\tpeak_end\tpeak_name\tORF_start\tORF_end\tORF_name\tpeak_lfc\tpeak_significance\tdist_atg_to_peak") - > {output}) &> {log}
         """
 
-rule get_intragenic_frequency:
+rule get_de_intragenic_frequency:
     input:
         orfs = config["genome"]["orf-annotation"],
         intrabed = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
@@ -614,7 +730,7 @@ rule get_intragenic_frequency:
         bedtools intersect -a {input.orfs} -b {input.intrabed} -c -s > {output}
         """
 
-rule plot_intragenic_frequency:
+rule plot_de_intragenic_frequency:
     input:
         "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
     output:
@@ -622,7 +738,7 @@ rule plot_intragenic_frequency:
     log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
     script: "scripts/intrafreq.R"
 
-rule get_putative_antisense:
+rule get_de_antisense:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         transcripts = config["genome"]["transcripts"]
@@ -633,21 +749,8 @@ rule get_putative_antisense:
         (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
 
-rule build_genic_annotation:
-    input:
-        transcripts = config["genome"]["transcripts"],
-        orfs = config["genome"]["orf-annotation"],
-        chrsizes = config["genome"]["chrsizes"]
-    output:
-        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
-    params:
-        windowsize = config["genic-windowsize"]
-    log : "logs/build_genic_annotation.log"
-    shell: """
-        (python scripts/make_genic_annotation.py -t {input.transcripts} -o {input.orfs} -d {params.windowsize} -g {input.chrsizes} -p {output}) &> {log}
-        """
 
-rule get_putative_genic:
+rule get_de_genic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
@@ -658,20 +761,7 @@ rule get_putative_genic:
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6}}' | sort -k10,10nr | cat <(echo -e "chrom\tstrand\tpeak_start\tpeak_end\tpeak_name\tgenic_start\tgenic_end\tgenic_name\tpeak_lfc\tpeak_significance") - > {output}) &> {log}
         """
 
-rule build_intergenic_annotation:
-    input:
-        transcripts = config["genome"]["transcripts"],
-        chrsizes = config["genome"]["chrsizes"]
-    output:
-        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
-    params:
-        genic_up = config["genic-windowsize"]
-    log: "logs/build_intergenic_annotation.log"
-    shell: """
-        (bedtools slop -s -l {params.genic_up} -r 0 -i {input.transcripts} -g <(sort -k1,1 {input.chrsizes}) | sort -k1,1 -k2,2n | bedtools complement -i stdin -g <(sort -k1,1 {input.chrsizes}) > {output}) &> {log}
-        """
-
-rule get_putative_intergenic:
+rule get_de_intergenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
@@ -696,19 +786,8 @@ rule get_intra_orfs:
         (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -a {params.max_upstr_atgs} -o {output}) &> {log}
         """
 
-rule build_convergent_annotation:
-    input:
-        transcripts = config["genome"]["transcripts"],
-    output:
-        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"
-    params:
-        max_dist = config["max-convergent-dist"]
-    log: "logs/build_convergent_annotation.log"
-    shell: """
-        (awk -v adist={params.max_dist} 'BEGIN{{FS=OFS="\t"}} $6=="+" {{ if(($3-$2)>adist) print $1, $2, $2+adist, $4, $5, "-" ; else print $0 }} $6=="-" {{if (($3-$2)>adist) print $1, $3-adist, $3, $4, $5, "+"; else print $0}}' {input.transcripts} > {output}) &> {log}
-        """
 
-rule get_putative_convergent:
+rule get_de_convergent:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
@@ -720,20 +799,8 @@ rule get_putative_convergent:
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
 
-rule build_divergent_annotation:
-    input:
-        transcripts = config["genome"]["transcripts"],
-        chrsizes = config["genome"]["chrsizes"]
-    output:
-        os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"
-    params:
-        max_dist = config["max-divergent-dist"]
-    log: "logs/build_divergent_annotation.log"
-    shell: """
-        (bedtools flank -l {params.max_dist} -r 0 -s -i {input.transcripts} -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $3, $4, $5, "-"}} $6=="-"{{print $1, $2, $3, $4, $5, "+"}}' > {output}) &> {log}
-        """
 
-rule get_putative_divergent:
+rule get_de_divergent:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
@@ -745,7 +812,7 @@ rule get_putative_divergent:
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS="\t|:";OFS="\t"}} $7=="+"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, ((($2+1)+$3)/2)-$9}} $7=="-"{{print $1, $7, $2, $3, $4, $9, $10, $11, $5, $6, $10-((($2+1)+$3)/2)}}' | sort -k10,10nr | cat <(echo -e "chrom\tpeak_strand\tpeak_start\tpeak_end\tpeak_name\ttranscript_start\ttranscript_end\ttranscript_name\tpeak_lfc\tpeak_significance\tdist_peak_to_senseTSS") - > {output}) &> {log}
         """
 
-rule get_category_bed:
+rule get_de_category_bed:
     input:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv"
     output:
