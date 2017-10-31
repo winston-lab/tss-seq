@@ -86,8 +86,31 @@ main = function(groups, table.out, size.out, dist.out){
                       panel.grid.major = element_line(color="grey80"),
                       panel.grid.minor = element_line(color="grey80"))
     
-    ggsave(size.out, plot = sizehist, width = length(groups)*7, height = 16, units = "cm", limitsize=FALSE)
-    
+    ggsave(size.out, plot = sizehist, width = length(groups)*6, height = 16, units = "cm", limitsize=FALSE)
+
+    intraannodf = intragenicdf %>% select(group, dist = peak.dist.to.ATG) %>% mutate(x = .95*quantile(dist, .995)) %>% group_by(group) %>%
+                #summarize(mode = mlv(dist, bw=100, method='parzen', kernel="gaussian")[['M']][[1]], median = median(dist), max=max(dist), x = first(x), n=n())
+                summarize(median = median(dist), max=max(dist), x = first(x), n=n())
+    intradistplot = ggplot() +
+                    geom_histogram(data = intragenicdf, aes(peak.dist.to.ATG), binwidth=25, fill="#08306b") +
+                    geom_text(data = intraannodf,
+                              aes(x=x, label = paste0("n= ", n, "\nmedian= ",median, "\nmax= ", max)), y=40,
+                              hjust=1, size=3, fontface="bold") +
+                    scale_x_continuous(limits = c(NA, quantile(intragenicdf$peak.dist.to.ATG, .995)),
+                                       name="distance from ATG to intragenic TSS (nt)",
+                                       minor_breaks = scales::pretty_breaks(n=10)) +
+                    scale_y_continuous(name=NULL) +
+                    ggtitle("intragenic transcripts") +
+                    facet_grid(~group) +
+                    theme_light() +
+                    theme(text = element_text(size=12, color="black", face="bold"),
+                          axis.text = element_text(size=10, color="black"),
+                          strip.text = element_text(size=12, color="black", face="bold"),
+                          strip.text.y = element_text(angle=180, hjust=1),
+                          strip.background = element_blank(),
+                          panel.grid.major = element_line(color="grey80"),
+                          panel.grid.minor = element_line(color="grey80"))
+
     asannodf = antisensedf %>% select(group, dist = peak.dist.to.senseTSS) %>% mutate(x = .95*quantile(dist, .995)) %>% group_by(group) %>%
                 #summarize(mode = mlv(dist, bw=100, method='parzen', kernel="gaussian")[['M']][[1]], median = median(dist), max=max(dist), x = first(x), n=n())
                 summarize(median = median(dist), max=max(dist), x = first(x), n=n())
@@ -160,8 +183,8 @@ main = function(groups, table.out, size.out, dist.out){
                           panel.grid.major = element_line(color="grey80"),
                           panel.grid.minor = element_line(color="grey80"))
     
-    p = arrangeGrob(asdistplot, convdistplot, divdistplot, ncol=1)
-    ggsave(dist.out, plot = p, width = length(groups)*7, height=24, units="cm")
+    p = arrangeGrob(intradistplot, asdistplot, convdistplot, divdistplot, ncol=1)
+    ggsave(dist.out, plot = p, width = length(groups)*6, height=24, units="cm")
 }
 
 main(groups = snakemake@params[["groups"]],
