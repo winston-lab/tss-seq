@@ -92,7 +92,7 @@ main = function(groups, table.out, size.out, dist.out){
                 #summarize(mode = mlv(dist, bw=100, method='parzen', kernel="gaussian")[['M']][[1]], median = median(dist), max=max(dist), x = first(x), n=n())
                 summarize(median = median(dist), max=max(dist), x = first(x), n=n())
     intradistplot = ggplot() +
-                    geom_histogram(data = intragenicdf, aes(peak.dist.to.ATG), binwidth=25, fill="#08306b") +
+                    geom_histogram(data = intragenicdf, aes(peak.dist.to.ATG), binwidth=25, fill="#3f007d") +
                     geom_text(data = intraannodf,
                               aes(x=x, label = paste0("n= ", n, "\nmedian= ",median, "\nmax= ", max)), y=40,
                               hjust=1, size=3, fontface="bold") +
@@ -116,7 +116,7 @@ main = function(groups, table.out, size.out, dist.out){
                 summarize(median = median(dist), max=max(dist), x = first(x), n=n())
     
     asdistplot = ggplot() +
-                    geom_histogram(data = antisensedf, aes(peak.dist.to.senseTSS), binwidth=25, fill="#08306b") +
+                    geom_histogram(data = antisensedf, aes(peak.dist.to.senseTSS), binwidth=25, fill="#3f007d") +
                     geom_text(data = asannodf,
                               aes(x=x, label = paste0("n= ", n, "\nmedian= ",median, "\nmax= ", max)), y=60,
                               hjust=1, size=3, fontface="bold") +
@@ -140,7 +140,7 @@ main = function(groups, table.out, size.out, dist.out){
                 summarize(median = median(dist), max=max(dist), x = first(x), n=n())
     
     convdistplot = ggplot() +
-                    geom_histogram(data = convergentdf, aes(peak.dist.to.senseTSS), binwidth=10, fill="#08306b") +
+                    geom_histogram(data = convergentdf, aes(peak.dist.to.senseTSS), binwidth=10, fill="#3f007d") +
                     geom_text(data = convannodf,
                               aes(x=x, label = paste0("n= ", n, "\nmedian= ",median, "\nmax= ", max)), y=35,
                               hjust=1, size=3, fontface="bold") +
@@ -164,7 +164,7 @@ main = function(groups, table.out, size.out, dist.out){
                 summarize(median = median(dist), max=max(dist), x = first(x), n=n())
     
     divdistplot = ggplot() +
-                    geom_histogram(data = divergentdf, aes(peak.dist.to.senseTSS), binwidth=10, fill="#08306b") +
+                    geom_histogram(data = divergentdf, aes(peak.dist.to.senseTSS), binwidth=10, fill="#3f007d") +
                     geom_text(data = divannodf,
                               aes(x=x, label = paste0("n= ", n, "\nmedian= ",median, "\nmax= ", max)), y=40,
                               hjust=1, size=3, fontface="bold") +

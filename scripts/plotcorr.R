@@ -36,7 +36,7 @@ main = function(intable, pcount, samplelist, outpath){
                         scale_y_continuous(breaks=c(0,.5,1)) +
                         scale_x_log10(limit = c(pcount, maxsignal)) +
                         annotate("text", x=sqrt(maxsignal)/2, y=0.5,
-                                 label=unique(subdf$sample), size=3) 
+                                 label=bold(unique(subdf$sample)), size=3) 
                 plots[[idx]] = plot
             }
             #bottom left (scatter)
@@ -64,7 +64,7 @@ main = function(intable, pcount, samplelist, outpath){
                     theme_light() +
                     theme(axis.text = element_text(size=9),
                           strip.background = element_blank(),
-                          strip.text = element_text(size=9, color="black"),
+                          strip.text = element_text(size=9, color="black", face="bold"),
                           strip.text.y = element_text(angle=180, hjust=1),
                           strip.placement="outside",
                           strip.switch.pad.grid = unit(0, "points"),
