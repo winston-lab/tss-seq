@@ -13,11 +13,6 @@ get_countdata = function(path, samples){
     return(df)
 }
 
-extract_deseq_results = function(dds, alpha){
-    results(dds, alpha=alpha) %>% as_data_frame() %>%
-        rownames_to_column(var="name") %>% arrange(padj) %>% return()
-}
-
 mean_sd_plot = function(df, ymax){
     ggplot(data = df, aes(x=rank, y=sd)) +
         geom_hex(aes(fill=log10(..count..), color=log10(..count..)), bins=40, size=0) +
@@ -63,15 +58,22 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     }
     dds = dds %>% estimateDispersions() %>% nbinomWaldTest()
     
-    #extract DESeq2 results and write to file
-    resdf = results(dds, alpha=alpha) %>% as_data_frame() %>%
-                rownames_to_column(var="name") %>% arrange(padj) 
-    write_tsv(resdf, path=results, col_names=TRUE)
-    
     #extract normalized counts and write to file
     ncounts = dds %>% counts(normalized=TRUE) %>% as.data.frame() %>%
-                rownames_to_column(var="name") %>% as_tibble()
+                rownames_to_column(var='name') %>% as_tibble()
     write_tsv(ncounts, path=normcounts, col_names=TRUE)
+    
+    ncountsavg = ncounts %>% gather(sample, value, -name) %>%
+                    mutate(group = if_else(sample %in% samples[groups==condition], condition, control)) %>% 
+                    group_by(name, group) %>% summarise(mean = mean(value)) %>% spread(group, mean) %>% 
+                    ungroup()
+    
+    #extract DESeq2 results and write to file
+    resdf = results(dds, alpha=alpha) %>% as_data_frame() %>%
+                rownames_to_column(var='name') %>% arrange(padj) %>% 
+                full_join(ncountsavg, by='name') %>% mutate_at(c('pvalue','padj'), funs(-log10(.))) %>% 
+                mutate_if(is.numeric, round, 3) %>% dplyr::rename(logpval=pvalue, logpadj=padj)
+    write_tsv(resdf, path=results, col_names=TRUE)
     
     #plot sd vs. mean for unshrunken (log2) counts
     ntd = dds %>% normTransform() %>% assay() %>% as.data.frame() %>%
@@ -111,8 +113,8 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
                 theme(text = element_text(size=8))
     
     #MA plot for differential expression
-    resdf.sig = resdf %>% filter(padj<alpha)
-    resdf.nonsig = resdf %>% filter(padj>=alpha)
+    resdf.sig = resdf %>% filter(logpadj< -log10(alpha))
+    resdf.nonsig = resdf %>% filter(logpadj>= -log10(alpha))
     maplot = ggplot() +
                 geom_hline(yintercept = 0, color="black", linetype="dashed") +
                 geom_point(data = resdf.nonsig, aes(x=baseMean, y=log2FoldChange),
@@ -125,9 +127,9 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
                 theme(text = element_text(size=8))
     
     volcano = ggplot() +
-                geom_point(data = resdf.nonsig, aes(x=log2FoldChange, y = -log10(padj)),
+                geom_point(data = resdf.nonsig, aes(x=log2FoldChange, y = logpadj),
                            alpha=0.3, stroke=0, size=0.7) +
-                geom_point(data = resdf.sig, aes(x=log2FoldChange, y = -log10(padj)),
+                geom_point(data = resdf.sig, aes(x=log2FoldChange, y = logpadj),
                            alpha=0.3, stroke=0, size=0.7) +
                 geom_hline(yintercept = -log10(alpha), color="red", linetype="dashed") +
                 xlab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
