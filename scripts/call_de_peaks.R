@@ -113,8 +113,8 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
                 theme(text = element_text(size=8))
     
     #MA plot for differential expression
-    resdf.sig = resdf %>% filter(logpadj< -log10(alpha))
-    resdf.nonsig = resdf %>% filter(logpadj>= -log10(alpha))
+    resdf.sig = resdf %>% filter(logpadj> -log10(alpha))
+    resdf.nonsig = resdf %>% filter(logpadj<= -log10(alpha))
     maplot = ggplot() +
                 geom_hline(yintercept = 0, color="black", linetype="dashed") +
                 geom_point(data = resdf.nonsig, aes(x=baseMean, y=log2FoldChange),
