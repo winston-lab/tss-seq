@@ -61,20 +61,11 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     #extract normalized counts and write to file
     ncounts = dds %>% counts(normalized=TRUE) %>% as.data.frame() %>%
                 rownames_to_column(var='name') %>% as_tibble()
-    write_tsv(ncounts, path=normcounts, col_names=TRUE)
-    
     ncountsavg = ncounts %>% gather(sample, value, -name) %>%
                     mutate(group = if_else(sample %in% samples[groups==condition], condition, control)) %>% 
                     group_by(name, group) %>% summarise(mean = mean(value)) %>% spread(group, mean) %>% 
                     ungroup()
-    
-    #extract DESeq2 results and write to file
-    resdf = results(dds, alpha=alpha) %>% as_data_frame() %>%
-                rownames_to_column(var='name') %>% arrange(padj) %>% 
-                full_join(ncountsavg, by='name') %>% mutate_at(c('pvalue','padj'), funs(-log10(.))) %>% 
-                mutate_if(is.numeric, round, 3) %>% dplyr::rename(logpval=pvalue, logpadj=padj)
-    write_tsv(resdf, path=results, col_names=TRUE)
-    
+
     #plot sd vs. mean for unshrunken (log2) counts
     ntd = dds %>% normTransform() %>% assay() %>% as.data.frame() %>%
             rownames_to_column(var="name") %>% as_tibble() %>%
@@ -84,19 +75,42 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     maxsd = max(ntd$sd)*1.01
     ntdplot = mean_sd_plot(ntd, maxsd) + 
                 ggtitle(expression(paste("raw ", log[2]("counts"))))
-        
+
     #extract rlog transformed counts and write to file
-    rld = dds %>% rlog(blind=FALSE) %>% assay() %>% as.data.frame() %>%
+    rlogcounts = dds %>% rlog(blind=FALSE) %>% assay() %>% as.data.frame() %>%
             rownames_to_column(var="name") %>% as_tibble()
-    write_tsv(rld, path=rldcounts, col_names=TRUE)
-    
     #plot sd vs. mean for rlog transformed counts
-    rld = rld %>% gather(sample, signal, -name) %>% group_by(name) %>%
+    rld = rlogcounts %>% gather(sample, signal, -name) %>% group_by(name) %>%
             summarise(mean=mean(signal), sd=sd(signal)) %>%
             mutate(rank = min_rank(desc(mean)))
     rldplot = mean_sd_plot(rld, maxsd) +
                 ggtitle(expression(paste("regularized ", log[2]("counts"))))
+
+    #extract DESeq2 results and write to file
+    resdf = results(dds, alpha=alpha) %>% as_data_frame() %>%
+                rownames_to_column(var='name') %>% arrange(padj) %>% 
+                inner_join(ncountsavg, by='name') %>% 
+                rownames_to_column(var="peak_name") %>% mutate_at(vars(peak_name), funs(paste0("peak_", .))) %>%
+                mutate_at(c('pvalue','padj'), funs(-log10(.))) %>% 
+                mutate_if(is.numeric, round, 3) %>% dplyr::rename(logpval=pvalue, logpadj=padj, meanExpr=baseMean)
+
+    ncounts = resdf %>% select(name, peak_name) %>% inner_join(ncounts, by='name') %>%
+                separate(name, into=c('chrom','strand','start','end'), sep="-") %>%
+                mutate_at(vars(strand), funs(if_else(.=="minus", "-", "+"))) %>%
+                mutate_if(is.numeric, round, 3) %>%
+                write_tsv(path=normcounts, col_names=TRUE)
     
+    rlogcounts = resdf %>% select(name, peak_name) %>% inner_join(rlogcounts, by='name') %>%
+                    separate(name, into=c('chrom','strand','start','end'), sep="-") %>%
+                    mutate_at(vars(strand), funs(if_else(.=="minus", "-", "+"))) %>%
+                    mutate_if(is.numeric, round, 3) %>%
+                    write_tsv(path=rldcounts, col_names=TRUE)
+
+    resdf = resdf %>% separate(name, into=c('chrom','strand','start','end'), sep="-") %>%
+                mutate_at(vars(strand), funs(if_else(.=="minus", "-", "+"))) %>%
+                write_tsv(path=results, col_names=TRUE)
+    
+            
     #plot library size vs sizefactor
     sfdf = dds %>% sizeFactors() %>% as_tibble() %>%
             rownames_to_column(var="sample") %>% dplyr::rename(sizefactor=value) %>%
@@ -117,9 +131,9 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     resdf.nonsig = resdf %>% filter(logpadj<= -log10(alpha))
     maplot = ggplot() +
                 geom_hline(yintercept = 0, color="black", linetype="dashed") +
-                geom_point(data = resdf.nonsig, aes(x=baseMean, y=log2FoldChange),
+                geom_point(data = resdf.nonsig, aes(x=meanExpr, y=log2FoldChange),
                            color="black", alpha=0.3, stroke=0, size=0.7) +
-                geom_point(data = resdf.sig, aes(x=baseMean, y=log2FoldChange),
+                geom_point(data = resdf.sig, aes(x=meanExpr, y=log2FoldChange),
                            color="red", alpha=0.3, stroke=0, size=0.7) +
                 scale_x_log10(name="mean of normalized counts") +
                 ylab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
