@@ -109,8 +109,8 @@ call_de_peaks:
     mem: 10000
 
 summarise_de_results:
-    time: 20
-    mem: 6000
+    time: 15 
+    mem: 4000
 
 # get_intra_orfs:
 #     time : 719
