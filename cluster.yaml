@@ -1,6 +1,6 @@
 __default__:
     queue : "short"
-    time : 710
+    time : 60 
     n : 1
     mem : 2000
     name : "{rule}.{wildcards}"
@@ -52,6 +52,10 @@ get_coverage:
     time : 60
     mem : 2000
 
+normalize:
+    time : 60
+    mem : 2000
+
 make_stranded_bedgraph:
     time: 10
     mem: 1000
@@ -59,43 +63,28 @@ make_stranded_bedgraph:
 bg_to_bw:
     time: 10
     mem: 1000
-
-normalize:
-    time : 60
-    mem : 2000
  
 deeptools_matrix:
     time : 60
-    n : 1
     mem : 2000
 
 gzip_deeptools_matrix:
     time : 20
-    n : 1
+    mem : 2000
+
+melt_matrix:
+    time : 20
+    mem : 2000
+
+cat_matrices:
+    time : 20
     mem : 2000
 
 r_datavis:
     time : 30
     mem : 10000
 
-get_intra_orfs:
-    time : 719
-    mem : 20000
-
-meme_chip:
-    time : 719
-    mem : 10000
-    n : 2 #this is hardcoded in the snakefile to run with two cores
-
-class_v_genic:
-    time : 360
-    mem : 10000
-
 union_bedgraph:
-    time: 30
-    mem: 4000
-
-union_bedgraph_si_counts:
     time: 30
     mem: 4000
 
@@ -103,14 +92,44 @@ plotcorrelations:
     time : 15
     mem : 6000
 
-call_de_bases:
-    time : 60 
-    mem : 6000
+call_tss_peaks:
+    time: 20
+    mem: 4000
 
-call_de_clusters:
-    time : 15 
-    mem : 4000
+tss_peaks_idr:
+    time: 30
+    mem: 6000
 
-call_de_genic:
-    time : 15 
-    mem : 4000
+peakstats:
+    time: 30
+    mem: 10000
+
+call_de_peaks:
+    time: 30
+    mem: 10000
+
+summarise_de_results:
+    time: 20
+    mem: 6000
+
+# get_intra_orfs:
+#     time : 719
+#     mem : 20000
+
+# meme_chip:
+#     time : 719
+#     mem : 10000
+#     n : 2 #this is hardcoded in the snakefile to run with two cores
+
+# class_v_genic:
+#     time : 360
+#     mem : 10000
+
+
+
+
+# get_de_intragenic_frequency
+# plot_de_intragenic_frequency
+# get_peak_sequences
+# meme_chip
+# class_v_genic

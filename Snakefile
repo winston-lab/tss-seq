@@ -20,35 +20,27 @@ conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"
 
 CATEGORIES = ["genic", "intragenic", "intergenic", "antisense", "convergent", "divergent"]
 
-localrules: all,
+localrules:
+    all,
     bowtie2_build,
-    get_si_pct,
-    cat_si_pct,
-    plot_si_pct,
-    make_stranded_annotations,
-    map_counts_to_peaks,
-    get_peak_counts,
-    de_clusters_to_bed,
-    extract_base_cluster_dist,
-    map_counts_to_genic,
-    get_genic_counts,
-    get_putative_intragenic,
-    get_intragenic_frequency,
-    # plot_intragenic_frequency,
-    get_putative_antisense,
-    build_genic_annotation,
-    get_putative_genic,
-    build_intergenic_annotation,
-    get_putative_intergenic,
-    # get_intra_orfs,
-    build_convergent_annotation,
-    get_putative_convergent,
-    build_divergent_annotation,
-    get_putative_divergent,
-    get_category_bed,
-    # get_peak_sequences,
-    # meme_chip,
-    # class_v_genic,
+    get_si_pct, cat_si_pct, plot_si_pct,
+    make_stranded_genome, make_stranded_annotations,
+    tss_peaks_to_narrowpeak,
+    build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
+    classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
+    classify_peaks_convergent, classify_peaks_divergent, classify_peaks_intergenic,
+    combine_tss_peaks, map_counts_to_peaks, get_peak_counts,
+    separate_de_peaks, de_peaks_to_bed,
+    get_de_genic, get_de_intragenic, get_de_antisense,
+    get_de_convergent, get_de_divergent, get_de_intergenic,
+    # get_de_intragenic_frequency
+    # plot_de_intragenic_frequency
+    # get_intra_orfs
+    separate_sig_de, get_de_category_bed,
+    # get_peak_sequences
+    # meme_chip
+    # class_v_genic
+
 rule all:
     input:
         #FastQC
