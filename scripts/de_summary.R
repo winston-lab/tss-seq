@@ -124,10 +124,10 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 geom_text(data = countdf, aes(x=(xmin+xmax)/2, y=(ymin+ymax)/2, label=n),
                           size=4, color="black", fontface="bold") + 
                 geom_text(data = (countdf %>% summarise(x = (max(xmax)+min(xmin))/2)),
-                            aes(x=x, label=class), y=1.04, angle=20, hjust=.2, size=4, fontface="bold") +
+                            aes(x=x, label=class), y=1.04, angle=25, hjust=.2, size=4, fontface="bold") +
                 scale_fill_brewer(palette = "Set1") +
-                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.04), expand=c(0,0)) +
-                scale_y_continuous(limits = c(NA, 1.1)) +
+                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.05), expand=c(0,0)) +
+                scale_y_continuous(limits = c(NA, 1.15)) +
                 guides(fill=guide_legend(reverse=TRUE)) +
                 theme_void() +
                 ggtitle(paste("TSS-seq differential expression:", cond, "vs.", ctrl),
