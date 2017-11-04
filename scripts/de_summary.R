@@ -91,7 +91,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                                    box.padding = unit(0.1, "lines"),
                                    nudge_x = 0.3,
                                    size=1.5) +
-                ylab(expression(bold(log[10] ~ p[adj]))) +
+                ylab(expression(bold(-log[10] ~ p[adj]))) +
                 xlab(substitute(bold(log[bold(2)]~frac(cond,cont)), list(cond=cond, cont=ctrl))) +
                 facet_wrap(~type) +
                 ggtitle(paste("TSS-seq volcano plots:", cond, "vs.", ctrl),
@@ -124,9 +124,9 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 geom_text(data = countdf, aes(x=(xmin+xmax)/2, y=(ymin+ymax)/2, label=n),
                           size=4, color="black", fontface="bold") + 
                 geom_text(data = (countdf %>% summarise(x = (max(xmax)+min(xmin))/2)),
-                            aes(x=x, label=class), y=1.04, angle=15, hjust=.2, size=4, fontface="bold") +
+                            aes(x=x, label=class), y=1.04, angle=20, hjust=.2, size=4, fontface="bold") +
                 scale_fill_brewer(palette = "Set1") +
-                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.04)) +
+                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.04), expand=c(0,0)) +
                 scale_y_continuous(limits = c(NA, 1.1)) +
                 guides(fill=guide_legend(reverse=TRUE)) +
                 theme_void() +
@@ -134,12 +134,12 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                         subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ .(lfc) ~ "@ FDR" ~ .(alpha)))  +
                 theme(legend.text = element_text(size=12, face="bold", color="black"),
                       legend.title = element_blank(),
-                      legend.position = c(.94, .5),
+                      legend.position = c(.96, .5),
                       legend.justification = "left",
                       legend.key.size = unit(1, "cm"),
-                      plot.margin = unit(c(.5, 3, 0, 0), "cm"),
-                      plot.title = element_text(size=12, face="bold", color="black", hjust=0.16),
-                      plot.subtitle = element_text(size=10, hjust=0.08))
+                      plot.margin = unit(c(.5, 3.25, 0, 0.25), "cm"),
+                      plot.title = element_text(size=12, face="bold", color="black"),
+                      plot.subtitle = element_text(size=10))
     
     ggsave(out.summary, gsummary, height=10, width=20, units="cm")
 }
