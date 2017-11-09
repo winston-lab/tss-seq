@@ -26,7 +26,7 @@ main = function(intable, pcount, samplelist, outpath){
                         annotate("text", x=0.5, y=0.5, label=sprintf("%.2f",round(c,2)), size=10*c) +
                         scale_x_continuous(breaks=NULL) +
                         scale_y_continuous(breaks=NULL) +
-                        scale_fill_distiller(palette="Blues", limits = c(mincor,1))
+                        scale_fill_distiller(palette="Blues", limits = c(mincor,1), direction=1)
                 plots[[idx]] = plot
             }
             #top left to bot right diag (density)
