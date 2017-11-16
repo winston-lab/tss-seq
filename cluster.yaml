@@ -8,34 +8,34 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_raw:
-    time : 60
+    time : 15 
     n : 1
-    mem : 2000
+    mem : 4000
 
 remove_adapter:
-    time : 180
-    mem : 1000
+    time : 90 
+    mem : 2000
 
 remove_3p_barcode_and_qual_trim:
-    time : 180
-    mem : 1000
+    time : 30 
+    mem : 2000
 
 remove_molec_barcode:
-    time : 180
+    time : 45 
     n : 2
     mem : 2000
 
 fastqc_cleaned:
-    time : 60
+    time : 10 
     n : 1
-    mem : 2000
+    mem : 4000
 
 bowtie2_build:
     time : 60
     mem : 2000
 
 align:
-    time : 240
+    time : 120
     n : 4
     mem : 8000
 
