@@ -4,14 +4,15 @@ import argparse
 import pandas as pd
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d
-from scipy.signal import argrelmax, gaussian
+# from scipy.signal import argrelmax, gaussian
+from scipy.signal import argrelextrema, gaussian
 from scipy.stats import poisson
 from statsmodels.sandbox.stats.multicomp import multipletests
 import pyBigWig as pybw
 
 parser = argparse.ArgumentParser(description='Smooth bigwig file with Gaussian kernel of given bandwidth.')
 parser.add_argument('-i', dest = 'infiles', type=str, nargs='+', help='input BigWig files')
-parser.add_argument('-b', dest = 'bandwidth', type=int, default = 15, help='Gaussian kernel bandwidth (standard deviation) for pilot density estimation')
+parser.add_argument('-b', dest = 'bandwidth', type=int, default = 10, help='Gaussian kernel bandwidth (standard deviation) for pilot density estimation')
 parser.add_argument('-o', dest = 'out', type=str, default=".", help="output files destination")
 parser.add_argument('-n', dest = 'names', type=str, nargs='+', help='sample names, in order of input bigwigs')
 parser.add_argument('-w', dest = 'wwidth', type=int, default=2000, help='width of window for local background')
@@ -34,7 +35,7 @@ def gkernel(s, width, prob, pos, size):
     out = np.multiply(out, prob)
     return out
 
-def hillclimb(grad, locmaxidx,  pos):
+def hillclimb(grad, locmaxidx, pos):
     if pos in locmaxidx:
         return pos
     elif grad[pos] > 0: #assign nearest local max to the right
@@ -45,7 +46,7 @@ def hillclimb(grad, locmaxidx,  pos):
     else: #assign nearest local max to the left
         if pos-1 in locmaxidx:
             return pos-1
-        idx =  max(np.searchsorted(locmaxidx, pos)-1, 0)
+        idx = max(np.searchsorted(locmaxidx, pos)-1, 0)
         return locmaxidx[idx]
 
 def poistest(series, rr, ll, ws):
@@ -66,17 +67,15 @@ def shorth(array, frac):
         return (sx[0], sx[-1]+1)
     diffs = sx[width:] - sx[:len(sx)-width]
     q = np.where(diffs==np.min(diffs))[0]
-
     if len(q)>1:
-        q = np.round((np.mean(q))).astype('int')
+        q = np.round((np.mean(q))).astype('uint32')
     q = np.asscalar(q)
-
     return (sx[q],sx[q+width]+1)
 
 def trim(series, rr, frac):
     data = rr[series.start:series.end]
-    idx = data.nonzero()
-    counts = data[idx].astype('int')
+    idx = data.nonzero()[0]
+    counts = data[idx].astype('uint32')
     positions = np.add(idx, series.start)
     onedim = np.repeat(positions, counts)
     return shorth(onedim, frac)
@@ -129,7 +128,26 @@ for rep, bw in enumerate(inbw):
             outbw['minus'].addEntries(chrom.replace("-minus", ""), 0, values=smoothed, span=1, step=1)
 
         # assign datapoints to nearest local maximum in the direction of positive derivative
-        locmaxidx = argrelmax(smoothed)[0]
+        locmaxidx = argrelextrema(smoothed, np.greater_equal, order=1)[0]
+        locmaxidx = locmaxidx[np.where(smoothed[locmaxidx] != 0)]
+
+        #deal with flat local maxima (keep the value closest to the middle)
+        flatmaxima = locmaxidx[np.where(np.ediff1d(locmaxidx)==1)]
+        flatmaxima = np.sort(np.append(flatmaxima, flatmaxima+1))
+        run = []
+        groupedflatmaxima = [run]
+        expect=None
+        for v in flatmaxima:
+            if (v==expect) or (expect is None):
+                run.append(v)
+            else:
+                run = [v]
+                groupedflatmaxima.append(run)
+            expect = v+1
+        keepflatmaxima = np.array([np.median(i).astype('int') for i in groupedflatmaxima])
+        dropflatmaxima = flatmaxima[np.in1d(flatmaxima, keepflatmaxima, invert=True)]
+        locmaxidx = locmaxidx[np.in1d(locmaxidx, dropflatmaxima, invert=True)]
+
         #check for empty chromosome
         if not locmaxidx.size:
             print("no peaks on chromosome: " + chrom)
@@ -142,10 +160,10 @@ for rep, bw in enumerate(inbw):
         grouped = pd.DataFrame({'cluster':clusters, 'position':nzidx}).groupby('cluster')
         clust_starts = grouped.apply(lambda g: min(g.position))
         clust_ends = grouped.apply(lambda g: max(g.position)+1)
+        chromdf = pd.DataFrame({'chrom':chrom, 'start':clust_starts, 'end':clust_ends})
 
         #trim cluster ends to the shorth
-        chromdf = pd.DataFrame({'chrom':chrom, 'start':clust_starts, 'end':clust_ends})
-        chromdf[['start','end']] = chromdf.apply(trim, rr=raw, frac=args.frac, axis=1).apply(pd.Series)
+        chromdf[['start','end']] = chromdf.apply(trim, rr=raw, frac=args.frac, axis=1).apply(pd.Series, dtype=np.uint32)
 
         chromdf['peak'] = chromdf.apply(lambda x: np.argmax(raw[x.start:x.end]), axis=1)
         chromdf['counts'] = chromdf.apply(lambda x: np.sum(raw[x.start:x.end]), axis=1)
