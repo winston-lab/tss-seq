@@ -104,6 +104,12 @@ for rep, bw in enumerate(inbw):
         #import data
         raw = bw.values(chrom, 0, size, numpy=True)
         nzidx = raw.nonzero()[0] #indices of nonzero datapoints
+
+        #check for empty chromosome
+        if not nzidx.size:
+            print("no coverage on chromosome: " + chrom)
+            continue
+
         normalized = np.divide(raw, raw.sum()) #this can be interpreted as the probability at each base
 
         #stage one: get pilot densities
@@ -147,11 +153,6 @@ for rep, bw in enumerate(inbw):
         keepflatmaxima = np.array([np.median(i).astype('int') for i in groupedflatmaxima])
         dropflatmaxima = flatmaxima[np.in1d(flatmaxima, keepflatmaxima, invert=True)]
         locmaxidx = locmaxidx[np.in1d(locmaxidx, dropflatmaxima, invert=True)]
-
-        #check for empty chromosome
-        if not locmaxidx.size:
-            print("no peaks on chromosome: " + chrom)
-            break
 
         grad = np.gradient(smoothed)
         vhillclimb = np.vectorize(hillclimb, excluded=['grad', 'locmaxidx'])
