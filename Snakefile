@@ -617,11 +617,14 @@ rule build_intergenic_annotation:
 rule classify_peaks_intergenic:
     input:
         peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
-        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"
+        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
+        transcripts = config["genome"]["transcripts"],
+        orfs = config["genome"]["orf-annotation"],
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
         "peakcalling/intergenic/{group}-exp-idrpeaks-intergenic.tsv"
     shell: """
-        bedtools intersect -a {input.peaks} -b {input.annotation} -wa > {output}
+        bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wa > {output}
         """
 
 rule peakstats:
@@ -771,12 +774,15 @@ rule get_de_intergenic:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
+        transcripts = config["genome"]["transcripts"],
+        orfs = config["genome"]["orf-annotation"],
+        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
         totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
     output:
         "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv"
     log : "logs/get_de_intergenic/get_de_intergenic-{condition}-v-{control}-{norm}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $4, $8, $9}}$6=="-"{{print $4, $8, $9}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tregion_start\tregion_end") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $4, $8, $9}}$6=="-"{{print $4, $8, $9}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tregion_start\tregion_end") - > {output}) &> {log}
         """
 
 rule get_intra_orfs:

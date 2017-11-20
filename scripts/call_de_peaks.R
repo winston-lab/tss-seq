@@ -38,7 +38,7 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
     #import data 
     countdata = get_countdata(intable, samples)
     coldata = data.frame(condition=factor(groups,
-                                          levels = unique(groups)),
+                                          levels = c(control, condition)),
                          row.names=names(countdata))
     #run DESeq2 
     dds = DESeqDataSetFromMatrix(countData = countdata,

@@ -126,7 +126,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 geom_text(data = (countdf %>% summarise(x = (max(xmax)+min(xmin))/2)),
                             aes(x=x, label=class), y=1.04, angle=30, hjust=.1, size=4, fontface="bold") +
                 scale_fill_brewer(palette = "Set1") +
-                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.05), expand=c(0,0)) +
+                scale_x_continuous(limits = c(NA, max(countdf$xmax)*1.08), expand=c(0,0)) +
                 scale_y_continuous(limits = c(NA, 1.15)) +
                 guides(fill=guide_legend(reverse=TRUE)) +
                 theme_void() +
