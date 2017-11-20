@@ -34,7 +34,7 @@ reverselog_trans <- function(base = exp(1)) {
               domain = c(1e-100, Inf))
 }
 
-call_de_bases = function(intable, norm, sitable, samples, groups, condition, control, alpha, results, normcounts, rldcounts, qcplots){
+call_de_bases = function(intable, norm, sitable, samples, groups, condition, control, alpha, lfc, results, normcounts, rldcounts, qcplots){
     #import data 
     countdata = get_countdata(intable, samples)
     coldata = data.frame(condition=factor(groups,
@@ -87,7 +87,7 @@ call_de_bases = function(intable, norm, sitable, samples, groups, condition, con
                 ggtitle(expression(paste("regularized ", log[2]("counts"))))
 
     #extract DESeq2 results and write to file
-    resdf = results(dds, alpha=alpha) %>% as_data_frame() %>%
+    resdf = results(dds, alpha=alpha, lfcThreshold=lfc, altHypothesis="greaterAbs") %>% as_data_frame() %>%
                 rownames_to_column(var='name') %>% arrange(padj) %>% 
                 inner_join(ncountsavg, by='name') %>% 
                 rownames_to_column(var="peak_name") %>% mutate_at(vars(peak_name), funs(paste0("peak_", .))) %>%
@@ -166,6 +166,7 @@ qc = call_de_bases(intable = snakemake@input[["expcounts"]],
                    condition = snakemake@wildcards[["condition"]],
                    control = snakemake@wildcards[["control"]],
                    alpha = snakemake@params[["alpha"]],
+                   lfc = snakemake@params[["lfc"]],
                    results = snakemake@output[["results"]],
                    normcounts = snakemake@output[["normcounts"]],
                    rldcounts = snakemake@output[["rldcounts"]],

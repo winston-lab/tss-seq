@@ -683,7 +683,8 @@ rule call_de_peaks:
     params:
         samples = lambda wildcards : getsamples(wildcards.control, wildcards.condition),
         groups = lambda wildcards : [PASSING[x]["group"] for x in getsamples(wildcards.control, wildcards.condition)],
-        alpha = config["deseq"]["fdr"]
+        alpha = config["deseq"]["fdr"],
+        lfc = log2(config["deseq"]["fold-change-threshold"])
     output:
         results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
         #need to write out norm counts here or just in the total qc?
