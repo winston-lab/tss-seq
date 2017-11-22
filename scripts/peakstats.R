@@ -5,6 +5,7 @@ library(gridExtra)
     
 main = function(groups, table.out, size.out, dist.out){
     dflist = list()
+    groups = unique(groups)
     for (i in 1:length(groups)){
         g = groups[i]
         dflist[[g]][['all']] = read_tsv(paste0('peakcalling/', groups[i], '-exp-idrpeaks.narrowPeak'), col_names=FALSE) %>%
