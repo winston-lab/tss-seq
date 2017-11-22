@@ -3,9 +3,7 @@ library(forcats)
 library(ggrepel)
 library(ggpmisc)
 
-alpha = snakemake@params[["alpha"]]
-
-import = function(path){
+import = function(path, alpha){
     read_tsv(path) %>%
     mutate(sig = if_else(logpadj > -log10(alpha), TRUE, FALSE)) %>% 
     return()
@@ -22,13 +20,13 @@ bin = function(df, type){
 }
 
 main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.summary){
-    all = import(in.all) 
-    genic = import(in.genic)
-    intra = import(in.intra)
-    as = import(in.as)
-    conv = import(in.conv)
-    div = import(in.div)
-    inter = import(in.inter)
+    all = import(in.all, alpha) 
+    genic = import(in.genic, alpha)
+    intra = import(in.intra, alpha)
+    as = import(in.as, alpha)
+    conv = import(in.conv, alpha)
+    div = import(in.div, alpha)
+    inter = import(in.inter, alpha)
     
     cleandf = clean(all, 'peak_name', 'all') %>% bind_rows(clean(genic, 'transcript_name', 'genic')) %>% 
                 bind_rows(clean(intra, 'ORF_name', 'intragenic')) %>% bind_rows(clean(as, 'transcript_name', 'antisense')) %>% 
