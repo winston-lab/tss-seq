@@ -23,7 +23,7 @@ plotclass = function(genicdf, classdf, condition, control, ttype){
                                    "(p =", signif(lfc.fit$p.value[2],3), ")")) +
             #stat_bin_hex(geom="point", aes(color=log10(..count..)), binwidth=c(0.1,0.1)) +
             #scale_color_viridis(option="inferno")
-            stat_dens2d_filter(geom="text_repel", aes(label=feat_name), keep.fraction = 0.02, size=1) +
+            stat_dens2d_filter(geom="text_repel", aes(label=feat_name), keep.number = 10, size=1) +
             theme_bw() +
             theme(axis.text = element_text(size=10),
                   axis.title = element_text(size=12, face="bold"),
@@ -35,7 +35,7 @@ plotclass = function(genicdf, classdf, condition, control, ttype){
             geom_point(shape=16, alpha=0.6, size=0.5) +
             #stat_bin_hex(geom="point", aes(color=log10(..count..)), binwidth=c(0.8,0.8)) +
             #scale_color_viridis(option="inferno") +
-            stat_dens2d_filter(geom="text_repel", aes(label=feat_name), keep.fraction = 0.01, size=1) + 
+            stat_dens2d_filter(geom="text_repel", aes(label=feat_name), keep.number = 10, size=1) + 
             xlab(substitute(bold(type:~-log[10]~p[adj]), list(type=ttype))) +
             ylab(expression(bold(genic:~-log[10]~p[adj]))) + 
             ggtitle("", subtitle="") + 
