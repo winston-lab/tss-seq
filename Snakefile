@@ -37,7 +37,7 @@ localrules:
     # plot_de_intragenic_frequency
     # get_intra_orfs
     separate_sig_de, get_de_category_bed,
-    # get_peak_sequences
+    get_peak_sequences,
     # meme_chip
     # class_v_genic
 
@@ -60,11 +60,6 @@ rule all:
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        #MEME-ChIP
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"], category = CATEGORIES),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-motifs/index.html", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"], category = CATEGORIES),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-spikenorm.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), type=["antisense", "convergent", "divergent", "intragenic"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{type}}/{{type}}-v-genic/{condition}-v-{control}-{{type}}-v-genic-libsizenorm.tsv", zip, condition=conditiongroups, control=controlgroups), type=["antisense", "convergent", "divergent", "intragenic"]),
         #peakcalling on all samples
         expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
@@ -82,11 +77,11 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","down"], fmt=["tsv","bed"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","down"], fmt=["tsv","bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","unchanged","down"], fmt=["tsv","bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","unchanged", "down"], fmt=["tsv","bed"]),
         #categorize DE peaks
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all", "up","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all", "up","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
         #DE summary
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
         expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
@@ -95,6 +90,11 @@ rule all:
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #MEME-ChIP
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-ame/ame.html", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-ame/ame.html", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -464,6 +464,7 @@ rule union_bedgraph:
         (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
         """
 
+#TODO: plot correlations over multiple binsizes, as well as over annotations
 rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
@@ -631,6 +632,7 @@ rule classify_peaks_intergenic:
         bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wa > {output}
         """
 
+#TODO: account for double-counted peaks
 rule peakstats:
     input:
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
@@ -703,12 +705,13 @@ rule separate_de_peaks:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
     output:
         up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
+        unchanged = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
         down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
     params:
         fdr = -log10(config["deseq"]["fdr"])
     log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
     shell: """
-        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.down}" }} NR>1 && $10>afdr && $7>0 {{print > "{output.up}"}} NR>1 && $10>afdr && $7<0 {{print > "{output.down}"}}' {input}) &> {log}
+        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $10>afdr && $7>0 {{print > "{output.up}"}} NR>1 && $10>afdr && $7<0 {{print > "{output.down}"}} NR>1 && $10<=afdr {{print > "{output.unchanged}"}}' {input}) &> {log}
         """
 
 rule de_peaks_to_bed:
@@ -836,12 +839,13 @@ rule separate_sig_de:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-all-{category}.tsv"
     output:
         up = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-up-{category}.tsv",
+        unchanged = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.tsv",
         down = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-down-{category}.tsv"
     params:
         fdr = -log10(config["deseq"]["fdr"])
     log: "logs/separate_sig_de/separate_sig_de-{condition}-v-{control}-{norm}-{category}.log"
     shell: """
-        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr {{print > "{output.down}"}}' {input}
+        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr {{print > "{output.down}"}} NR>1 && $8<=afdr{{print > "{output.unchanged}"}}' {input}
         """
 
 rule get_de_category_bed:
@@ -854,6 +858,7 @@ rule get_de_category_bed:
         (tail -n +2 {input} | awk 'BEGIN{{FS=OFS="\t"}}{{print $2, $4, $5, $1, $7":"$8, $3}}' | sort -k1,1 -k2,2n  > {output}) &> {log}
         """
 
+#TODO: account for double-counted peaks when a peak overlaps more than one annotation (more than one genic region, for example)
 rule summarise_de_results:
     input:
         total = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
@@ -886,32 +891,62 @@ rule genic_v_class:
         tables = expand("diff_exp/{{condition}}-v-{{control}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
 
+#for peaks are double-counted; only keep one sequence if two are overlapping
 rule get_peak_sequences:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.fa"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa"
     params:
         upstr = config["meme-chip"]["upstream-dist"],
         dnstr = config["meme-chip"]["downstream-dist"]
     log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        (uniq {input.peaks} | bedtools flank -l {params.upstr} -s -i stdin -g {input.chrsizes} | bedtools slop -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
 
-rule meme_chip:
+# rule centrimo:
+#     input:
+#         positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
+#         negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
+#         dbs = config["meme-chip"]["motif-databases"]
+#     params:
+#         dbs = ["-db " + x for x in config["meme-chip"]["motif-databases"]],
+#         fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-centrimo/centrimo.html"
+#     shell: """
+#         centrimo --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-centrimo --neg {input.negative} --disc --seqlen {params.fragsize} --local --desc --dfile
+#         """
+
+rule ame:
     input:
-        seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-cluster-results-{norm}-{direction}-{category}.fa",
-        db = config["meme-chip"]["motif-database"]
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/index.html"
+        positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
+        negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
+        dbs = config["meme-chip"]["motif-databases"]
     params:
-        ccut = config["meme-chip"]["max-frag-size"],
-        mode = config["meme-chip"]["meme-mode"],
-        nmotifs = config["meme-chip"]["meme-nmotifs"],
-    #threads: config["threads"]
+        fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-ame/ame.html"
     shell: """
-        meme-chip {input.seq} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs -db {input.db} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -meme-p 2
+        ame --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-ame --control {input.negative} --method fisher --scoring totalhits --bgfile <(fasta-get-markov -dna {input.positive}) --length-correction {input.positive} {input.dbs}
         """
+
+# rule meme_chip:
+#     input:
+#         seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
+#         background = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
+#         dbs = config["meme-chip"]["motif-databases"]
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/meme-chip.html"
+#     params:
+#         dbs = ["-db " + x for x in config["meme-chip"]["motif-databases"]],
+#         ccut = config["meme-chip"]["max-frag-size"],
+#         mode = config["meme-chip"]["meme-mode"],
+#         nmotifs = config["meme-chip"]["meme-nmotifs"],
+#     conda: "envs/meme_chip.yaml"
+#     shell: """
+#         meme-chip {input.seq} -neg {input.background} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs {params.dbs} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -nmeme 10000 -meme-maxsize 600000
+#         """

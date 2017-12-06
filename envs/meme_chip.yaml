@@ -1,0 +1,9 @@
+name: meme_chip
+channels:
+    - bioconda
+    - conda-forge
+dependencies:
+    - openmpi
+    - python=2
+    - meme
+    - perl-json
