@@ -904,7 +904,7 @@ rule get_peak_sequences:
         dnstr = config["meme-chip"]["downstream-dist"]
     log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
 
 # rule centrimo:
