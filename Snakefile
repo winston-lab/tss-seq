@@ -923,12 +923,13 @@ rule fimo:
     input:
         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
         dbs = config["meme-chip"]["motif-databases"]
+    params:
+        alpha= config["meme-chip"]["fimo-qval"]
     output:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.html"
     shell: """
-        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
+        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord --qvthresh --thresh {params.alpha} <(meme2meme {input.dbs}) {input.fa}
         """
-
 
 # rule centrimo:
 #     input:
