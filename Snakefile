@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
-from math import log2
-from math import log10
+from math import log2, log10
 
 configfile: "config.yaml"
 
@@ -37,7 +36,7 @@ localrules:
     # plot_de_intragenic_frequency
     # get_intra_orfs
     separate_sig_de, get_de_category_bed,
-    get_peak_sequences,
+    get_peak_sequences_all,
     # meme_chip
     # class_v_genic
 
@@ -91,10 +90,8 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #MEME-ChIP
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-ame/ame.html", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-ame/ame.html", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/fimo.html", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/fimo.html", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -190,7 +187,7 @@ rule bowtie2_build:
 
 rule align:
     input:
-        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num = [1,2,3,4]),
+        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2,3,4]),
         expand("../genome/bowtie2_indexes/{basename}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
         fastq = "fastq/cleaned/{sample}-clean.fastq.gz"
     output:
@@ -230,7 +227,7 @@ rule select_unique_mappers:
     threads: config["threads"]
     log: "logs/select_unique_mappers/select_unique_mappers-{sample}.log"
     shell: """
-        (samtools view -b -h -q 50 -@ {threads} {input} | samtools sort -@ {threads} - > {output}) &> {log}
+        (samtools view -buh -q 50 -@ {threads} {input} | samtools sort -@ {threads} - > {output}) &> {log}
         """
 
 rule remove_PCR_duplicates:
@@ -892,13 +889,13 @@ rule genic_v_class:
     script: "scripts/classvgenic.R"
 
 #for peaks are double-counted; only keep one sequence if two are overlapping
-rule get_peak_sequences:
+rule get_peak_sequences_nooverlap:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-nooverlap.fa"
     params:
         upstr = config["meme-chip"]["upstream-dist"],
         dnstr = config["meme-chip"]["downstream-dist"]
@@ -906,6 +903,32 @@ rule get_peak_sequences:
     shell: """
         (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
+
+rule get_peak_sequences_all:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        chrsizes = config["genome"]["chrsizes"],
+        fasta = config["genome"]["fasta"]
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa"
+    params:
+        upstr = config["meme-chip"]["fimo-upstream"],
+        dnstr = config["meme-chip"]["downstream-dist"]
+    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+    shell: """
+        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        """
+
+rule fimo:
+    input:
+        fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
+        dbs = config["meme-chip"]["motif-databases"]
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.html"
+    shell: """
+        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord {input.dbs} {input.fa}
+        """
+
 
 # rule centrimo:
 #     input:
@@ -921,18 +944,18 @@ rule get_peak_sequences:
 #         centrimo --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-centrimo --neg {input.negative} --disc --seqlen {params.fragsize} --local --desc --dfile
 #         """
 
-rule ame:
-    input:
-        positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
-        negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
-        dbs = config["meme-chip"]["motif-databases"]
-    params:
-        fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-ame/ame.html"
-    shell: """
-        ame --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-ame --control {input.negative} --method fisher --scoring totalhits --bgfile <(fasta-get-markov -dna {input.positive}) --length-correction {input.positive} {input.dbs}
-        """
+# rule ame:
+#     input:
+#         positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
+#         negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
+#         dbs = config["meme-chip"]["motif-databases"]
+#     params:
+#         fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-ame/ame.html"
+#     shell: """
+#         ame --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-ame --control {input.negative} --method fisher --scoring totalhits --bgfile <(fasta-get-markov -dna {input.positive}) --length-correction {input.positive} {input.dbs}
+#         """
 
 # rule meme_chip:
 #     input:
