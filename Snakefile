@@ -63,8 +63,8 @@ rule all:
         expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}-exp-idrpeaks.{fmt}", group = validgroups, fmt=["tsv", "narrowPeak"]),
-        expand("peakcalling/{group}-si-idrpeaks.{fmt}", group = validgroups_si, fmt=["tsv", "narrowPeak"]),
+        expand("peakcalling/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
+        expand("peakcalling/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
         #classify peaks into categories
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
         expand("peakcalling/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
@@ -494,17 +494,19 @@ rule tss_peaks_idr:
         #change this if we find a better way to aggregate results
         lambda wildcards: ["peakcalling/" + x + "-" + wildcards.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wildcards.group][0:2]
     output:
-        "peakcalling/{group}-{type}-idrpeaks.tsv"
+        allpeaks = "peakcalling/{group}-{type}-idrpeaks-all.tsv",
+        filtered = "peakcalling/{group}-{type}-idrpeaks-filtered.tsv",
     params:
-        idr = config["peakcalling"]["idr"]
+        idr = int(-125*log2(config["peakcalling"]["idr"]))
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
-        idr -s {input} --input-file-type narrowPeak --rank q.value -o {output} -l {log} -i {params.idr} --plot --peak-merge-method max
+        idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max
+        awk -v threshold={params.idr} '$5>threshold' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv > {output.filtered}
         """
 
 rule tss_peaks_to_narrowpeak:
     input:
-        "peakcalling/{group}-{type}-idrpeaks.tsv"
+        "peakcalling/{group}-{type}-idrpeaks-filtered.tsv"
     output:
         "peakcalling/{group}-{type}-idrpeaks.narrowPeak"
     shell: """
@@ -644,8 +646,8 @@ rule peakstats:
 
 rule combine_tss_peaks:
     input:
-        cond = "peakcalling/{condition}-{type}-idrpeaks.tsv",
-        ctrl = "peakcalling/{control}-{type}-idrpeaks.tsv",
+        cond = "peakcalling/{condition}-{type}-idrpeaks-filtered.tsv",
+        ctrl = "peakcalling/{control}-{type}-idrpeaks-filtered.tsv",
     output:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed"
     shell: """
