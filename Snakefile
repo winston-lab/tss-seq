@@ -91,7 +91,7 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #MEME-ChIP
         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/fimo.html", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/fimo.html", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/fimo-cleaned.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -924,11 +924,12 @@ rule fimo:
         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
         dbs = config["meme-chip"]["motif-databases"]
     params:
-        # alpha= config["meme-chip"]["fimo-qval"]
+        alpha= config["meme-chip"]["fimo-qval"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.html"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo-filtered.gff"
     shell: """
         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
+        awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output}
         """
 
 # rule centrimo:
