@@ -89,9 +89,9 @@ rule all:
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
-        #MEME-ChIP
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/fimo.html", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/fimo-cleaned.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
+        #FIMO
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -926,10 +926,10 @@ rule fimo:
     params:
         alpha= config["meme-chip"]["fimo-qval"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo-filtered.gff"
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo.gff"
     shell: """
         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-        awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output}
+        awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output}
         """
 
 # rule centrimo:
