@@ -501,7 +501,7 @@ rule tss_peaks_idr:
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
         idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max
-        awk -v threshold={params.idr} '$5>threshold' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv > {output.filtered}
+        awk -v threshold={params.idr} '$5>threshold || $9=="inf"' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv > {output.filtered}
         """
 
 rule tss_peaks_to_narrowpeak:
