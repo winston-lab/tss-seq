@@ -117,7 +117,7 @@ summarise_de_results:
 #     mem : 20000
 
 fimo:
-    time: 15 
+    time: 30 
     mem: 2000 
 
 meme_chip:
