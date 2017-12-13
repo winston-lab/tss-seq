@@ -15,7 +15,7 @@ plotclass = function(genicdf, classdf, condition, control, ttype){
             geom_vline(xintercept=0) +
             geom_hline(yintercept=0) +
             geom_smooth(method="lm", color="red") +
-            geom_point(shape=16, alpha=0.6, size=0.5) +
+            geom_point(shape=16, alpha=0.6, size=0.5, stroke=0) +
             xlab(substitute(bold(type~log[2]~frac(num,den)), list(type=ttype, num=condition, den=control))) +
             ylab(substitute(bold(genic~log[2]~frac(num,den)), list(num=condition, den=control))) +
             ggtitle(paste("TSS-seq: genic vs.", ttype),
@@ -32,7 +32,7 @@ plotclass = function(genicdf, classdf, condition, control, ttype){
                   plot.subtitle = element_text(size=10))
             
     padj.plot = ggplot(data = df, aes(x=logpadj.class, y=logpadj.genic)) +
-            geom_point(shape=16, alpha=0.6, size=0.5) +
+            geom_point(shape=16, alpha=0.6, size=0.5, stroke=0) +
             #stat_bin_hex(geom="point", aes(color=log10(..count..)), binwidth=c(0.8,0.8)) +
             #scale_color_viridis(option="inferno") +
             stat_dens2d_filter(geom="text_repel", aes(label=feat_name), keep.number = 10, size=1) + 
