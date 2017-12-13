@@ -33,8 +33,8 @@ main = function(intable, samplelist, controls, conditions, plotpath, statspath){
                       legend.position = "none")
     
     boxplot = ggplot(data = df, aes(x=group, y=sipct, fill=group)) +
-                geom_boxplot(outlier.size=1.5, outlier.color="red") +
-                geom_point(size=1) +
+                geom_boxplot(outlier.size=1.5, outlier.color="red", outlier.stroke=0) +
+                geom_point(size=1, stroke=0) +
                 scale_fill_brewer(palette='Set1', direction=-1) +
                 ylab("% spike-in") +
                 theme_minimal() +
