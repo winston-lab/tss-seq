@@ -48,14 +48,14 @@ rule all:
         #alignment
         expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES),
         #coverage
-        expand("coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
         # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -176,19 +176,19 @@ rule bowtie2_build:
     input:
         fasta = config["combinedgenome"]["fasta"]
     output:
-        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2,3,4]),
-        expand("../genome/bowtie2_indexes/{basename}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2])
+        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.{num}.bt2", num=[1,2,3,4]),
+        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2])
     params:
-        name = config["combinedgenome"]["name"]
+        idx_path = config["tophat2"]["index-path"],
     log: "logs/bowtie2_build.log"
     shell: """
-        (bowtie2-build {input.fasta} ../genome/bowtie2_indexes/{params.name}) &> {log}
+        (bowtie2-build {input.fasta} {params.idx_path}/{wildcards.basename}) &> {log}
         """
 
 rule align:
     input:
-        expand("../genome/bowtie2_indexes/{basename}.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2,3,4]),
-        expand("../genome/bowtie2_indexes/{basename}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
+        expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".{num}.bt2", num=[1,2,3,4]),
+        expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
         fastq = "fastq/cleaned/{sample}-clean.fastq.gz"
     output:
         "alignment/{sample}/accepted_hits.bam"
@@ -227,7 +227,7 @@ rule select_unique_mappers:
     threads: config["threads"]
     log: "logs/select_unique_mappers/select_unique_mappers-{sample}.log"
     shell: """
-        (samtools view -buh -q 50 -@ {threads} {input} | samtools sort -@ {threads} - > {output}) &> {log}
+        (samtools view -buh -q 50 -@ {threads} {input} | samtools sort -T .{wildcards.sample} -@ {threads} - > {output}) &> {log}
         """
 
 rule remove_PCR_duplicates:
@@ -243,45 +243,35 @@ rule remove_PCR_duplicates:
 rule get_coverage:
     input:
         "alignment/{sample}-noPCRdup.bam"
-    output:
-        SIplmin = "coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph",
-        SIpl = "coverage/sicounts/{sample}-tss-sicounts-plus.bedgraph",
-        SImin = "coverage/sicounts/{sample}-tss-sicounts-minus.bedgraph",
-        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
-        minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph"
     params:
-        exp_prefix = config["combinedgenome"]["experimental_prefix"],
-        si_prefix = config["combinedgenome"]["spikein_prefix"]
+        prefix = lambda wildcards: config["combinedgenome"]["experimental_prefix"] if wildcards.counttype=="counts" else config["combinedgenome"]["spikein_prefix"]
+    output:
+        plmin = "coverage/{counttype}/{sample}-tss-{counttype}-plmin.bedgraph",
+        plus = "coverage/{counttype}/{sample}-tss-{counttype}-plus.bedgraph",
+        minus = "coverage/{counttype}/{sample}-tss-{counttype}-minus.bedgraph"
+    wildcard_constraints:
+        counttype="counts|sicounts"
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIplmin}) &> {log}
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SIpl}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.si_prefix} | sed 's/{params.si_prefix}//g' | sort -k1,1 -k2,2n > {output.SImin}) &>> {log}
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.exp_prefix} | sed 's/{params.exp_prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
+        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
 
 rule normalize:
     input:
-        plus = "coverage/counts/{sample}-tss-counts-plus.bedgraph",
-        minus = "coverage/counts/{sample}-tss-counts-minus.bedgraph",
-        plmin = "coverage/counts/{sample}-tss-counts-plmin.bedgraph",
-        SIplmin = "coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph"
-    output:
-        spikePlus = "coverage/spikenorm/{sample}-tss-spikenorm-plus.bedgraph",
-        spikeMinus = "coverage/spikenorm/{sample}-tss-spikenorm-minus.bedgraph",
-        libnormPlus = "coverage/libsizenorm/{sample}-tss-libsizenorm-plus.bedgraph",
-        libnormMinus = "coverage/libsizenorm/{sample}-tss-libsizenorm-minus.bedgraph"
+        counts = "coverage/counts/{sample}-tss-counts-{strand}.bedgraph",
+        plmin = lambda wildcards: "coverage/counts/" + wildcards.sample + "-tss-counts-plmin.bedgraph" if wildcards.norm=="libsizenorm" else "coverage/sicounts/" + wildcards.sample + "-tss-sicounts-plmin.bedgraph"
     params:
-        scalefactor = config["spikein-pct"]
-    log: "logs/normalize/normalize-{sample}.log"
+        scalefactor = lambda wildcards: config["spikein-pct"] if wildcards.norm=="spikenorm" else 1
+    output:
+        normalized = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
+    wildcard_constraints:
+        norm="libsizenorm|spikenorm",
+        strand="plus|minus"
+    log: "logs/normalize/normalize-{sample}-{norm}.log"
     shell: """
-        (bash scripts/libsizenorm.sh {input.SIplmin} {input.plus} {params.scalefactor} > {output.spikePlus}) &> {log}
-        (bash scripts/libsizenorm.sh {input.SIplmin} {input.minus} {params.scalefactor} > {output.spikeMinus}) &>> {log}
-        (bash scripts/libsizenorm.sh {input.plmin} {input.plus} 1 > {output.libnormPlus}) &>> {log}
-        (bash scripts/libsizenorm.sh {input.plmin} {input.minus} 1 > {output.libnormMinus}) &>> {log}
+        (bash scripts/libsizenorm.sh {input.plmin} {input.counts} {params.scalefactor} > {output.normalized}) &> {log}
         """
 
 rule get_si_pct:
@@ -370,7 +360,7 @@ rule bg_to_bw:
         bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
         chrsizes = selectchrom
     output:
-        "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw",
+        "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw",
     log : "logs/bg_to_bw/bg_to_bw-{sample}-{norm}-{strand}.log"
     shell: """
         (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
@@ -379,7 +369,7 @@ rule bg_to_bw:
 rule deeptools_matrix:
     input:
         annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
-        bw = "coverage/{norm}/bw/{sample}-tss-{norm}-{strand}.bw"
+        bw = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw"
     output:
         dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
         matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv")
@@ -466,7 +456,7 @@ rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
     output:
-        "qual_ctrl/{status}/{condition}-v-{control}-tss-{norm}-correlations.svg"
+        "qual_ctrl/{status}/{condition}-v-{control}-tss-{status}-{norm}-correlations.svg"
     params:
         pcount = 0.1,
         samplelist = plotcorrsamples
@@ -475,7 +465,7 @@ rule plotcorrelations:
 
 rule call_tss_peaks:
     input:
-        bw = lambda wildcards: "coverage/counts/bw/" + wildcards.sample + "-tss-counts-SENSE.bw" if wildcards.type=="exp" else "coverage/sicounts/bw/" + wildcards.sample + "-tss-sicounts-SENSE.bw"
+        bw = lambda wildcards: "coverage/counts/" + wildcards.sample + "-tss-counts-SENSE.bw" if wildcards.type=="exp" else "coverage/sicounts/" + wildcards.sample + "-tss-sicounts-SENSE.bw"
     output:
         smoothed = expand("peakcalling/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
         peaks = "peakcalling/{sample}-{type}-allpeaks.narrowPeak"
