@@ -340,7 +340,7 @@ rule make_stranded_annotations:
     input:
         lambda wildcards : config["annotations"][wildcards.annotation]["path"]
     output:
-        "../genome/annotations/stranded/{annotation}-STRANDED.bed"
+        "{annopath}/stranded/{annotation}-STRANDED.{ext}"
     log : "logs/make_stranded_annotations/make_stranded_annotations-{annotation}.log"
     shell: """
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
@@ -908,7 +908,7 @@ rule get_peak_sequences_all:
         dnstr = config["meme-chip"]["downstream-dist"]
     log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin | sed 's/::/_/g' > {output}) &> {log}
         """
 
 rule fimo:
@@ -923,20 +923,6 @@ rule fimo:
         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
         awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output}
         """
-
-# rule centrimo:
-#     input:
-#         positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
-#         negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
-#         dbs = config["meme-chip"]["motif-databases"]
-#     params:
-#         dbs = ["-db " + x for x in config["meme-chip"]["motif-databases"]],
-#         fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
-#     output:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-centrimo/centrimo.html"
-#     shell: """
-#         centrimo --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-centrimo --neg {input.negative} --disc --seqlen {params.fragsize} --local --desc --dfile
-#         """
 
 # rule ame:
 #     input:
