@@ -919,13 +919,15 @@ rule fimo:
         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
         dbs = config["meme-chip"]["motif-databases"]
     params:
-        alpha= config["meme-chip"]["fimo-qval"]
+        pval = config["meme-chip"]["fimo-pval"],
+        qval = config["meme-chip"]["fimo-qval"],
     output:
         txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
-        gff = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo.gff"
+        gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
+        gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
     shell: """
-        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.alpha} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-        sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff > {output.gff}
+        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
+        sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
         """
         # awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"; OFS="\t"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output.gff}
 
