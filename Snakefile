@@ -90,8 +90,8 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #FIMO
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","unchanged","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","unchanged","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","unchanged","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","unchanged","down"]),
         #motif_enrichment
         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
@@ -938,7 +938,7 @@ rule test_motif_enrichment:
         pos_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         neg_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.bed",
     params:
-        alpha=config["meme-chip"]["fimo-qval"]
+        alpha=config["meme-chip"]["fimo-pval"] #filter on pvalues
     output:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{category}-{direction}-motif_enrichment.tsv"
     script: "scripts/motif_enrichment.R"

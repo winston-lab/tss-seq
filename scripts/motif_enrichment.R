@@ -5,7 +5,7 @@ import_fimo = function(path, alpha){
     read_tsv(path, skip=1,
              col_names=c('motif_id','motif_alt_id','seq_name',
                          'start','end','strand','score', 'pval','qval')) %>% 
-        filter(qval<alpha)
+        filter(pval<alpha)
 }
 
 get_motif_counts = function(df){
