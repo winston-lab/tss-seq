@@ -90,8 +90,11 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #FIMO
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"])
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","unchanged","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","unchanged","down"]),
+        #motif_enrichment
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -918,11 +921,25 @@ rule fimo:
     params:
         alpha= config["meme-chip"]["fimo-qval"]
     output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo.gff"
+        txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
+        gff = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo.gff"
     shell: """
         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-        awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output}
+        awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}}{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output.gff}
         """
+
+rule test_motif_enrichment:
+    input:
+        fimo_pos = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
+        fimo_neg = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-unchanged-{category}-fimo/fimo.txt",
+        pos_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        neg_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.bed",
+    params:
+        alpha=config["meme-chip"]["fimo-qval"]
+    output:
+        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{category}-{direction}-motif_enrichment.tsv"
+    script: "scripts/motif_enrichment.R"
+
 
 # rule ame:
 #     input:

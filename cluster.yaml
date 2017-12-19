@@ -118,7 +118,11 @@ summarise_de_results:
 
 fimo:
     time: 30 
-    mem: 2000 
+    mem: 4000 
+
+test_motif_enrichment:
+    time: 15
+    mem: 4000
 
 meme_chip:
     time : 719
