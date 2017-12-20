@@ -31,7 +31,7 @@ fastqc_cleaned:
     mem : 4000
 
 bowtie2_build:
-    time : 60
+    time : 10 
     mem : 2000
 
 align:
@@ -40,44 +40,44 @@ align:
     mem : 8000
 
 select_unique_mappers:
-    time : 180
+    time : 15
     n : 1
     mem : 6000
 
 remove_PCR_duplicates:
-    time : 180
-    mem : 2000
+    time : 15 
+    mem : 4000
 
 get_coverage:
-    time : 60
+    time : 5 
     mem : 2000
 
 normalize:
-    time : 60
+    time : 5 
     mem : 2000
 
 make_stranded_bedgraph:
-    time: 10
+    time: 3 
     mem: 1000
 
 bg_to_bw:
-    time: 10
+    time: 2 
     mem: 1000
  
 deeptools_matrix:
-    time : 60
+    time : 20
     mem : 2000
 
 gzip_deeptools_matrix:
-    time : 20
+    time : 5 
     mem : 2000
 
 melt_matrix:
-    time : 20
+    time : 5 
     mem : 2000
 
 cat_matrices:
-    time : 20
+    time : 5 
     mem : 2000
 
 r_datavis:
@@ -93,19 +93,19 @@ plotcorrelations:
     mem : 6000
 
 call_tss_peaks:
-    time: 20
+    time: 10
     mem: 4000
 
 tss_peaks_idr:
-    time: 30
+    time: 10
     mem: 6000
 
 peakstats:
-    time: 30
+    time: 20
     mem: 10000
 
 call_de_peaks:
-    time: 30
+    time: 20
     mem: 10000
 
 summarise_de_results:
