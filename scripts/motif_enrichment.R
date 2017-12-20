@@ -23,8 +23,8 @@ main = function(alpha, in_fimo_pos, in_fimo_neg, in_pos_total, in_neg_total, out
                    suffix = c("_pos", "_neg")) %>%
         rename(pos_withmotif=n_pos, neg_withmotif=n_neg) %>% 
         mutate(pos_nomotif=pos_total-pos_withmotif,
-               neg_nomotif=neg_total-neg_withmotif)
-    df[is.na(df)]=0
+               neg_nomotif=neg_total-neg_withmotif) %>%
+        mutate_if(is.integer, funs(if_else(is.na(.), as.integer(0), .)))
     
     fisherdf = df %>% do(fisher.test(matrix(c(.$pos_withmotif, .$pos_nomotif,
                                               .$neg_withmotif, .$neg_nomotif),2,2),
