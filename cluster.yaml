@@ -120,8 +120,28 @@ fimo:
     time: 30 
     mem: 6000 
 
+fimo_all_motifs:
+    time: 180 
+    mem: 10000 
+
 test_motif_enrichment:
     time: 15
+    mem: 4000
+
+get_motif_coverage:
+    time: 1
+    mem: 2000
+
+motif_matrix:
+    time: 1
+    mem: 2000
+
+melt_motif_matrix:
+    time: 1
+    mem: 2000
+
+cat_motif_matrices:
+    time: 5
     mem: 4000
 
 meme_chip:

@@ -12,6 +12,7 @@ peakcalling/
 snakemake.err
 snakemake.log
 diff_exp/
+motifs/
 rulegraph.svg
 dag.svg
 Rplots.pdf

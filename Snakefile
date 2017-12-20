@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import subprocess
 from math import log2, log10
 
 configfile: "config.yaml"
@@ -90,11 +91,14 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #FIMO
+        "motifs/allmotifs.tsv",
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","unchanged","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo.gff", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","unchanged","down"]),
         #motif_enrichment
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
+        expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm-{category}.tsv.gz", condition=conditiongroups, control=controlgroups, category=CATEGORIES),
+        expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm-{category}.tsv.gz", condition=conditiongroups_si, control=controlgroups_si, category=CATEGORIES)
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -196,6 +200,7 @@ rule align:
     output:
         "alignment/{sample}/accepted_hits.bam"
     params:
+        idx_path = config["tophat2"]["index-path"],
         basename = config["combinedgenome"]["name"],
         read_mismatches = config["tophat2"]["read-mismatches"],
         read_gap_length = config["tophat2"]["read-gap-length"],
@@ -219,7 +224,7 @@ rule align:
     log: "logs/align/align-{sample}.log"
     shell:
         """
-        (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive ../genome/bowtie2_indexes/{params.basename} {input.fastq}) &> {log}
+        (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive {params.idx_path}/{params.basename} {input.fastq}) &> {log}
         """
 
 rule select_unique_mappers:
@@ -371,11 +376,12 @@ rule bg_to_bw:
 
 rule deeptools_matrix:
     input:
-        annotation = "../genome/annotations/stranded/{annotation}-STRANDED.bed",
+        annotation = lambda wildcards: os.path.dirname(config["annotations"][wildcards.annotation]["path"]) + "/stranded/" + wildcards.annotation + "-STRANDED" + os.path.splitext(config["annotations"][wildcards.annotation]["path"])[1],
         bw = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw"
     output:
         dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
-        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv")
+        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv"),
+        matrix_gz = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
     params:
         refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
         upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"] + config["annotations"][wildcards.annotation]["binsize"],
@@ -388,18 +394,9 @@ rule deeptools_matrix:
     log: "logs/deeptools/computeMatrix-{annotation}-{sample}-{norm}-{strand}.log"
     run:
         if config["annotations"][wildcards.annotation]["nan_afterend"]=="y":
-            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}")
+            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}; pigz -fk {output.matrix}) &> {log}")
         else:
-            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}")
-
-rule gzip_deeptools_matrix:
-    input:
-        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv"
-    output:
-        "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
-    shell: """
-        pigz -f {input}
-        """
+            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}; pigz -fk {output.matrix}) &> {log}")
 
 rule melt_matrix:
     input:
@@ -883,78 +880,139 @@ rule genic_v_class:
         tables = expand("diff_exp/{{condition}}-v-{{control}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
 
+rule fimo_all_motifs:
+    input:
+        fasta = config["genome"]["fasta"],
+        motifs = config["motifs"]["databases"]
+    params:
+        alpha = config["motifs"]["fimo-pval"]
+    output:
+        tsv = "motifs/allmotifs.tsv",
+        bed = "motifs/allmotifs.bed" #first 6 columns are BED6, plus extra info in later columns
+    shell: """
+        fimo --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motifs}) {input.fasta} | sed -e 's/\//_/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}
+        """
+
+rule get_motif_coverage:
+    input:
+        bed = "motifs/allmotifs.bed", #first 6 columns are BED6, plus extra info in later columns
+        chrsizes = config["genome"]["chrsizes"]
+    output:
+        bg = "motifs/coverage/{motif}.bedgraph",
+        bw = "motifs/coverage/{motif}.bw",
+    shell: """
+        awk -v id={wildcards.motif} 'BEGIN{{FS=OFS="\t"}} $4==id{{print $1, $2, $3, $4, $5, $6}}' {input.bed} | sort -k1,1 | bedtools genomecov -bga -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n > {output.bg}
+        bedGraphToBigWig {output.bg} {input.chrsizes} {output.bw}
+    """
+
+rule motif_matrix:
+    input:
+        annotation = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        bw = "motifs/coverage/{motif}.bw"
+    output:
+        dtfile = temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.mat"),
+        matrix = temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv"),
+        matrix_gz = "motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
+    params:
+        refpoint = "TSS",
+        upstream = config["motifs"]["upstream"] + config["motifs"]["binsize"],
+        dnstream = config["motifs"]["downstream"] + config["motifs"]["binsize"],
+        binsize = config["motifs"]["binsize"],
+        sort = "keep",
+        binstat = "sum"
+    threads : config["threads"]
+    log: "logs/deeptools/computeMatrix-{motif}-{condition}-{control}-{norm}-{direction}-{category}.log"
+    shell: """
+        (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --averageTypeBins {params.binstat} -p {threads}) &> {log}
+        pigz -fk {output.matrix}
+        """
+
+#sample wildcard == motif
+rule melt_motif_matrix:
+    input:
+        matrix = "motifs/datavis/{sample}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
+    output:
+        temp("motifs/datavis/{sample}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks-melted.tsv.gz"),
+    params:
+        refpoint = "TSS",
+        group = lambda wildcards: wildcards.direction,
+        binsize = config["motifs"]["binsize"],
+        upstream = config["motifs"]["upstream"],
+    script:
+        "scripts/melt_matrix.R"
+
+#get all motif names from motif databases
+MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
+
+rule cat_motif_matrices:
+    input:
+        expand("motifs/datavis/{motif}-{{condition}}-v-{{control}}-{{norm}}-{direction}-{{category}}-peaks-melted.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"])
+    output:
+        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}-{category}.tsv.gz"
+    log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}-{category}.log"
+    shell: """
+        (cat {input} > {output}) &> {log}
+        """
+
+
 #for peaks are double-counted; only keep one sequence if two are overlapping
-rule get_peak_sequences_nooverlap:
-    input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
-        chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"]
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-nooverlap.fa"
-    params:
-        upstr = config["meme-chip"]["upstream-dist"],
-        dnstr = config["meme-chip"]["downstream-dist"]
-    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
-    shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
-        """
-
-rule get_peak_sequences_all:
-    input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
-        chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"]
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa"
-    params:
-        upstr = config["meme-chip"]["fimo-upstream"],
-        dnstr = config["meme-chip"]["downstream-dist"]
-    log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
-    shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin | sed 's/::/_/g' > {output}) &> {log}
-        """
-
-rule fimo:
-    input:
-        fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
-        dbs = config["meme-chip"]["motif-databases"]
-    params:
-        pval = config["meme-chip"]["fimo-pval"],
-        qval = config["meme-chip"]["fimo-qval"],
-    output:
-        txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
-        gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
-        gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
-    shell: """
-        fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-        sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
-        """
-        # awk -v alpha={params.alpha} 'BEGIN{{FS="qvalue= |;"; OFS="\t"}} $6<alpha' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' > {output.gff}
-
-rule test_motif_enrichment:
-    input:
-        fimo_pos = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
-        fimo_neg = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-unchanged-{category}-fimo/fimo.txt",
-        pos_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
-        neg_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.bed",
-    params:
-        alpha=config["meme-chip"]["fimo-pval"] #filter on pvalues
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{category}-{direction}-motif_enrichment.tsv"
-    script: "scripts/motif_enrichment.R"
-
-# rule ame:
+# rule get_peak_sequences_nooverlap:
 #     input:
-#         positive = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
-#         negative = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
+#         peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+#         chrsizes = config["genome"]["chrsizes"],
+#         fasta = config["genome"]["fasta"]
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-nooverlap.fa"
+#     params:
+#         upstr = config["meme-chip"]["upstream-dist"],
+#         dnstr = config["meme-chip"]["downstream-dist"]
+#     log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+#     shell: """
+#         (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+#         """
+
+# rule get_peak_sequences_all:
+#     input:
+#         peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+#         chrsizes = config["genome"]["chrsizes"],
+#         fasta = config["genome"]["fasta"]
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa"
+#     params:
+#         upstr = config["meme-chip"]["fimo-upstream"],
+#         dnstr = config["meme-chip"]["downstream-dist"]
+#     log: "logs/get_peak_sequences/get_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+#     shell: """
+#         (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools getfasta -name -s -fi {input.fasta} -bed stdin | sed 's/::/_/g' > {output}) &> {log}
+#         """
+
+# rule fimo:
+#     input:
+#         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
 #         dbs = config["meme-chip"]["motif-databases"]
 #     params:
-#         fragsize = config["meme-chip"]["upstream-dist"] + config["meme-chip"]["downstream-dist"]
+#         pval = config["meme-chip"]["fimo-pval"],
+#         qval = config["meme-chip"]["fimo-qval"],
 #     output:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-ame/ame.html"
+#         txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
+#         gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
+#         gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
 #     shell: """
-#         ame --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-ame --control {input.negative} --method fisher --scoring totalhits --bgfile <(fasta-get-markov -dna {input.positive}) --length-correction {input.positive} {input.dbs}
+#         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
+#         sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
 #         """
+
+# rule test_motif_enrichment:
+#     input:
+#         fimo_pos = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
+#         fimo_neg = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-unchanged-{category}-fimo/fimo.txt",
+#         pos_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+#         neg_total = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.bed",
+#     params:
+#         alpha=config["meme-chip"]["fimo-pval"] #filter on pvalues
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{category}-{direction}-motif_enrichment.tsv"
+#     script: "scripts/motif_enrichment.R"
 
 # rule meme_chip:
 #     input:
