@@ -97,8 +97,8 @@ rule all:
         #motif_enrichment
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
-        expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm-{category}.tsv.gz", condition=conditiongroups, control=controlgroups, category=CATEGORIES),
-        expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm-{category}.tsv.gz", condition=conditiongroups_si, control=controlgroups_si, category=CATEGORIES)
+        expand(expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm-{{category}}.tsv.gz", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES),
+        expand(expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm-{{category}}.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES)
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
