@@ -931,7 +931,7 @@ rule melt_motif_matrix:
     input:
         matrix = "motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz",
     output:
-        temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz"),
+        temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}-melted.tsv.gz"),
     params:
         refpoint = "TSS",
         binsize = config["motifs"]["binsize"],
@@ -944,7 +944,7 @@ MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases
 
 rule cat_motif_matrices:
     input:
-        expand("motifs/datavis/{motif}_{{condition}}-v-{{control}}_{{norm}}-{direction}-peaks-{category}.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"], category=CATEGORIES),
+        expand("motifs/datavis/{motif}_{{condition}}-v-{{control}}_{{norm}}-{direction}-peaks-{category}-melted.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"], category=CATEGORIES),
     output:
         "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.tsv.gz"
     log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}.log"
