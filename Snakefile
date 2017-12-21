@@ -910,9 +910,9 @@ rule motif_matrix:
         annotation = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         bw = "motifs/coverage/{motif}.bw"
     output:
-        dtfile = temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.mat"),
-        matrix = temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv"),
-        matrix_gz = "motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
+        dtfile = temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.mat"),
+        matrix = temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv"),
+        matrix_gz = "motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz",
     params:
         refpoint = "TSS",
         upstream = config["motifs"]["upstream"] + config["motifs"]["binsize"],
@@ -929,9 +929,9 @@ rule motif_matrix:
 
 rule melt_motif_matrix:
     input:
-        matrix = "motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
+        matrix = "motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz",
     output:
-        temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks-melted.tsv.gz"),
+        temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz"),
     params:
         refpoint = "TSS",
         binsize = config["motifs"]["binsize"],
@@ -940,11 +940,11 @@ rule melt_motif_matrix:
         "scripts/melt_motif_matrix.R"
 
 #get all motif names from motif databases
-MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
+MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
 
 rule cat_motif_matrices:
     input:
-        expand("motifs/datavis/{motif}-{{condition}}-v-{{control}}-{{norm}}-{direction}-{category}-peaks-melted.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"], category=CATEGORIES)
+        expand("motifs/datavis/{motif}_{{condition}}-v-{{control}}_{{norm}}-{direction}-peaks-{category}.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"], category=CATEGORIES),
     output:
         "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.tsv.gz"
     log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}.log"
