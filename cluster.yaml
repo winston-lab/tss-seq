@@ -144,6 +144,10 @@ cat_motif_matrices:
     time: 5
     mem: 4000
 
+plot_motif_freq:
+    time: 20
+    mem: 10000
+
 meme_chip:
     time : 719
     mem : 10000
