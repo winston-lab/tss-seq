@@ -97,8 +97,8 @@ rule all:
         #motif_enrichment
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
-        expand(expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm-{{category}}.tsv.gz", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES),
-        expand(expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm-{{category}}.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES)
+        expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.tsv.gz", zip, condition=conditiongroups, control=controlgroups),
+        expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si)
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -927,29 +927,27 @@ rule motif_matrix:
         pigz -fk {output.matrix}
         """
 
-#sample wildcard == motif
 rule melt_motif_matrix:
     input:
-        matrix = "motifs/datavis/{sample}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
+        matrix = "motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks.tsv.gz",
     output:
-        temp("motifs/datavis/{sample}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks-melted.tsv.gz"),
+        temp("motifs/datavis/{motif}-{condition}-v-{control}-{norm}-{direction}-{category}-peaks-melted.tsv.gz"),
     params:
         refpoint = "TSS",
-        group = lambda wildcards: wildcards.direction,
         binsize = config["motifs"]["binsize"],
         upstream = config["motifs"]["upstream"],
     script:
-        "scripts/melt_matrix.R"
+        "scripts/melt_motif_matrix.R"
 
 #get all motif names from motif databases
 MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
 
 rule cat_motif_matrices:
     input:
-        expand("motifs/datavis/{motif}-{{condition}}-v-{{control}}-{{norm}}-{direction}-{{category}}-peaks-melted.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"])
+        expand("motifs/datavis/{motif}-{{condition}}-v-{{control}}-{{norm}}-{direction}-{category}-peaks-melted.tsv.gz", motif=MOTIFS, direction=["up","down","unchanged"], category=CATEGORIES)
     output:
-        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}-{category}.tsv.gz"
-    log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}-{category}.log"
+        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.tsv.gz"
+    log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}.log"
     shell: """
         (cat {input} > {output}) &> {log}
         """
