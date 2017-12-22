@@ -95,8 +95,6 @@ rule all:
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
         #motif_enrichment
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-libsizenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-libsizenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up","down"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-spikenorm-{{direction}}-{{category}}-fimo/{condition}-v-{control}-spikenorm-{{category}}-{{direction}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up","down"]),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
