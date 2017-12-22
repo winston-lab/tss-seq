@@ -126,7 +126,7 @@ fimo_all_motifs:
 
 get_upstream_motifs:
     time: 60 
-    mem: 20000
+    mem: 6000
 
 test_motif_enrichment:
     time: 15
