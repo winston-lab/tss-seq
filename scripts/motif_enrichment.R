@@ -41,7 +41,7 @@ main = function(pval, alpha, condition, control, direction,
         select(motif_id, motif_alt_id, fdr, log2_odds_ratio=odds_ratio,
                conf_low=conf.low, conf_high=conf.high,
                pos_withmotif, pos_nomotif, neg_withmotif, neg_nomotif) %>% 
-        mutate_if(is_double, funs(round(., digits=4))) %>%
+        mutate_if(is_double, funs(signif(., digits=3))) %>%
         write_tsv(out_path) %>%
         mutate(label=if_else(is.na(motif_alt_id), motif_id, motif_alt_id))
                
@@ -62,7 +62,7 @@ main = function(pval, alpha, condition, control, direction,
         plot = plot +
             stat_dens2d_labels(data = df %>% filter(fdr<alpha),
                                aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
-                               geom="text_repel", keep.fraction=0.5, size=4)
+                               geom="text_repel", keep.number=20, size=4)
     } else{
         plot = plot +
             geom_text_repel(data = df %>% filter(fdr<alpha),
