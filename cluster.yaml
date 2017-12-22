@@ -122,11 +122,11 @@ fimo:
 
 fimo_all_motifs:
     time: 180 
-    mem: 10000 
+    mem: 2000 
 
 get_upstream_motifs:
     time: 60 
-    mem: 4000
+    mem: 20000
 
 test_motif_enrichment:
     time: 15
