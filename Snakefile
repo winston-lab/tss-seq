@@ -91,14 +91,14 @@ rule all:
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #FIMO
-        "motifs/allmotifs.tsv",
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
+        "motifs/allmotifs.bed",
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
         #motif_enrichment
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -880,17 +880,34 @@ rule genic_v_class:
         tables = expand("diff_exp/{{condition}}-v-{{control}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
 
-rule fimo_all_motifs:
+#get all motif names from motif databases, cleaning nasty characters in some motif names
+MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
+
+#run fimo in parallel for each motif for speed
+rule fimo:
     input:
         fasta = config["genome"]["fasta"],
-        motifs = config["motifs"]["databases"]
+        motif_db = config["motifs"]["databases"]
     params:
         alpha = config["motifs"]["fimo-pval"]
     output:
-        tsv = "motifs/allmotifs.tsv",
-        bed = "motifs/allmotifs.bed" #first 6 columns are BED6, plus extra info in later columns
+        tsv = temp("motifs/.{motif}.tsv"),
+        bed = temp("motifs/.{motif}.bed") #first 6 columns are BED6, plus extra info in later columns
     shell: """
-        fimo --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motifs}) {input.fasta} | sed -e 's/\//_/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
+        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
+        """
+
+rule cat_fimo_motifs:
+    input:
+        tsv = expand("motifs/.{motif}.tsv", motif=MOTIFS),
+        bed = expand("motifs/.{motif}.bed", motif=MOTIFS)
+    output:
+        tsv = "motifs/allmotifs.tsv.gz",
+        bed = "motifs/allmotifs.bed",
+    threads: config["threads"]
+    shell: """
+        cat {input.tsv} | pigz -f > {output.tsv}
+        cat {input.bed} | sort -k1,1 -k2,2n --parallel={threads} > {output.bed}
         """
 
 #bedtools intersect peaks with fimo motifs
@@ -924,15 +941,15 @@ rule test_motif_enrichment:
 
 rule get_motif_coverage:
     input:
-        bed = "motifs/allmotifs.bed", #first 6 columns are BED6, plus extra info in later columns
+        bed = "motifs/.{motif}.bed" #this is sorted when created
         chrsizes = config["genome"]["chrsizes"]
     output:
         bg = "motifs/coverage/{motif}.bedgraph",
         bw = "motifs/coverage/{motif}.bw",
     shell: """
-        awk -v id={wildcards.motif} 'BEGIN{{FS=OFS="\t"}} $4==id{{print $1, $2, $3, $4, $5, $6}}' {input.bed} | sort -k1,1 | bedtools genomecov -bga -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n > {output.bg}
+        cut -f1-6 {input.bed} | bedtools genomecov -bga -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n > {output.bg}
         bedGraphToBigWig {output.bg} {input.chrsizes} {output.bw}
-    """
+        """
 
 rule motif_matrix:
     input:
@@ -967,9 +984,6 @@ rule melt_motif_matrix:
         upstream = config["motifs"]["upstream"],
     script:
         "scripts/melt_motif_matrix.R"
-
-#get all motif names from motif databases
-MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
 
 rule cat_motif_matrices:
     input:
