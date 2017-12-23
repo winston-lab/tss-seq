@@ -8,7 +8,7 @@ get_motif_counts = function(df){
         group_by(motif_id, motif_alt_id) %>% count()
 }
 
-main = function(pval, alpha, condition, control, direction,
+main = function(pval, alpha, condition, control, txn_type, direction,
                 in_fimo_pos, in_fimo_neg, in_pos_total, in_neg_total,
                 out_path, out_plot){
     fimo_positive = in_fimo_pos %>% read_tsv()
@@ -48,10 +48,10 @@ main = function(pval, alpha, condition, control, direction,
     plot = ggplot() +
         geom_hline(yintercept=-log10(alpha), linetype="dashed") +
         geom_point(data=df, aes(x=log2_odds_ratio, y=-log10(fdr)),
-                   size=1, alpha=0.8) +
+                   shape=16, size=1, alpha=0.8, stroke=0) +
         xlab(expression(bold(paste(log[2], " odds-ratio")))) +
         ylab(expression(bold(paste(-log[10], " FDR")))) +
-        ggtitle(paste0("motif enrichment upstream of TSS-seq peaks\n",
+        ggtitle(paste0("motif enrichment upstream of ", txn_type, " TSSs\n",
                        direction, " in ", condition, " vs. ", control),
                 subtitle="Fisher's exact test (two-tailed)") +
         theme_light() +
@@ -62,7 +62,7 @@ main = function(pval, alpha, condition, control, direction,
         plot = plot +
             stat_dens2d_labels(data = df %>% filter(fdr<alpha),
                                aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
-                               geom="text_repel", keep.number=20, size=4)
+                               geom="text_repel", keep.number=25, size=4)
     } else{
         plot = plot +
             geom_text_repel(data = df %>% filter(fdr<alpha),
@@ -77,6 +77,7 @@ main(pval= snakemake@params[["pval_cutoff"]],
      alpha= snakemake@params[["alpha"]],
      condition= snakemake@wildcards[["condition"]],
      control= snakemake@wildcards[["control"]],
+     txn_type = snakemake@wildcards[["category"]],
      direction= snakemake@params[["direction"]],
      in_fimo_pos = snakemake@input[["fimo_pos"]],
      in_fimo_neg = snakemake@input[["fimo_neg"]],
