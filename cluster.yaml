@@ -81,8 +81,8 @@ cat_matrices:
     mem : 2000
 
 r_datavis:
-    time : 30
-    mem : 10000
+    time : 90
+    mem : 20000
 
 union_bedgraph:
     time: 30
