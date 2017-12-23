@@ -73,7 +73,7 @@ main = function(intable, samplelist, upstream, dnstream, pct_cutoff,
     if (cluster){
         #first k-means clustering on NOTE: unscaled but log transformed data
         pcount = 0.1
-        rr = raw %>% mutate_at(vars(cpm), log2(cpm+pcount)) %>% select(-group) %>% unite(cid, c(sample, position), sep="~") %>%
+        rr = raw %>% mutate_at(vars(cpm), funs(log2(.+pcount))) %>% select(-group) %>% unite(cid, c(sample, position), sep="~") %>%
                 spread(cid, cpm, fill=0) %>% select(-index)
         clust = kmeans(rr, centers=k)
        

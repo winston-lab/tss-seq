@@ -65,11 +65,11 @@ bg_to_bw:
     mem: 1000
  
 deeptools_matrix:
-    time : 20
+    time : 5 
     mem : 2000
 
 gzip_deeptools_matrix:
-    time : 5 
+    time : 2 
     mem : 2000
 
 melt_matrix:
