@@ -622,13 +622,14 @@ rule classify_peaks_intergenic:
         bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wa > {output}
         """
 
-#TODO: account for double-counted peaks
 rule peakstats:
     input:
         expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
     output:
         table = "peakcalling/{condition}-v-{control}-peaknumbers.tsv",
-        size = "peakcalling/{condition}-v-{control}-peaksizes.svg",
+        size = "peakcalling/{condition}-v-{control}-peaksizes-histogram.svg",
+        violin_area = "peakcalling/{condition}-v-{control}-peaksizes-violin-equalarea.svg",
+        violin_count = "peakcalling/{condition}-v-{control}-peaksizes-violin-countscaled.svg",
         dist = "peakcalling/{condition}-v-{control}-peakdistances.svg"
     params:
         groups = lambda wildcards: [g for sublist in zip(controlgroups, conditiongroups) for g in sublist] if wildcards.condition=="all" else [wildcards.control, wildcards.condition]

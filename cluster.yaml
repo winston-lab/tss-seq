@@ -101,7 +101,7 @@ tss_peaks_idr:
     mem: 6000
 
 peakstats:
-    time: 20
+    time: 10
     mem: 10000
 
 call_de_peaks:

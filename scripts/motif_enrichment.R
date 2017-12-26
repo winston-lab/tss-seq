@@ -36,7 +36,7 @@ main = function(pval, alpha, condition, control, txn_type, direction,
     
     df = df %>% left_join(fisherdf, by=c("motif_id", "motif_alt_id")) 
     df$fdr = p.adjust(df$p.value, method="BH")
-    df = df %>% mutate_at(vars(odds_ratio), funs(log2(.))) %>% 
+    df = df %>% mutate_at(vars(odds_ratio, conf.low, conf.high), funs(log2(.))) %>% 
         arrange(fdr, p.value, desc(odds_ratio), desc(pos_withmotif)) %>% 
         select(motif_id, motif_alt_id, fdr, log2_odds_ratio=odds_ratio,
                conf_low=conf.low, conf_high=conf.high,
