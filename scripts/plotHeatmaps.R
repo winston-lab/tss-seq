@@ -108,6 +108,7 @@ main = function(intable, samplelist, upstream, dnstream, pct_cutoff,
     hmap.width = max(12, (.0008*(upstream+dnstream)+3.4)*ngroups) 
     ggsave(samples_out, plot=hmap_sample, height=(.0005*nindices+7.5)*max(repl_df$replicate),
            width=hmap.width, units="cm", limitsize=FALSE)
+    rm(hmap_sample, df_sample, repl_df)
     
     df_group = raw %>% group_by(group, index, position) %>% summarise(cpm = mean(cpm))
     df_group = df_group %>% 
