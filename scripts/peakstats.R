@@ -182,7 +182,7 @@ main = function(groups, condition, control, table.out, size.out, violin.area.out
         annodf = df %>% select(group, dist=colname) %>%
             mutate(x=quantile(dist, .995)) %>% group_by(group) %>%
             summarize(median=median(dist), max=max(dist), min=min(dist),
-                      x=first(x), n=n(), mean_of_shorth=round(shorth(dist))) %>%
+                      x=first(x), n=n(), mean_of_shorth=round(shorth(dist, tie.action="min"))) %>%
             mutate(y=.98*max(hist(df[[colname]], plot=FALSE,
                                   breaks=seq(min(min)-binsize, max(max)+binsize, binsize))$counts))
         return(annodf)
