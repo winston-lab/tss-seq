@@ -101,7 +101,7 @@ tss_peaks_idr:
     mem: 6000
 
 peakstats:
-    time: 10
+    time: 20 
     mem: 10000
 
 call_de_peaks:
@@ -117,7 +117,7 @@ summarise_de_results:
 #     mem : 20000
 
 fimo:
-    time: 1 
+    time: 2 
     mem: 400M
 
 cat_fimo_motifs:
@@ -126,7 +126,7 @@ cat_fimo_motifs:
     mem: 2000
 
 get_upstream_motifs:
-    time: 2 
+    time: 4 
     mem: 400M
 
 test_motif_enrichment:
