@@ -702,7 +702,7 @@ rule separate_de_peaks:
         fdr = -log10(config["deseq"]["fdr"])
     log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
     shell: """
-        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $10>afdr && $7>0 {{print > "{output.up}"}} NR>1 && $10>afdr && $7<0 {{print > "{output.down}"}} NR>1 && $10<=afdr {{print > "{output.unchanged}"}}' {input}) &> {log}
+        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 != "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
         """
 
 rule de_peaks_to_bed:
@@ -712,7 +712,7 @@ rule de_peaks_to_bed:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
     log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input} | awk 'BEGIN{{FS=OFS="\t"}}{{print $2, $4, $5, $1, $7":"$11, $3}}' > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$11, $3}}' {input} > {output}) &> {log}
         """
 
 rule get_de_intragenic:
@@ -836,7 +836,7 @@ rule separate_sig_de:
         fdr = -log10(config["deseq"]["fdr"])
     log: "logs/separate_sig_de/separate_sig_de-{condition}-v-{control}-{norm}-{category}.log"
     shell: """
-        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr {{print > "{output.down}"}} NR>1 && $8<=afdr{{print > "{output.unchanged}"}}' {input}
+        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr && $8 != "NA" {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr && $8 != "NA" {{print > "{output.down}"}} NR>1 && ($8<=afdr || $8=="NA"){{print > "{output.unchanged}"}}' {input}
         """
 
 rule get_de_category_bed:
@@ -846,7 +846,7 @@ rule get_de_category_bed:
         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed"
     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (tail -n +2 {input} | awk 'BEGIN{{FS=OFS="\t"}}{{print $2, $4, $5, $1, $7":"$8, $3}}' | sort -k1,1 -k2,2n  > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$8, $3}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
         """
 
 #TODO: account for double-counted peaks when a peak overlaps more than one annotation (more than one genic region, for example)
