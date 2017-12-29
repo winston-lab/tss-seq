@@ -702,7 +702,7 @@ rule separate_de_peaks:
         fdr = -log10(config["deseq"]["fdr"])
     log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
     shell: """
-        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 != "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
+        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 = "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
         """
 
 rule de_peaks_to_bed:
