@@ -37,7 +37,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
     
     maplot = ggplot(data = cleandf, aes(x=meanExpr, y = log2FoldChange)) +
                 geom_hline(yintercept = 0, linetype="dashed") +
-                geom_point(aes(color=sig), alpha=0.4, stroke=0, size=1) +
+                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=1) +
                 scale_color_manual(values = c("grey40", "red"), guide=FALSE) +
                 stat_dens2d_filter(data = cleandf %>% filter(sig & meanExpr>minx & log2FoldChange > 0),
                                    geom = "text_repel",
@@ -60,7 +60,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 ylab(substitute(bold(log[bold(2)]~frac(cond,cont)), list(cond=cond, cont=ctrl))) +
                 facet_wrap(~type) +
                 ggtitle(paste("TSS-seq MA plots:", cond, "vs.", ctrl),
-                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ .(lfc) ~ "@ FDR" ~ .(alpha)))  +
+                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ log[2](.(lfc)) ~ "@ FDR" ~ .(alpha)))  +
                 theme_bw() +
                 theme(text = element_text(size=12, face="bold"),
                       axis.text = element_text(size=10, color="black"),
@@ -71,7 +71,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
     ggsave(out.ma, maplot, height=16, width=22, units="cm")
     
     volcano = ggplot(data = cleandf, aes(x = log2FoldChange, y = logpadj))+
-                geom_point(aes(color=sig), alpha=0.4, stroke=0, size=1) +
+                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=1) +
                 scale_color_manual(values = c("grey40", "red"), guide=FALSE) +
                 stat_dens2d_filter(data = cleandf %>% filter(sig & log2FoldChange < 0),
                                    geom = "text_repel",
@@ -93,7 +93,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 xlab(substitute(bold(log[bold(2)]~frac(cond,cont)), list(cond=cond, cont=ctrl))) +
                 facet_wrap(~type) +
                 ggtitle(paste("TSS-seq volcano plots:", cond, "vs.", ctrl),
-                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ .(lfc) ~ "@ FDR" ~ .(alpha)))  +
+                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ log[2](.(lfc)) ~ "@ FDR" ~ .(alpha)))  +
                 theme_bw() +
                 theme(text = element_text(size=12, face="bold"),
                       axis.text = element_text(size=10, color="black"),
@@ -129,7 +129,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 guides(fill=guide_legend(reverse=TRUE)) +
                 theme_void() +
                 ggtitle(paste("TSS-seq differential expression:", cond, "vs.", ctrl),
-                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ .(lfc) ~ "@ FDR" ~ .(alpha)))  +
+                        subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ log[2](.(lfc)) ~ "@ FDR" ~ .(alpha)))  +
                 theme(legend.text = element_text(size=12, face="bold", color="black"),
                       legend.title = element_blank(),
                       legend.position = c(.96, .5),

@@ -860,7 +860,7 @@ rule summarise_de_results:
         divergent = "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
         intergenic = "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv",
     params:
-        lfc = log2(config["deseq"]["fold-change-threshold"]),
+        lfc = config["deseq"]["fold-change-threshold"],
         alpha = config["deseq"]["fdr"]
     output:
         summary = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
