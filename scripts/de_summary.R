@@ -19,7 +19,7 @@ bin = function(df, type){
     group_by(change) %>% count() %>% filter(!is.na(change)) %>% mutate(class=type) %>% return()
 }
 
-main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.summary){
+main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.volcano_free,  out.summary){
     all = import(in.all, alpha) 
     genic = import(in.genic, alpha)
     intra = import(in.intra, alpha)
@@ -35,9 +35,9 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
     cleandf$type = fct_inorder(cleandf$type, ordered=TRUE)
     minx = quantile(cleandf$meanExpr, .2)
     
-    maplot = ggplot(data = cleandf, aes(x=meanExpr, y = log2FoldChange)) +
+    maplot = ggplot(data = cleandf, aes(x=meanExpr, y=log2FoldChange)) +
                 geom_hline(yintercept = 0, linetype="dashed") +
-                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=1) +
+                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=.8) +
                 scale_color_manual(values = c("grey40", "red"), guide=FALSE) +
                 stat_dens2d_filter(data = cleandf %>% filter(sig & meanExpr>minx & log2FoldChange > 0),
                                    geom = "text_repel",
@@ -55,7 +55,8 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                                    box.padding = unit(0.1, "lines"),
                                    nudge_y = -.3,
                                    size=1.5) + 
-                scale_x_log10(name="mean expression level") +
+                scale_x_log10(name="mean expression level", limits=c(1, NA),
+                              expand=c(0,0)) +
                 scale_y_continuous(breaks = scales::pretty_breaks(n=5)) +
                 ylab(substitute(bold(log[bold(2)]~frac(cond,cont)), list(cond=cond, cont=ctrl))) +
                 facet_wrap(~type) +
@@ -71,7 +72,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
     ggsave(out.ma, maplot, height=16, width=22, units="cm")
     
     volcano = ggplot(data = cleandf, aes(x = log2FoldChange, y = logpadj))+
-                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=1) +
+                geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=.8) +
                 scale_color_manual(values = c("grey40", "red"), guide=FALSE) +
                 stat_dens2d_filter(data = cleandf %>% filter(sig & log2FoldChange < 0),
                                    geom = "text_repel",
@@ -91,7 +92,6 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                                    size=1.5) +
                 ylab(expression(bold(-log[10] ~ p[adj]))) +
                 xlab(substitute(bold(log[bold(2)]~frac(cond,cont)), list(cond=cond, cont=ctrl))) +
-                facet_wrap(~type) +
                 ggtitle(paste("TSS-seq volcano plots:", cond, "vs.", ctrl),
                         subtitle = bquote("DESeq2: |" ~ log[2] ~ "fold-change" ~ "| >" ~ log[2](.(lfc)) ~ "@ FDR" ~ .(alpha)))  +
                 theme_bw() +
@@ -101,7 +101,8 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                       strip.background = element_blank(),
                       strip.text = element_text(size=12, face="bold", color="black"))
     
-    ggsave(out.volcano, volcano, height=16, width=20, units="cm")
+    ggsave(out.volcano, volcano + facet_wrap(~type) , height=16, width=20, units="cm")
+    ggsave(out.volcano_free, volcano + facet_wrap(~type, scales="free_y") , height=16, width=20, units="cm")
     
     countdf = bind_rows(bin(genic, 'genic')) %>% bind_rows(bin(intra, 'intragenic')) %>%
                 bind_rows(bin(as, 'antisense')) %>% bind_rows(bin(conv, 'convergent')) %>%
@@ -155,4 +156,5 @@ main(in.all = snakemake@input[["total"]],
      alpha = snakemake@params[["alpha"]],
      out.ma = snakemake@output[["maplot"]],
      out.volcano = snakemake@output[["volcano"]],
+     out.volcano_free = snakemake@output[["volcano_free"]],
      out.summary = snakemake@output[["summary"]])

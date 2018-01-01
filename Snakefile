@@ -866,6 +866,7 @@ rule summarise_de_results:
         summary = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
         maplot = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-maplot.svg",
         volcano = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-volcano.svg",
+        volcano_free = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-volcano-freescale.svg",
     script: "scripts/de_summary.R"
 
 rule genic_v_class:
