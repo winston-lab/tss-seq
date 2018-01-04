@@ -4,13 +4,16 @@ library(viridis)
 library(forcats)
 
 main = function(intable, pcount, samplelist, outpath){
-    df = intable %>% read_tsv() %>% gather(key=sample, value=signal, -name) %>%
-            filter(sample %in% samplelist)
-    df$sample = fct_inorder(df$sample, ordered=TRUE)
-    df = df %>% spread(sample, signal) %>% select(-name)
+    df = intable %>% read_tsv() %>%
+        gather(key=sample, value=signal, -name) %>%
+        filter(sample %in% samplelist) %>%
+        mutate_at(vars(sample), funs(fct_inorder(., ordered=TRUE))) %>%
+        spread(sample, signal) %>%
+        select(-name)
     
+    df = df[which(rowSums(df)>0),]
     maxsignal = max(df) + pcount
-    mincor = min(cor(df, use="complete.obs"))
+    mincor = min(cor(df, use="complete.obs")) * .99
     plots = list()
     
     #for each row
@@ -60,9 +63,11 @@ main = function(intable, pcount, samplelist, outpath){
     }
     
     mat = ggmatrix(plots, nrow=ncol(df), ncol=ncol(df),
+                   title = "TSS-seq signal, 1nt bins",
                    xAxisLabels = names(df), yAxisLabels = names(df), switch="both") +
                     theme_light() +
-                    theme(axis.text = element_text(size=9),
+                    theme(plot.title = element_text(size=12, color="black", face="bold"),
+                          axis.text = element_text(size=9),
                           strip.background = element_blank(),
                           strip.text = element_text(size=12, color="black", face="bold"),
                           strip.text.y = element_text(angle=180, hjust=1),
@@ -70,7 +75,7 @@ main = function(intable, pcount, samplelist, outpath){
                           strip.switch.pad.grid = unit(0, "points"),
                           strip.switch.pad.wrap = unit(0, "points"))
     w = 3+ncol(df)*4
-    h = 9/16*w
+    h = 9/16*w+0.5
     ggsave(outpath, mat, width=w, height=h, units="cm")
     print(warnings())
 }    
