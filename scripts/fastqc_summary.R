@@ -117,7 +117,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
               legend.position="top",
               legend.margin = margin(0,0,0,0))
     
-    ggsave(per_base_qual_out, plot=per_base_qual_plot, width=16, height=2+1.25*nsamples, units="cm")
+    ggsave(per_base_qual_out, plot=per_base_qual_plot, width=16, height=2.5+1.25*nsamples, units="cm")
     
     adapter_plot = ggplot(data = adapter_content, aes(x=position, y=0, fill=pct, color=pct)) +
         geom_raster() +

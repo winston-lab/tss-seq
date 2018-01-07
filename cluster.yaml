@@ -12,12 +12,8 @@ fastqc_raw:
     n : 1
     mem : 4000
 
-remove_adapter:
-    time : 90 
-    mem : 2000
-
-remove_3p_barcode_and_qual_trim:
-    time : 30 
+clean_reads:
+    time : 120 
     mem : 2000
 
 remove_molec_barcode:
