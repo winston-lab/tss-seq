@@ -38,7 +38,6 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
     adapter_content = import(adapter_content_in)
     
     per_base_seq = import(per_base_seq_in) %>%
-        mutate_at(vars(g,a,t,c), funs(./100)) %>% 
         left_join(import(per_base_n_in), by=c("base", "sample","status")) %>% 
         rename(position=base, n=n_count) %>% 
         gather(base, pct, -c(position, sample, status)) %>% 
