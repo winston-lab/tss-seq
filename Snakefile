@@ -171,10 +171,30 @@ rule fastqc_cleaned:
         (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/cleaned {input}) &>> {log}
         """
 
+rule fastqc_aligned:
+    input:
+        lambda wildcards: "alignment/" + wildcards.sample + "-noPCRdup.bam" if wildcards.fqtype=="aligned_noPCRdup" else "alignment/" + wildcards.sample + "/unmapped.bam",
+    params:
+        adapter = config["cutadapt"]["adapter"]
+    output:
+        "qual_ctrl/fastqc/{fqtype}/{sample}-{fqtype}_fastqc/fastqc_data.txt",
+    threads : config["threads"]
+    log: "logs/fastqc/{fqtype}/fastqc-{fqtype}-{sample}.log"
+    wildcard_constraints:
+        fqtype="aligned_noPCRdup|unaligned"
+    shell: """
+        (mkdir -p qual_ctrl/fastqc/{wildcards.fqtype}) &> {log}
+        (bedtools bamtofastq -fq qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq -i {input}) &>> {log}
+        (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/{wildcards.fqtype} qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq) &>> {log}
+        (rm qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq) &>> {log}
+        """
+
 rule fastqc_aggregate:
     input:
         raw = expand("qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt", zip, sample=SAMPLES, fname=[os.path.split(v["fastq"])[1].split(".fastq")[0] + "_fastqc" for k,v in SAMPLES.items()]),
         cleaned = expand("qual_ctrl/fastqc/cleaned/{sample}-clean_fastqc/fastqc_data.txt", sample=SAMPLES),
+        aligned_noPCRdup = expand("qual_ctrl/fastqc/aligned_noPCRdup/{sample}-aligned_noPCRdup_fastqc/fastqc_data.txt", sample=SAMPLES),
+        unaligned = expand("qual_ctrl/fastqc/unaligned/{sample}-unaligned_fastqc/fastqc_data.txt", sample=SAMPLES),
     output:
         'qual_ctrl/fastqc/per_base_quality.tsv',
         'qual_ctrl/fastqc/per_tile_quality.tsv',
@@ -192,7 +212,7 @@ rule fastqc_aggregate:
         for outpath, stat, header in zip(output, ["Per base sequence quality", "Per tile sequence quality", "Per sequence quality scores", "Per base sequence content", "Per sequence GC content", "Per base N content", "Sequence Length Distribution", "Total Deduplicated Percentage", "Adapter Content", "Kmer Content"], ["base\tmean\tmedian\tlower_quartile\tupper_quartile\tten_pct\tninety_pct\tsample\tstatus", "tile\tbase\tmean\tsample\tstatus",
         "quality\tcount\tsample\tstatus", "base\tg\ta\tt\tc\tsample\tstatus", "gc_content\tcount\tsample\tstatus", "base\tn_count\tsample\tstatus", "length\tcount\tsample\tstatus", "duplication_level\tpct_of_deduplicated\tpct_of_total\tsample\tstatus", "position\tpct\tsample\tstatus",
         "sequence\tcount\tpval\tobs_over_exp_max\tmax_position\tsample\tstatus" ]):
-            for input_type in ["raw", "cleaned"]:
+            for input_type in ["raw", "cleaned", "aligned_noPCRdup", "unaligned"]:
                 for sample_id, fqc in zip(SAMPLES.keys(), input[input_type]):
                     shell("""awk -v sample_id={sample_id} -v input_type={input_type} 'BEGIN{{FS=OFS="\t"}} /{stat}/{{flag=1;next}}/>>END_MODULE/{{flag=0}} flag {{print $0, sample_id, input_type}}' {fqc} | tail -n +2 >> {outpath}""")
             shell("""sed -i "1i {header}" {outpath}""")
@@ -242,7 +262,9 @@ rule align:
         expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
         fastq = "fastq/cleaned/{sample}-clean.fastq.gz"
     output:
-        "alignment/{sample}/accepted_hits.bam"
+        aligned = "alignment/{sample}/accepted_hits.bam",
+        unaligned = "alignment/{sample}/unmapped.bam",
+        summary = "alignment/{sample}/align_summary.txt",
     params:
         idx_path = config["tophat2"]["index-path"],
         basename = config["combinedgenome"]["name"],

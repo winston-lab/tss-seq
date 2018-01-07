@@ -26,6 +26,11 @@ fastqc_cleaned:
     n : 1
     mem : 4000
 
+fastqc_aligned:
+    time : 20 
+    n : 1
+    mem : 4000
+
 plot_fastqc_summary:
     time: 10
     n: 1

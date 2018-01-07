@@ -33,7 +33,8 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         left_join(length_distribution, by=c("base"="length", "sample", "status")) %>% 
         group_by(sample, status) %>%
         mutate_at(vars(count), funs(if_else(is.na(.), 0, .))) %>% 
-        mutate(n = lag(sum(count)-cumsum(count), default=sum(count)))
+        mutate(n = lag(sum(count)-cumsum(count), default=sum(count))) %>% 
+        mutate_at(vars(n), funs(./max(n)))
     
     adapter_content = import(adapter_content_in)
     
@@ -80,7 +81,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         theme_standard +
         theme(axis.text.y = element_text(size=10, face="plain"))
     
-    ggsave(seq_len_dist_out, plot=length_dist_plot, width=16, height=2+2*nsamples, units="cm")
+    ggsave(seq_len_dist_out, plot=length_dist_plot, width=26, height=2+2*nsamples, units="cm")
     
     tile_quality_plot = ggplot(data = per_tile_quality %>% filter(status=="raw"),
                                aes(x=base, y=tile, fill=mean)) +
@@ -117,7 +118,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
               legend.position="top",
               legend.margin = margin(0,0,0,0))
     
-    ggsave(per_base_qual_out, plot=per_base_qual_plot, width=16, height=2.5+1.25*nsamples, units="cm")
+    ggsave(per_base_qual_out, plot=per_base_qual_plot, width=26, height=2.5+1.25*nsamples, units="cm")
     
     adapter_plot = ggplot(data = adapter_content, aes(x=position, y=0, fill=pct, color=pct)) +
         geom_raster() +
@@ -133,7 +134,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         theme(legend.position="top",
               legend.margin = margin(0,0,0,0))
     
-    ggsave(adapter_content_out, plot=adapter_plot, width=16, height=2+1.25*nsamples, units="cm")
+    ggsave(adapter_content_out, plot=adapter_plot, width=26, height=2+1.25*nsamples, units="cm")
               
     per_base_seq_plot = ggplot(data = per_base_seq, aes(x=position, y=pct, color=base)) +
         geom_line() +
@@ -151,7 +152,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
               legend.text = element_text(size=12, face="bold"),
               axis.text.y = element_text(size=10, face="plain"))
     
-    ggsave(per_base_seq_out, plot=per_base_seq_plot, width=16, height=2+2.25*nsamples, units="cm")
+    ggsave(per_base_seq_out, plot=per_base_seq_plot, width=26, height=2+2.25*nsamples, units="cm")
     
     per_seq_gc_plot = ggplot(data = per_seq_gc, aes(x=gc_content, y=norm_count)) +
         geom_line(color="#114477") +
@@ -165,7 +166,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
               panel.spacing.x = unit(1, "cm"),
               plot.margin = margin(5.5, 12, 5.5, 5.5, unit="pt"))
     
-    ggsave(per_seq_gc_out, plot=per_seq_gc_plot, width=16, height=2+2*nsamples, units="cm")
+    ggsave(per_seq_gc_out, plot=per_seq_gc_plot, width=26, height=2+2*nsamples, units="cm")
     
     per_seq_qual_plot = ggplot(data = per_seq_qual, aes(x=quality, y=norm_count)) +
         geom_col(fill="#114477") +
@@ -176,7 +177,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         theme_standard +
         theme(axis.text.y = element_text(size=10, face="plain"))
     
-    ggsave(per_seq_qual_out, plot=per_seq_qual_plot, width=16, height=2+1.5*nsamples, units="cm")
+    ggsave(per_seq_qual_out, plot=per_seq_qual_plot, width=26, height=2+1.5*nsamples, units="cm")
     
     dup_level_plot = ggplot(data = duplication_levels, aes(x=duplication_level, y=pct_of_total)) +
         geom_col(fill="#114477") +
@@ -188,7 +189,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         theme(axis.text.x = element_text(size=10, face="plain", angle=60, hjust=1),
               axis.text.y = element_text(size=10, face="plain"))
     
-    ggsave(seq_dup_out, plot=dup_level_plot, width=16, height=2+1.5*nsamples, units="cm")
+    ggsave(seq_dup_out, plot=dup_level_plot, width=26, height=2+1.5*nsamples, units="cm")
     
     #ermmm...no obvious way to make this one look nice, but then it doesn't really need to
     kmer_content_plot = ggplot(data = kmer_content, aes(x=max_position, y=log2(obs_over_exp_max), label=sequence)) +
@@ -202,7 +203,7 @@ main = function(seq_len_dist_in, per_tile_in, per_base_qual_in,
         facet_grid(sample~status, switch="y", scales="free_y") +
         theme_standard + theme(plot.subtitle = element_text(size=12, face="plain"))
     
-    ggsave(kmer_out, plot=kmer_content_plot, width=24, height=2+5*nsamples, units="cm", limitsize=FALSE)
+    ggsave(kmer_out, plot=kmer_content_plot, width=35, height=2+5*nsamples, units="cm", limitsize=FALSE)
 }
 
 main(seq_len_dist_in = snakemake@input[["seq_len_dist"]],
