@@ -30,6 +30,11 @@ fastqc_cleaned:
     n : 1
     mem : 4000
 
+plot_fastqc_summary:
+    time: 10
+    n: 1
+    mem: 8000
+
 bowtie2_build:
     time : 10 
     mem : 2000

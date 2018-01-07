@@ -22,6 +22,7 @@ CATEGORIES = ["genic", "intragenic", "antisense", "convergent", "divergent", "in
 
 localrules:
     all,
+    fastqc_aggregate,
     bowtie2_build,
     get_si_pct, cat_si_pct, plot_si_pct,
     make_stranded_genome, make_stranded_annotations,
@@ -44,8 +45,7 @@ localrules:
 rule all:
     input:
         #FastQC
-        expand("qual_ctrl/fastqc/raw/{sample}", sample=SAMPLES),
-        expand("qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip", sample=SAMPLES),
+        'qual_ctrl/fastqc/per_base_sequence_content.svg',
         #alignment
         expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES),
         #coverage
@@ -115,13 +115,15 @@ def plotcorrsamples(wildcards):
 rule fastqc_raw:
     input:
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
+    params:
+        adapter = config["cutadapt"]["adapter"]
     output:
-        "qual_ctrl/fastqc/raw/{sample}"
+        "qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt"
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
     shell: """
-        (mkdir -p {output}) &> {log}
-        (fastqc -o {output} --noextract -t {threads} {input}) &>> {log}
+        (mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample}) &> {log}
+        (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/raw/{wildcards.sample} {input}) &>> {log}
         """
 
 #in this order: remove adapter, remove 3' molecular barcode, do NextSeq quality trimming
@@ -167,15 +169,66 @@ rule remove_molec_barcode:
 rule fastqc_cleaned:
     input:
         "fastq/cleaned/{sample}-clean.fastq.gz"
+    params:
+        adapter = config["cutadapt"]["adapter"]
     output:
-        html = "qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.html",
-        folder  = "qual_ctrl/fastqc/cleaned/{sample}/{sample}-clean_fastqc.zip"
+        "qual_ctrl/fastqc/cleaned/{sample}-clean_fastqc/fastqc_data.txt",
     threads : config["threads"]
     log: "logs/fastqc/cleaned/fastqc-cleaned-{sample}.log"
     shell: """
-        (mkdir -p qual_ctrl/fastqc/cleaned/{wildcards.sample}) &> {log}
-        (fastqc -o qual_ctrl/fastqc/cleaned/{wildcards.sample} --noextract -t {threads} {input}) &>> {log}
+        (mkdir -p qual_ctrl/fastqc/cleaned) &> {log}
+        (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/cleaned {input}) &>> {log}
         """
+
+rule fastqc_aggregate:
+    input:
+        raw = expand("qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt", zip, sample=SAMPLES, fname=[os.path.split(v["fastq"])[1].split(".fastq")[0] + "_fastqc" for k,v in SAMPLES.items()]),
+        cleaned = expand("qual_ctrl/fastqc/cleaned/{sample}-clean_fastqc/fastqc_data.txt", sample=SAMPLES),
+    output:
+        'qual_ctrl/fastqc/per_base_quality.tsv',
+        'qual_ctrl/fastqc/per_tile_quality.tsv',
+        'qual_ctrl/fastqc/per_sequence_quality.tsv',
+        'qual_ctrl/fastqc/per_base_sequence_content.tsv',
+        'qual_ctrl/fastqc/per_sequence_gc.tsv',
+        'qual_ctrl/fastqc/per_base_n.tsv',
+        'qual_ctrl/fastqc/sequence_length_distribution.tsv',
+        'qual_ctrl/fastqc/sequence_duplication_levels.tsv',
+        'qual_ctrl/fastqc/adapter_content.tsv',
+        'qual_ctrl/fastqc/kmer_content.tsv'
+    run:
+        shell("rm -f {output}")
+        #for each statistic
+        for outpath, stat, header in zip(output, ["Per base sequence quality", "Per tile sequence quality", "Per sequence quality scores", "Per base sequence content", "Per sequence GC content", "Per base N content", "Sequence Length Distribution", "Total Deduplicated Percentage", "Adapter Content", "Kmer Content"], ["base\tmean\tmedian\tlower_quartile\tupper_quartile\tten_pct\tninety_pct\tsample\tstatus", "tile\tbase\tmean\tsample\tstatus",
+        "quality\tcount\tsample\tstatus", "base\tg\ta\tt\tc\tsample\tstatus", "gc_content\tcount\tsample\tstatus", "base\tn_count\tsample\tstatus", "length\tcount\tsample\tstatus", "duplication_level\tpct_of_deduplicated\tpct_of_total\tsample\tstatus", "position\tpct\tsample\tstatus",
+        "sequence\tcount\tpval\tobs_over_exp_max\tmax_position\tsample\tstatus" ]):
+            for input_type in ["raw", "cleaned"]:
+                for sample_id, fqc in zip(SAMPLES.keys(), input[input_type]):
+                    shell("""awk -v sample_id={sample_id} -v input_type={input_type} 'BEGIN{{FS=OFS="\t"}} /{stat}/{{flag=1;next}}/>>END_MODULE/{{flag=0}} flag {{print $0, sample_id, input_type}}' {fqc} | tail -n +2 >> {outpath}""")
+            shell("""sed -i "1i {header}" {outpath}""")
+
+rule plot_fastqc_summary:
+    input:
+        seq_len_dist = 'qual_ctrl/fastqc/sequence_length_distribution.tsv',
+        per_tile = 'qual_ctrl/fastqc/per_tile_quality.tsv',
+        per_base_qual = 'qual_ctrl/fastqc/per_base_quality.tsv',
+        per_base_seq = 'qual_ctrl/fastqc/per_base_sequence_content.tsv',
+        per_base_n = 'qual_ctrl/fastqc/per_base_n.tsv',
+        per_seq_gc = 'qual_ctrl/fastqc/per_sequence_gc.tsv',
+        per_seq_qual = 'qual_ctrl/fastqc/per_sequence_quality.tsv',
+        adapter_content = 'qual_ctrl/fastqc/adapter_content.tsv',
+        seq_dup = 'qual_ctrl/fastqc/sequence_duplication_levels.tsv',
+        kmer = 'qual_ctrl/fastqc/kmer_content.tsv'
+    output:
+        seq_len_dist = 'qual_ctrl/fastqc/sequence_length_distribution.svg',
+        per_tile = 'qual_ctrl/fastqc/per_tile_quality.svg',
+        per_base_qual = 'qual_ctrl/fastqc/per_base_quality.svg',
+        per_base_seq = 'qual_ctrl/fastqc/per_base_sequence_content.svg',
+        per_seq_gc = 'qual_ctrl/fastqc/per_sequence_gc.svg',
+        per_seq_qual = 'qual_ctrl/fastqc/per_sequence_quality.svg',
+        adapter_content = 'qual_ctrl/fastqc/adapter_content.svg',
+        seq_dup = 'qual_ctrl/fastqc/sequence_duplication_levels.svg',
+        kmer = 'qual_ctrl/fastqc/kmer_content.svg',
+    script: "scripts/fastqc_summary.R"
 
 #align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
 #(because we don't always have a reference gff and it doesn't make much difference)
