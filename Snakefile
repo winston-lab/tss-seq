@@ -48,57 +48,58 @@ rule all:
         'qual_ctrl/fastqc/per_base_sequence_content.svg',
         #alignment
         expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES),
-        # #coverage
-        # expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        # #datavis
-        # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        # #quality control
-        # expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        # expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
-        # #find intragenic ORFs
-        # # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        # # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        # #peakcalling on all samples
-        # expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
-        # expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
-        # #IDR for all groups which have at least two passing samples
-        # expand("peakcalling/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
-        # expand("peakcalling/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
-        # #classify peaks into categories
-        # expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
-        # expand("peakcalling/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
-        # #combine called peaks for conditions vs control
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        # #differential expression of peaks
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.bed", zip, condition=conditiongroups, control=controlgroups),
-        # expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","unchanged","down"], fmt=["tsv","bed"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","unchanged", "down"], fmt=["tsv","bed"]),
-        # #categorize DE peaks
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
-        # expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
-        # #DE summary
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
-        # #intragenic frequency per ORF
-        # # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
-        # # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        # expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
-        # expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
-        # #FIMO
-        # "motifs/allmotifs.bed",
-        # # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
-        # # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
-        # #motif_enrichment
-        # # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
-        # # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
-        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
-        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
+        #coverage
+        expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        #datavis
+        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        #quality control
+        "qual_ctrl/read_processing-loss.svg",
+        expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        #find intragenic ORFs
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        #peakcalling on all samples
+        expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
+        expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
+        #IDR for all groups which have at least two passing samples
+        expand("peakcalling/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
+        expand("peakcalling/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
+        #classify peaks into categories
+        expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        expand("peakcalling/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
+        #combine called peaks for conditions vs control
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #differential expression of peaks
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","unchanged","down"], fmt=["tsv","bed"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","unchanged", "down"], fmt=["tsv","bed"]),
+        #categorize DE peaks
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        #DE summary
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
+        #intragenic frequency per ORF
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
+        expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #FIMO
+        "motifs/allmotifs.bed",
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
+        # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","unchanged","down"], category=CATEGORIES),
+        #motif_enrichment
+        # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
+        # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
+        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
+        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -293,6 +294,7 @@ rule align:
         (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive {params.idx_path}/{params.basename} {input.fastq}) &> {log}
         """
 
+
 rule select_unique_mappers:
     input:
         "alignment/{sample}/accepted_hits.bam"
@@ -313,6 +315,33 @@ rule remove_PCR_duplicates:
     shell: """
         (python scripts/removePCRdupsFromBAM.py {input} {output}) &> {log}
         """
+
+rule read_processing_numbers:
+    input:
+        adapter = expand("logs/clean_reads/remove_adapter-{sample}.log", sample=SAMPLES),
+        qual_trim = expand("logs/clean_reads/remove_3p_bc_and_trim-{sample}.log", sample=SAMPLES),
+        align = expand("alignment/{sample}/align_summary.txt", sample=SAMPLES),
+        nodups = expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES)
+    output:
+        "qual_ctrl/read_processing_summary.tsv"
+    log: "logs/read_processing_summary.log"
+    run:
+        shell("""(echo -e "sample\traw\tadapter_removed\tquality_trimmed\tmapped\tunique_map\tnoPCRdup" > {output}) &> {log}""")
+        for sample, adapter, qual_trim, align, nodups in zip(SAMPLES.keys(), input.adapter, input.qual_trim, input.align, input.nodups):
+            shell("""(grep -e "Total reads processed:" -e "Reads written" {adapter} | cut -d: -f2 | sed 's/,//g' | awk -v sample={sample} 'BEGIN{{ORS="\t"; print sample}}{{print $1}}' >> {output}) &> {log}""")
+            shell("""(grep -e "Reads written" {qual_trim} | cut -d: -f2 | sed 's/,//g' | awk 'BEGIN{{ORS="\t"}}{{print $1}}' >> {output}) &> {log}""")
+            shell("""(awk 'BEGIN{{ORS="\t"}} NR==3 || NR==4{{print $3}}' {align} >> {output}) &> {log}""")
+            shell("""(samtools view -c {nodups} | awk '{{print $1}}' >> {output}) &> {log}""")
+        shell("""(awk 'BEGIN{{FS=OFS="\t"}} NR==1; NR>1{{$6=$5-$6; print $0}}' {output} > qual_ctrl/.readnumbers.temp; mv qual_ctrl/.readnumbers.temp {output}) &> {log}""")
+
+rule plot_read_processing:
+    input:
+        "qual_ctrl/read_processing_summary.tsv"
+    output:
+        surv_abs_out = "qual_ctrl/read_processing-survival-absolute.svg",
+        surv_rel_out = "qual_ctrl/read_processing-survival-relative.svg",
+        loss_out  = "qual_ctrl/read_processing-loss.svg",
+    script: "scripts/processing_summary.R"
 
 rule get_coverage:
     input:
