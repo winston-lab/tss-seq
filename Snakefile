@@ -388,7 +388,7 @@ rule get_si_pct:
     run:
         shell("rm -f {output}")
         for name, exp, si, g in zip(SAMPLES.keys(), input.plmin, input.SIplmin, params.group):
-            shell("""(echo -e "{name}\t{group}\t" $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {si} {exp}) >> {output}) &> {log}""")
+            shell("""(echo -e "{name}\t{g}\t" $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {si} {exp}) >> {output}) &> {log}""")
 
 rule plot_si_pct:
     input:
