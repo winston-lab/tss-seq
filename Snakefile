@@ -133,15 +133,14 @@ rule clean_reads:
     input:
         lambda wildcards: SAMPLES[wildcards.sample]["fastq"]
     output:
-        temp("fastq/cleaned/{sample}-trim.fastq")
+        fq = temp("fastq/cleaned/{sample}-trim.fastq"),
+        adapter = "logs/clean_reads/remove_adapter-{sample}.log",
+        qual_trim = "logs/clean_reads/remove_3p_bc_and_trim-{sample}.log"
     params:
         adapter = config["cutadapt"]["adapter"],
         trim_qual = config["cutadapt"]["trim_qual"]
-    log:
-        adapter = "logs/clean_reads/remove_adapter-{sample}.log",
-        qual_trim = "logs/clean_reads/remove_3p_bc_and_trim-{sample}.log"
     shell: """
-        cutadapt -a {params.adapter} -m 18 {input} 2> {log.adapter} | cutadapt -u -6 --nextseq-trim={params.trim_qual} -m 12 -o {output} - &> {log.qual_trim}
+        cutadapt -a {params.adapter} -m 18 {input} 2> {output.adapter} | cutadapt -u -6 --nextseq-trim={params.trim_qual} -m 12 -o {output.fq} - &> {output.qual_trim}
         """
 
 rule remove_molec_barcode:
