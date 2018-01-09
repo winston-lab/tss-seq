@@ -51,8 +51,9 @@ rule all:
         #coverage
         expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand("datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz", annotation=config["annotations"], norm=["libsizenorm","spikenorm"], strand=["SENSE", "ANTISENSE"]),
         #quality control
         "qual_ctrl/read_processing-loss.svg",
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
@@ -327,7 +328,7 @@ rule read_processing_numbers:
     run:
         shell("""(echo -e "sample\traw\tadapter_removed\tquality_trimmed\tmapped\tunique_map\tnoPCRdup" > {output}) &> {log}""")
         for sample, adapter, qual_trim, align, nodups in zip(SAMPLES.keys(), input.adapter, input.qual_trim, input.align, input.nodups):
-            shell("""(grep -e "Total reads processed:" -e "Reads written" {adapter} | cut -d: -f2 | sed 's/,//g' | awk -v sample={sample} 'BEGIN{{ORS="\t"; print sample}}{{print $1}}' >> {output}) &> {log}""")
+            shell("""(grep -e "Total reads processed:" -e "Reads written" {adapter} | cut -d: -f2 | sed 's/,//g' | awk 'BEGIN{{ORS="\t"; print "{sample}"}}{{print $1}}' >> {output}) &> {log}""")
             shell("""(grep -e "Reads written" {qual_trim} | cut -d: -f2 | sed 's/,//g' | awk 'BEGIN{{ORS="\t"}}{{print $1}}' >> {output}) &> {log}""")
             shell("""(awk 'BEGIN{{ORS="\t"}} NR==3 || NR==4{{print $3}}' {align} >> {output}) &> {log}""")
             shell("""(samtools view -c {nodups} | awk '{{print $1}}' >> {output}) &> {log}""")
@@ -459,49 +460,55 @@ rule bg_to_bw:
         (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
         """
 
-rule deeptools_matrix:
+rule compute_matrix:
     input:
         annotation = lambda wildcards: os.path.dirname(config["annotations"][wildcards.annotation]["path"]) + "/stranded/" + wildcards.annotation + "-STRANDED" + os.path.splitext(config["annotations"][wildcards.annotation]["path"])[1],
         bw = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw"
     output:
-        dtfile = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.mat.gz"),
-        matrix = temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv"),
-        matrix_gz = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
+        dtfile = temp("datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}.mat.gz"),
+        matrix = temp("datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}.tsv"),
+        melted = "datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}-melted.tsv.gz"
     params:
-        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
+        group = lambda wildcards : SAMPLES[wildcards.sample]["group"],
         upstream = lambda wildcards: config["annotations"][wildcards.annotation]["upstream"] + config["annotations"][wildcards.annotation]["binsize"],
         dnstream = lambda wildcards: config["annotations"][wildcards.annotation]["dnstream"] + config["annotations"][wildcards.annotation]["binsize"],
         binsize = lambda wildcards: config["annotations"][wildcards.annotation]["binsize"],
         sort = lambda wildcards: config["annotations"][wildcards.annotation]["sort"],
         sortusing = lambda wildcards: config["annotations"][wildcards.annotation]["sortby"],
-        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"]
+        binstat = lambda wildcards: config["annotations"][wildcards.annotation]["binstat"],
     threads : config["threads"]
-    log: "logs/deeptools/computeMatrix-{annotation}-{sample}-{norm}-{strand}.log"
+    log: "logs/compute_matrix/compute_matrix-{annotation}_{sample}_{norm}-{strand}.log"
     run:
-        if config["annotations"][wildcards.annotation]["nan_afterend"]=="y":
-            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}; pigz -fk {output.matrix}) &> {log}")
+        if config["annotations"][wildcards.annotation]["type"]=="absolute":
+            refpoint = config["annotations"][wildcards.annotation]["refpoint"]
+            if config["annotations"][wildcards.annotation]["nan_afterend"]=="y":
+                shell("""(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --nanAfterEnd --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
+            else:
+                shell("""(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
         else:
-            shell("(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}; pigz -fk {output.matrix}) &> {log}")
+            scaled_length = config["annotations"][wildcards.annotation]["scaled_length"]
+            refpoint = "TSS"
+            shell("""(computeMatrix scale-regions -R {input.annotation} -S {input.bw} -out {output.dtfile} --outFileNameMatrix {output.matrix} -m {scaled_length} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
+        shell("""(Rscript scripts/melt_matrix.R -i {output.matrix} -r {refpoint} --group {params.group} -s {wildcards.sample} -b {params.binsize} -u {params.upstream} -o {output.melted}) &>> {log}""")
 
-rule melt_matrix:
-    input:
-        matrix = "datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}.tsv.gz"
-    output:
-        temp("datavis/{annotation}/{norm}/{annotation}-{sample}-{norm}-{strand}-melted.tsv.gz")
-    params:
-        refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"],
-        group = lambda wildcards : SAMPLES[wildcards.sample]["group"],
-        binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
-        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
-    script:
-        "scripts/melt_matrix.R"
+# rule melt_matrix:
+#     input:
+#         matrix = "datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}.tsv.gz"
+#     output:
+#         temp("datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}-melted.tsv.gz")
+#     params:
+#         refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"] if config["annotations"][wildcards.annotation]["type"]=="absolute" else "TSS",
+#         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
+#         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+#     script:
+#         "scripts/melt_matrix.R"
 
 rule cat_matrices:
     input:
-        expand("datavis/{{annotation}}/{{norm}}/{{annotation}}-{sample}-{{norm}}-{{strand}}-melted.tsv.gz", sample=SAMPLES)
+        expand("datavis/{{annotation}}/{{norm}}/{{annotation}}_{sample}_{{norm}}-{{strand}}-melted.tsv.gz", sample=SAMPLES)
     output:
         "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
-    log: "logs/cat_matrices/cat_matrices-{annotation}-{norm}-{strand}.log"
+    log: "logs/cat_matrices/cat_matrices-{annotation}_{norm}-{strand}.log"
     shell: """
         (cat {input} > {output}) &> {log}
         """
@@ -523,7 +530,7 @@ rule r_datavis:
         refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
         ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
     script:
-        "scripts/plotHeatmaps.R"
+        "scripts/plot_tss_heatmaps.R"
 
 rule union_bedgraph:
     input:
@@ -531,7 +538,7 @@ rule union_bedgraph:
     output:
         exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz",
     params:
-        names = " ".join(SAMPLES)
+        names = list(SAMPLES.keys())
     log: "logs/union_bedgraph-{norm}.log"
     shell: """
         (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}

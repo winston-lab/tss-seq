@@ -80,16 +80,8 @@ bg_to_bw:
     time: 2 
     mem: 1000
  
-deeptools_matrix:
-    time : 5 
-    mem : 2000
-
-gzip_deeptools_matrix:
-    time : 2 
-    mem : 2000
-
-melt_matrix:
-    time : 5 
+compute_matrix:
+    time : 10 
     mem : 2000
 
 cat_matrices:
