@@ -88,7 +88,7 @@ cat_matrices:
     time : 5 
     mem : 2000
 
-r_datavis:
+plot_heatmaps:
     time : 15 
     mem : 10000
 

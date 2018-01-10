@@ -490,18 +490,7 @@ rule compute_matrix:
             refpoint = "TSS"
             shell("""(computeMatrix scale-regions -R {input.annotation} -S {input.bw} -out {output.dtfile} --outFileNameMatrix {output.matrix} -m {scaled_length} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
         shell("""(Rscript scripts/melt_matrix.R -i {output.matrix} -r {refpoint} --group {params.group} -s {wildcards.sample} -b {params.binsize} -u {params.upstream} -o {output.melted}) &>> {log}""")
-
-# rule melt_matrix:
-#     input:
-#         matrix = "datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}.tsv.gz"
-#     output:
-#         temp("datavis/{annotation}/{norm}/{annotation}_{sample}_{norm}-{strand}-melted.tsv.gz")
-#     params:
-#         refpoint = lambda wildcards: config["annotations"][wildcards.annotation]["refpoint"] if config["annotations"][wildcards.annotation]["type"]=="absolute" else "TSS",
-#         binsize = lambda wildcards : config["annotations"][wildcards.annotation]["binsize"],
-#         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
-#     script:
-#         "scripts/melt_matrix.R"
+        #TODO: check upstream distance for melting
 
 rule cat_matrices:
     input:
@@ -513,14 +502,15 @@ rule cat_matrices:
         (cat {input} > {output}) &> {log}
         """
 
-rule r_datavis:
+rule plot_heatmaps:
     input:
         matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     output:
-        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}-{strand}-heatmap-bysample.svg",
-        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}-{strand}-heatmap-bygroup.svg"
+        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bysample.svg",
+        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bygroup.svg"
     params:
         samplelist = plotcorrsamples,
+        mtype = lambda wildcards : config["annotations"][wildcards.annotation]["type"],
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
         dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
         pct_cutoff = lambda wildcards : config["annotations"][wildcards.annotation]["pct_cutoff"],
@@ -529,8 +519,13 @@ rule r_datavis:
         heatmap_cmap = lambda wildcards : config["annotations"][wildcards.annotation]["heatmap_colormap"],
         refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
         ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
-    script:
-        "scripts/plot_tss_heatmaps.R"
+    run:
+        if config["annotations"][wildcards.annotation]["type"]=="scaled":
+            scaled_length = config["annotations"][wildcards.annotation]["scaled_length"]
+            endlabel = config["annotations"][wildcards.annotation]["three_prime_label"]
+            shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l {scaled_length} -e {endlabel} -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
+        else:
+            shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l 0 -e HAILSATAN -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
 
 rule union_bedgraph:
     input:
