@@ -34,6 +34,7 @@ localrules:
     separate_de_peaks, de_peaks_to_bed,
     get_de_genic, get_de_intragenic, get_de_antisense,
     get_de_convergent, get_de_divergent, get_de_intergenic,
+    cat_matrices,
     # get_de_intragenic_frequency
     # plot_de_intragenic_frequency
     # get_intra_orfs
@@ -51,9 +52,10 @@ rule all:
         #coverage
         expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        # expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        # expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}-{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand("datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz", annotation=config["annotations"], norm=["libsizenorm","spikenorm"], strand=["SENSE", "ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
         "qual_ctrl/read_processing-loss.svg",
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
@@ -489,8 +491,8 @@ rule compute_matrix:
             scaled_length = config["annotations"][wildcards.annotation]["scaled_length"]
             refpoint = "TSS"
             shell("""(computeMatrix scale-regions -R {input.annotation} -S {input.bw} -out {output.dtfile} --outFileNameMatrix {output.matrix} -m {scaled_length} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --sortUsing {params.sortusing} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
-        shell("""(Rscript scripts/melt_matrix.R -i {output.matrix} -r {refpoint} --group {params.group} -s {wildcards.sample} -b {params.binsize} -u {params.upstream} -o {output.melted}) &>> {log}""")
-        #TODO: check upstream distance for melting
+        melt_upstream = params.upstream-params.binsize
+        shell("""(Rscript scripts/melt_matrix.R -i {output.matrix} -r {refpoint} --group {params.group} -s {wildcards.sample} -b {params.binsize} -u {melt_upstream} -o {output.melted}) &>> {log}""")
 
 rule cat_matrices:
     input:
@@ -523,9 +525,34 @@ rule plot_heatmaps:
         if config["annotations"][wildcards.annotation]["type"]=="scaled":
             scaled_length = config["annotations"][wildcards.annotation]["scaled_length"]
             endlabel = config["annotations"][wildcards.annotation]["three_prime_label"]
-            shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l {scaled_length} -e {endlabel} -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
         else:
-            shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l 0 -e HAILSATAN -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
+            scaled_length=0
+            endlabel = "HAIL SATAN!"
+        shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l {scaled_length} -e {endlabel} -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
+
+rule plot_metagenes:
+    input:
+        matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
+    output:
+        meta_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bysample.svg",
+        meta_sample_overlay = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bysample.svg",
+        meta_heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bysample.svg",
+        meta_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bygroup.svg",
+        meta_group_overlay = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bygroup.svg",
+        meta_heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bygroup.svg",
+    params:
+        samplelist = plotcorrsamples,
+        upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
+        dnstream = lambda wildcards : config["annotations"][wildcards.annotation]["dnstream"],
+        trim_pct = lambda wildcards : config["annotations"][wildcards.annotation]["trim_pct"],
+        refpointlabel = lambda wildcards : config["annotations"][wildcards.annotation]["refpointlabel"],
+        scaled_length = lambda wildcards : config["annotations"][wildcards.annotation]["scaled_length"],
+        endlabel = lambda wildcards: config["annotations"][wildcards.annotation]["three_prime_label"],
+        ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
+    script:
+        "scripts/plot_tss_metagenes.R"
+
+
 
 rule union_bedgraph:
     input:

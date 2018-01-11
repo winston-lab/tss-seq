@@ -84,11 +84,11 @@ compute_matrix:
     time : 10 
     mem : 2000
 
-cat_matrices:
-    time : 5 
-    mem : 2000
-
 plot_heatmaps:
+    time : 15 
+    mem : 10000
+
+plot_metagenes:
     time : 15 
     mem : 10000
 
