@@ -528,7 +528,7 @@ rule plot_heatmaps:
         else:
             scaled_length=0
             endlabel = "HAIL SATAN!"
-        shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -l {scaled_length} -e {endlabel} -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
+        shell("""Rscript scripts/plot_tss_heatmaps.R -i {input.matrix} -s {params.samplelist} -t {params.mtype} -u {params.upstream} -d {params.dnstream} -c {params.pct_cutoff} -z {params.cluster} -k {params.nclust} -r {params.refpointlabel} -f {wildcards.strand} -l {scaled_length} -e {endlabel} -y {params.ylabel} -m {params.heatmap_cmap} -o {output.heatmap_sample} -p {output.heatmap_group}""")
 
 rule plot_metagenes:
     input:

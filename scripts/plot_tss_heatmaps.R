@@ -15,6 +15,7 @@ parser$add_argument('-c', dest='pct_cutoff', type='double')
 parser$add_argument('-z', dest='cluster', type='character')
 parser$add_argument('-k', dest='k', type='integer')
 parser$add_argument('-r', dest='refptlabel', type='character', nargs='+')
+parser$add_argument('-f', dest='strand', type='character')
 parser$add_argument('-l', dest='scaled_length', type='integer')
 parser$add_argument('-e', dest='endlabel', type='character', nargs='+')
 parser$add_argument('-y', dest='ylabel', type='character', nargs='+')
@@ -26,68 +27,67 @@ args = parser$parse_args()
 
 format_xaxis = function(refptlabel, upstream, dnstream){
     function(x){
-        if (first(upstream)<=500 | first(dnstream)<=500){
-            return(if_else(x==0, refptlabel, as.character(x*1000)))
+        if (first(upstream)>500 | first(dnstream)>500){
+            return(if_else(x==0, refptlabel, as.character(x)))    
         }    
         else {
-            return(if_else(x==0, refptlabel, ax.character(x)))    
+            return(if_else(x==0, refptlabel, as.character(x*1000)))
         }
     }
 }
 
-hmap = function(df, type, nindices, ylabel, upstream, dnstream,
-                refptlabel="refpt", scaled_length=0, endlabel="endpt",cmap){
-    #pseudocount for log-transform
-    pcount = .01
-
-    heatmap_base = ggplot(data = df) +
-        geom_raster(aes(x=position, y=index, fill=log2(cpm+pcount))) +
-        scale_y_reverse(name=paste(nindices, ylabel), expand=c(0.02, 0)) +
-        scale_fill_viridis(option = cmap,
-                           na.value="FFFFFF00",
-                           name=expression(bold(paste(log[2],'(TSS-seq signal)'))),
-                           guide=guide_colorbar(title.position="top",
-                                                barwidth=15, barheight=1, title.hjust=0.5)) +
-        theme_minimal() +
-        theme(text = element_text(size=12, face="bold", color="black"),
-              legend.position = "top",
-              legend.title = element_text(size=12, face="bold", color="black"),
-              legend.text = element_text(size=10, face="plain"),
-              legend.margin = margin(0,0,0,0),
-              legend.box.margin = margin(0,0,0,0),
-              strip.text = element_text(size=12, face="bold", color="black"),
-              axis.text.y = element_blank(),
-              axis.text.x = element_text(size=12, face="bold", color="black", margin = unit(c(0,0,0,0),"cm")),
-              panel.grid.major.x = element_line(color="black"),
-              panel.grid.minor.x = element_line(color="black"),
-              panel.grid.major.y = element_line(color="black"),
-              panel.grid.minor.y = element_blank(),
-              panel.spacing.x = unit(.5, "cm"))
-    if(type=="absolute"){
-        heatmap_base = heatmap_base +
-            scale_x_continuous(breaks=scales::pretty_breaks(n=3),
-                               labels=format_xaxis(refptlabel=refptlabel,
-                                                   upstream=upstream,
-                                                   dnstream=dnstream),
-                               name=paste("distance from", refptlabel,
-                                          if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
-                               limits = c(-upstream/1000, dnstream/1000),
-                               expand=c(0.05,0))
-    }
-    else {
-        heatmap_base = heatmap_base +
-            scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
-                               labels=c(refptlabel, "", endlabel),
-                               name="scaled distance",
-                               limits = c(-upstream/1000, (dnstream+scaled_length)/1000),
-                               expand=c(0.05,0))
-        
-    }
-    return(heatmap_base)
-}
-    
 main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
-                cluster, k, refptlabel, scaled_length, endlabel, ylabel, cmap, samples_out, group_out){
+                cluster, k, refptlabel, strand, scaled_length, endlabel, ylabel, cmap, samples_out, group_out){
+    hmap = function(df, refptlabel="refpt", scaled_length=0, endlabel="endpt"){
+        #pseudocount for log-transform
+        pcount = .01
+    
+        heatmap_base = ggplot(data = df) +
+            geom_raster(aes(x=position, y=index, fill=log2(cpm+pcount))) +
+            scale_y_reverse(name=paste(nindices, ylabel), expand=c(0.02, 0)) +
+            scale_fill_viridis(option = cmap,
+                               na.value="FFFFFF00",
+                               name=bquote(bold(log[2] ~ .(strand) ~ "TSS-seq signal")),
+                               guide=guide_colorbar(title.position="top",
+                                                    barwidth=15, barheight=1, title.hjust=0.5)) +
+            theme_minimal() +
+            theme(text = element_text(size=12, face="bold", color="black"),
+                  legend.position = "top",
+                  legend.title = element_text(size=12, face="bold", color="black"),
+                  legend.text = element_text(size=10, face="plain"),
+                  legend.margin = margin(0,0,0,0),
+                  legend.box.margin = margin(0,0,0,0),
+                  strip.text = element_text(size=12, face="bold", color="black"),
+                  axis.text.y = element_blank(),
+                  axis.text.x = element_text(size=12, face="bold", color="black", margin = unit(c(0,0,0,0),"cm")),
+                  panel.grid.major.x = element_line(color="black"),
+                  panel.grid.minor.x = element_line(color="black"),
+                  panel.grid.major.y = element_line(color="black"),
+                  panel.grid.minor.y = element_blank(),
+                  panel.spacing.x = unit(.5, "cm"))
+        if(type=="absolute"){
+            heatmap_base = heatmap_base +
+                scale_x_continuous(breaks=scales::pretty_breaks(n=3),
+                                   labels=format_xaxis(refptlabel=refptlabel,
+                                                       upstream=upstream,
+                                                       dnstream=dnstream),
+                                   name=paste("distance from", refptlabel,
+                                              if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
+                                   #limits = c(-upstream/1000, dnstream/1000),
+                                   expand=c(0.05,0))
+        }
+        else {
+            heatmap_base = heatmap_base +
+                scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
+                                   labels=c(refptlabel, "", endlabel),
+                                   name="scaled distance",
+                                   #limits = c(-upstream/1000, (dnstream+scaled_length)/1000),
+                                   expand=c(0.05,0))
+            
+        }
+        return(heatmap_base)
+    }
+    
     raw = read_tsv(intable, col_names=c("group", "sample", "index", "position","cpm")) %>%
         filter(sample %in% samplelist & !is.na(cpm)) %>% 
         mutate_at(vars(sample, group), funs(fct_inorder(., ordered=TRUE)))
@@ -100,7 +100,7 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
     if (cluster=="yes"){
         #first k-means clustering on NOTE: unscaled but log transformed data
         pcount = 0.1
-        rr = raw %>% mutate_at(vars(cpm), funs(log2(.+pcount))) %>% select(-group) %>% unite(cid, c(sample, position), sep="~") %>%
+        rr = raw %>% mutate(cpm = log2(cpm+pcount)) %>% select(-group) %>% unite(cid, c(sample, position), sep="~") %>%
                 spread(cid, cpm, fill=0) %>% select(-index)
         clust = kmeans(rr, centers=k)
        
@@ -109,8 +109,8 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
         centerclust = clust$centers %>% dist() %>% hclust() %>% dendsort(isReverse=TRUE)
         
         reorder = clust$cluster %>% as_tibble() %>% rename(cluster=value) %>%
-            mutate_at(vars(cluster), funs(factor(., levels=centerclust$order, ordered=TRUE))) %>%
-            mutate(og_index=row_number()) %>%
+            mutate(cluster= factor(cluster, levels=centerclust$order, ordered=TRUE),
+                   og_index=row_number()) %>%
             arrange(cluster,og_index) %>%
             mutate(new_index=row_number())
         raw = raw %>% left_join(reorder, by=c("index"="og_index")) %>%
@@ -125,12 +125,9 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
     df_sample = raw %>% left_join(repl_df, by="sample")
     sample_cutoff = quantile(df_sample$cpm, probs=pct_cutoff, na.rm=TRUE)
     df_sample = df_sample %>%
-        mutate_at(vars(cpm),
-                  funs(pmin(sample_cutoff, .)))
+        mutate(cpm=pmin(sample_cutoff, cpm))
     
-    hmap_sample = hmap(df=df_sample, type=type, nindices=nindices,
-                       ylabel=ylabel, upstream=upstream, dnstream=dnstream,
-                       refptlabel=refptlabel, cmap=cmap, scaled_length=scaled_length,
+    hmap_sample = hmap(df=df_sample, refptlabel=refptlabel, scaled_length=scaled_length,
                        endlabel=endlabel) +
         facet_grid(replicate~group) +
         theme(strip.text.y=element_text(angle=0))
@@ -144,11 +141,9 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
     rm(raw)
     group_cutoff = quantile(df_group$cpm, probs=pct_cutoff, na.rm=TRUE)
     df_group = df_group %>% 
-        mutate_at(vars(cpm),
-                  funs(pmin(group_cutoff, .)))
-    hmap_group = hmap(df=df_group, type=type, nindices=nindices,
-                      ylabel=ylabel, upstream=upstream, dnstream=dnstream,
-                      refptlabel=refptlabel, cmap=cmap, scaled_length=scaled_length,
+        mutate(cpm=pmin(group_cutoff, cpm))
+
+    hmap_group = hmap(df=df_group, refptlabel=refptlabel, scaled_length=scaled_length,
                       endlabel=endlabel) +
         facet_wrap(~group, ncol=ngroups)
     ggsave(group_out, plot = hmap_group, height= .0009*nindices+11.5,
@@ -164,6 +159,7 @@ main(intable= args$input,
      cluster = args$cluster,
      k = args$k,
      refptlabel = paste(args$refptlabel, collapse=" "),
+     strand = tolower(args$strand),
      scaled_length = args$scaled_length,
      endlabel = paste(args$endlabel, collapse=" "),
      ylabel = paste(args$ylabel, collapse=" "),
