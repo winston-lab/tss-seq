@@ -73,7 +73,6 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
                                                        dnstream=dnstream),
                                    name=paste("distance from", refptlabel,
                                               if_else(upstream>500 | dnstream>500, "(kb)", "(nt)")),
-                                   #limits = c(-upstream/1000, dnstream/1000),
                                    expand=c(0.05,0))
         }
         else {
@@ -81,7 +80,6 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
                 scale_x_continuous(breaks=c(0, (scaled_length/2)/1000, scaled_length/1000),
                                    labels=c(refptlabel, "", endlabel),
                                    name="scaled distance",
-                                   #limits = c(-upstream/1000, (dnstream+scaled_length)/1000),
                                    expand=c(0.05,0))
             
         }
@@ -97,7 +95,7 @@ main = function(intable, samplelist, type, upstream, dnstream, pct_cutoff,
     ngroups = length(fct_unique(raw$group))
 
     #clustering
-    if (cluster=="yes"){
+    if (cluster=="True"){
         #first k-means clustering on NOTE: unscaled but log transformed data
         pcount = 0.1
         rr = raw %>% mutate(cpm = log2(cpm+pcount)) %>% select(-group) %>% unite(cid, c(sample, position), sep="~") %>%

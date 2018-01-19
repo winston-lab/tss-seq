@@ -1,6 +1,7 @@
 library(tidyverse)
 library(forcats)
 library(gridExtra)
+library(ggthemes)
 
 main = function(intable, samplelist, controls, conditions, plotpath, statspath){
     df = read_table2(intable, col_names=c('sample', 'group', 'total','exp', 'si')) %>%
@@ -20,7 +21,7 @@ main = function(intable, samplelist, controls, conditions, plotpath, statspath){
         geom_col() +
         geom_text(aes(label=round(sipct, 1)), size=4,
                   position=position_stack(vjust=0.9)) +
-        scale_fill_brewer(palette='Set1', direction=-1, guide=FALSE) +
+        scale_fill_ptol(guide=FALSE) +
         ylab("% spike-in") +
         theme_bw() +
         theme(axis.text = element_text(size=12, color="black", face="bold"),
@@ -32,7 +33,7 @@ main = function(intable, samplelist, controls, conditions, plotpath, statspath){
     boxplot = ggplot(data = df, aes(x=group, y=sipct, fill=group)) +
         geom_boxplot(outlier.shape=16, outlier.size=1.5, outlier.color="red", outlier.stroke=0) +
         geom_point(shape=16, size=1, stroke=0) +
-        scale_fill_brewer(palette='Set1', direction=-1, guide=FALSE) +
+        scale_fill_ptol(guide=FALSE) +
         ylab("% spike-in") +
         theme_bw() +
         theme(axis.text = element_text(size=12, color="black", face="bold"),
@@ -42,7 +43,7 @@ main = function(intable, samplelist, controls, conditions, plotpath, statspath){
     
     outstats = df %>% add_count(group) %>% group_by(group) %>%
                 mutate(median = median(sipct)) %>% ungroup() %>%
-                filter(outlier==FALSE) %>% add_count(group) %>%
+                filter(!outlier) %>% add_count(group) %>%
                 group_by(group) %>%
                 summarise(n = median(n), median = median(median),
                           n_no_outlier = median(nn),
