@@ -103,6 +103,8 @@ rule all:
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -1117,6 +1119,19 @@ rule plot_motif_freq:
     output:
         "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.svg"
     script: "scripts/motif_metagenes.R"
+
+rule peak_positioning:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
+    params:
+        direction = lambda wildcards: "upregulated" if wildcards.direction=="up" else "downregulated",
+        n_bins = 100
+    output:
+        relative = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
+        absolute = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
+        fc_signif = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
+    script:
+        "scripts/length_bias.R"
 
 #for peaks are double-counted; only keep one sequence if two are overlapping
 # rule get_peak_sequences_nooverlap:

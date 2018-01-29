@@ -161,6 +161,10 @@ plot_motif_freq:
     time: 20
     mem: 10000
 
+peak_positioning:
+    time: 10
+    mem: 8000
+
 meme_chip:
     time : 719
     mem : 10000
