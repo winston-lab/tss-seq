@@ -23,7 +23,7 @@ main = function(intable, type, direction, condition, control, n_bins=100,
         scale_x_continuous(name=NULL, breaks=seq(0,1,0.25),
                            labels=c(if(type=="intragenic"){"ATG"} else if(type=="antisense"){"sense TSS"},
                                     rep("",3),
-                                    if(type=="intragenic"){"sense TSS"} else if(type=="antisense"){"CPS"}),
+                                    if(type=="intragenic"){"stop codon"} else if(type=="antisense"){"CPS"}),
                            expand=c(0,0)) +
         ylab("observed peaks") +
         ggtitle(paste0("position of ", type, " TSSs\n", direction, " in ", condition, " vs. ", control),
@@ -42,7 +42,7 @@ main = function(intable, type, direction, condition, control, n_bins=100,
         scale_x_continuous(name=NULL, breaks=seq(0,1,0.25),
                            labels=c(if(type=="intragenic"){"ATG"} else if(type=="antisense"){"sense TSS"},
                                     rep("",3),
-                                    if(type=="intragenic"){"sense TSS"} else if(type=="antisense"){"CPS"}),
+                                    if(type=="intragenic"){"stop codon"} else if(type=="antisense"){"CPS"}),
                            expand=c(0,0)) +
         ylab(expression(bold(observed - expected ~ peaks))) +
         ggtitle(paste0("position of ", type, " TSSs\n", direction, " in ", condition, " vs. ", control),
@@ -153,7 +153,7 @@ main = function(intable, type, direction, condition, control, n_bins=100,
         scale_x_continuous(name=NULL, breaks=seq(0,1,0.25),
                            labels=c(if(type=="intragenic"){"ATG"} else if(type=="antisense"){"sense TSS"},
                                     rep("",3),
-                                    if(type=="intragenic"){"sense TSS"} else if(type=="antisense"){"CPS"})) +
+                                    if(type=="intragenic"){"stop codon"} else if(type=="antisense"){"CPS"})) +
         ggtitle(paste0("position vs. fold-change: ", type, " TSSs\n", direction, " in ", condition, " vs. ", control)) +
         theme_light() +
         theme(text = element_text(size=12, color="black", face="bold"),
@@ -167,7 +167,7 @@ main = function(intable, type, direction, condition, control, n_bins=100,
         scale_x_continuous(name=NULL, breaks=seq(0,1,0.25),
                            labels=c(if(type=="intragenic"){"ATG"} else if(type=="antisense"){"sense TSS"},
                                     rep("",3),
-                                    if(type=="intragenic"){"sense TSS"} else if(type=="antisense"){"CPS"})) +
+                                    if(type=="intragenic"){"stop codon"} else if(type=="antisense"){"CPS"})) +
         ggtitle(paste0("position vs. significance: ", type, " TSSs\n", direction, " in ", condition, " vs. ", control)) +
         theme_light() +
         theme(text = element_text(size=12, color="black", face="bold"),
