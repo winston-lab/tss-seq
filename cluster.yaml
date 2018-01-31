@@ -165,6 +165,10 @@ peak_positioning:
     time: 10
     mem: 8000
 
+get_gc_percentage:
+    time: 15
+    mem: 4000
+
 meme_chip:
     time : 719
     mem : 10000

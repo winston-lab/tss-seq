@@ -105,6 +105,8 @@ rule all:
         expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
+        #GC pct coverage file
+        os.path.splitext(config["genome"]["fasta"])[0] + "GC_pct.bw"
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -1132,6 +1134,18 @@ rule peak_positioning:
         fc_signif = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
     script:
         "scripts/length_bias.R"
+
+rule get_gc_percentage:
+    input:
+        fasta = config["genome"]["fasta"],
+    params:
+        binsize = 11 #must be odd integer
+    output:
+        os.path.splitext(config["genome"]["fasta"])[0] + "GC_pct.bw"
+    shell: """
+        python scripts/gc_content.py -f {input.fasta} -w {params.binsize} -o {output}
+        """
+
 
 #for peaks are double-counted; only keep one sequence if two are overlapping
 # rule get_peak_sequences_nooverlap:
