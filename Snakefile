@@ -106,7 +106,7 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #GC pct coverage file
-        os.path.splitext(config["genome"]["fasta"])[0] + "GC_pct.bw"
+        os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw"
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -1141,7 +1141,7 @@ rule get_gc_percentage:
     params:
         binsize = 11 #must be odd integer
     output:
-        os.path.splitext(config["genome"]["fasta"])[0] + "GC_pct.bw"
+        os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw"
     shell: """
         python scripts/gc_content.py -f {input.fasta} -w {params.binsize} -o {output}
         """
