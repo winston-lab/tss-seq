@@ -52,15 +52,15 @@ rule all:
         #coverage
         expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #datavis
-        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand(expand("datavis/{{annotation}}/libsizenorm/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
-        expand(expand("datavis/{{annotation}}/spikenorm/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/libsizenorm/{condition}-v-{control}/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/{condition}-v-{control}/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-heatmap-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=config["annotations"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/libsizenorm/{condition}-v-{control}/tss-{{annotation}}-libsizenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
+        expand(expand("datavis/{{annotation}}/spikenorm/{condition}-v-{control}/tss-{{annotation}}-spikenorm-{{status}}_{condition}-v-{control}_{{strand}}-metagene-bygroup.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), annotation=[k for k,v in config["annotations"].items() if v["type"]=="scaled"], status=["all","passing"], strand=["SENSE","ANTISENSE"]),
         #quality control
         "qual_ctrl/read_processing-loss.svg",
         expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #find intragenic ORFs
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
@@ -511,8 +511,8 @@ rule plot_heatmaps:
     input:
         matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     output:
-        heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bysample.svg",
-        heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bygroup.svg"
+        heatmap_sample = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bysample.svg",
+        heatmap_group = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-heatmap-bygroup.svg"
     params:
         samplelist = plotcorrsamples,
         mtype = lambda wildcards : config["annotations"][wildcards.annotation]["type"],
@@ -537,12 +537,12 @@ rule plot_metagenes:
     input:
         matrix = "datavis/{annotation}/{norm}/allsamples-{annotation}-{norm}-{strand}.tsv.gz"
     output:
-        meta_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bysample.svg",
-        meta_sample_overlay = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bysample.svg",
-        meta_heatmap_sample = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bysample.svg",
-        meta_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bygroup.svg",
-        meta_group_overlay = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bygroup.svg",
-        meta_heatmap_group = "datavis/{annotation}/{norm}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bygroup.svg",
+        meta_sample = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bysample.svg",
+        meta_sample_overlay = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bysample.svg",
+        meta_heatmap_sample = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bysample.svg",
+        meta_group = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-bygroup.svg",
+        meta_group_overlay = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metagene-overlay-bygroup.svg",
+        meta_heatmap_group = "datavis/{annotation}/{norm}/{condition}-v-{control}/tss-{annotation}-{norm}-{status}_{condition}-v-{control}_{strand}-metaheatmap-bygroup.svg",
     params:
         samplelist = plotcorrsamples,
         upstream = lambda wildcards : config["annotations"][wildcards.annotation]["upstream"],
@@ -554,8 +554,6 @@ rule plot_metagenes:
         ylabel = lambda wildcards : config["annotations"][wildcards.annotation]["ylabel"]
     script:
         "scripts/plot_tss_metagenes.R"
-
-
 
 rule union_bedgraph:
     input:
@@ -574,7 +572,7 @@ rule plotcorrelations:
     input:
         "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
     output:
-        "qual_ctrl/{status}/{condition}-v-{control}-tss-{status}-{norm}-correlations.svg"
+        "qual_ctrl/{status}/{condition}-v-{control}/{condition}-v-{control}-tss-{status}-{norm}-correlations.svg"
     params:
         pcount = 0.1,
         samplelist = plotcorrsamples

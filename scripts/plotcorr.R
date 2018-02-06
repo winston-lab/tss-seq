@@ -36,7 +36,7 @@ main = function(intable, pcount, samplelist, outpath){
             else if (i == j){
                 subdf = df %>% select(i) %>% gather(sample, value)
                 plot = ggplot(data = subdf, aes(x=(value+pcount))) +
-                        geom_density(aes(y=..scaled..), fill="black", size=1) +
+                        geom_density(aes(y=..scaled..), fill="#114477", size=0.8) +
                         scale_y_continuous(breaks=c(0,.5,1)) +
                         scale_x_log10(limit = c(pcount, maxsignal)) +
                         annotate("text", x=.90*maxsignal, y=0.5, hjust=1, 
