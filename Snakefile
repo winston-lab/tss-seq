@@ -106,7 +106,10 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
         expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #GC pct coverage file
-        os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw"
+        os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw",
+        #gene ontology
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
+        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
 
 def plotcorrsamples(wildcards):
     dd = SAMPLES if wildcards.status=="all" else PASSING
@@ -1144,6 +1147,20 @@ rule get_gc_percentage:
         python scripts/gc_content.py -f {input.fasta} -w {params.binsize} -o {output}
         """
 
+rule gene_ontology:
+    input:
+        universe = lambda wildcards: config["genome"]["orf-annotation"] if wildcards.category=="intragenic" else config["genome"]["transcripts"],
+        diffexp_path = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv",
+        go_anno_path = config["gene_ontology_mapping_file"]
+    params:
+        direction = lambda wildcards: "upregulated" if wildcards.direction=="up" else "downregulated" if wildcards.direction=="down" else wildcards.direction
+    output:
+        enriched_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-all.svg",
+        depleted_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-all.svg",
+        enriched_facet = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-facetted.svg",
+        depleted_facet = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-facetted.svg",
+    script:
+        "scripts/gene_ontology.R"
 
 #for peaks are double-counted; only keep one sequence if two are overlapping
 # rule get_peak_sequences_nooverlap:

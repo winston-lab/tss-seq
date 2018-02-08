@@ -169,6 +169,10 @@ get_gc_percentage:
     time: 15
     mem: 4000
 
+gene_ontology:
+    time: 20
+    mem: 10000
+
 meme_chip:
     time : 719
     mem : 10000
