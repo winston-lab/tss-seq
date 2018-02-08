@@ -9,13 +9,8 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     universe = read_tsv(universe_path,
                     col_names=c('chrom', 'start', 'end', 'name', 'score', 'strand'))
 
-    diffexp_results = read_tsv(diffexp_path,
-                               skip = 1,
-                               col_names=c('peak_name', 'chrom', 'strand',
-                                           'peak_start', 'peak_end', 'meanExpr',
-                                           'lfc', 'logpadj', 'condition_signal',
-                                           'control_signal', 'feature_start',
-                                           'feature_end', 'feature_name')) %>%
+    diffexp_results = read_tsv(diffexp_path, col_names=FALSE) %>%
+        rename(logpadj=X8, feature_name=X13) %>%
         group_by(feature_name) %>%
         arrange(desc(logpadj), .by_group=TRUE) %>% 
         dplyr::slice(1) %>% ungroup()
@@ -31,8 +26,6 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
 
     go_anno = read_tsv(go_anno_path,
                        col_names = c('sys_name', 'common_name', 'go_id')) %>% 
-                       # col_names=c('sys_name', 'common_name', 'id_num', 'go_type',
-                       #             'go_description', 'go_id', 'feature_type')) %>% 
         filter(!(is.na(go_id))) %>% 
         mutate(id = if_else(is.na(common_name), sys_name, common_name)) %>% 
         dplyr::select(id, go_id) %>% 
@@ -132,10 +125,10 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     d_heights = get_heights(results_depleted)
 
     e_facet_out = plot_grid(plotlist = e_plotlist, align="v", axis="l", ncol=1,
-                            rel_heights = e_heights/sum(e_heights)+0.45)
+                            rel_heights = e_heights/sum(1e-3+e_heights)+0.45)
     
     d_facet_out = plot_grid(plotlist = d_plotlist, align="v", axis="l", ncol=1,
-                            rel_heights = d_heights/sum(d_heights)+0.45)
+                            rel_heights = d_heights/sum(1e-3+d_heights)+0.45)
 
     ggplot2::ggsave(e_facet_path, plot=e_facet_out, width=20,
                     height=8+0.45*sum(e_heights), units="cm", limitsize=FALSE)
