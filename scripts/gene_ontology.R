@@ -5,7 +5,7 @@ library(ggthemes)
 library(cowplot)
 
 main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direction,
-                condition, control, e_combined_path, d_combined_path, e_facet_path, d_facet_path){
+                condition, control, results_out, e_combined_path, d_combined_path, e_facet_path, d_facet_path){
     universe = read_tsv(universe_path,
                     col_names=c('chrom', 'start', 'end', 'name', 'score', 'strand'))
 
@@ -35,6 +35,9 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     pwf = nullp(DEgenes = all_genes_vector, bias.data=lengths_vector, plot.fit=FALSE)
 
     results = goseq(pwf, gene2cat=go_anno) %>% as_tibble() %>% 
+        mutate(over_represented_pvalue = p.adjust(over_represented_pvalue, method="BH"),
+               under_represented_pvalue = p.adjust(under_represented_pvalue, method="BH")) %>%
+        write_tsv(results_out) %>%
         mutate(term = if_else(is.na(term), category, term),
                ontology = case_when(ontology=="BP" ~ "biological process",
                                     ontology=="MF" ~ "molecular function",
@@ -43,14 +46,12 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
 
     results_enriched = results %>% 
         rename(pval = over_represented_pvalue) %>% 
-        mutate(pval = p.adjust(pval, method="BH")) %>% 
         filter(pval < 0.2) %>% 
         arrange(pval) %>% 
         mutate(term = fct_rev(fct_inorder(term, ordered=TRUE)))
 
     results_depleted = results %>% 
         rename(pval = under_represented_pvalue) %>% 
-        mutate(pval = p.adjust(pval, method="BH")) %>% 
         filter(pval < 0.2) %>% 
         arrange(pval) %>% 
         mutate(term = fct_rev(fct_inorder(term, ordered=TRUE)))
@@ -143,6 +144,7 @@ main(universe_path = snakemake@input[["universe"]],
      diffexp_direction= snakemake@params[["direction"]],
      condition= snakemake@wildcards[["condition"]],
      control= snakemake@wildcards[["control"]],
+     results_out = snakemake@output[["results"]],
      e_combined_path = snakemake@output[["enriched_combined"]],
      d_combined_path = snakemake@output[["depleted_combined"]],
      e_facet_path = snakemake@output[["enriched_facet"]],

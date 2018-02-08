@@ -1155,6 +1155,7 @@ rule gene_ontology:
     params:
         direction = lambda wildcards: "upregulated" if wildcards.direction=="up" else "downregulated" if wildcards.direction=="down" else wildcards.direction
     output:
+        results = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-results.tsv",
         enriched_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-all.svg",
         depleted_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-all.svg",
         enriched_facet = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-facetted.svg",
