@@ -85,8 +85,8 @@ compute_matrix:
     mem : 2000
 
 plot_figures:
-    time : 45 
-    mem : 10000
+    time : 90 
+    mem : 16000
 
 union_bedgraph:
     time: 30
