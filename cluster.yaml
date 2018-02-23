@@ -84,12 +84,8 @@ compute_matrix:
     time : 10 
     mem : 2000
 
-plot_heatmaps:
-    time : 15 
-    mem : 10000
-
-plot_metagenes:
-    time : 15 
+plot_figures:
+    time : 45 
     mem : 10000
 
 union_bedgraph:
