@@ -443,20 +443,20 @@ main = function(in_paths, samplelist, anno_paths, ptype, upstream, dnstream, sca
     df_sample = df %>%
         mutate(replicate = fct_inorder(paste("replicate", replicate), ordered=TRUE),
                cluster = fct_inorder(paste("cluster", cluster), ordered=TRUE))
-    sample_cutoff_both = quantile(df[["cpm"]], probs=pct_cutoff, na.rm=TRUE)
     sample_cutoff_sense = df %>% filter(strand=="sense") %>%
         pull(cpm) %>% quantile(probs=pct_cutoff, na.rm=TRUE)
     sample_cutoff_antisense = df %>% filter(strand=="antisense") %>%
         pull(cpm) %>% quantile(probs=pct_cutoff, na.rm=TRUE)
+    sample_cutoff_both = max(sample_cutoff_sense, sample_cutoff_antisense, na.rm=TRUE)
     
     df_group = df %>% group_by(group, annotation, position, cluster, new_index, strand) %>%
         summarise(cpm = mean(cpm)) %>% ungroup() %>%
         mutate(cluster = fct_inorder(paste("cluster", cluster), ordered=TRUE))
-    group_cutoff_both = quantile(df_group[["cpm"]], probs=pct_cutoff, na.rm=TRUE)
     group_cutoff_sense = df_group %>% filter(strand=="sense") %>%
         pull(cpm) %>% quantile(probs=pct_cutoff, na.rm=TRUE)
     group_cutoff_antisense = df_group %>% filter(strand=="antisense") %>%
         pull(cpm) %>% quantile(probs=pct_cutoff, na.rm=TRUE)
+    group_cutoff_both = max(group_cutoff_sense, group_cutoff_antisense, na.rm=TRUE)
     
     heatmap_sample_both = hmap(df_sample, sample_cutoff_both, strand="both", logtxn=log_transform)
     heatmap_sample_sense = hmap(df_sample %>% filter(strand=="sense"), sample_cutoff_sense, strand="sense")
