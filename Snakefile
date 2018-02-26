@@ -541,11 +541,11 @@ rule plot_figures:
         metagene_group_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-sense.svg",
         metagene_group_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-antisense.svg",
         metagene_sampleclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-bothstrands.svg",
-        metagene_sampleclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-sensestrands.svg",
-        metagene_sampleclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-antisensestrands.svg",
+        metagene_sampleclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-sense.svg",
+        metagene_sampleclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-antisense.svg",
         metagene_groupclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-bothstrands.svg",
-        metagene_groupclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-sensestrands.svg",
-        metagene_groupclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-antisensestrands.svg",
+        metagene_groupclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-sense.svg",
+        metagene_groupclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-antisense.svg",
     params:
         # abusing snakemake a bit here...using params as output paths in order to use lambda functions
         annotations_out = lambda wc: ["datavis/" + wc.figure + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "/" + wc.status + "/" + annotation + "_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
