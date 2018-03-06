@@ -994,6 +994,7 @@ rule summarise_de_results:
         lfc = config["deseq"]["fold-change-threshold"],
         alpha = config["deseq"]["fdr"]
     output:
+        summary_table = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.tsv",
         summary = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
         maplot = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-maplot.svg",
         volcano = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-volcano.svg",

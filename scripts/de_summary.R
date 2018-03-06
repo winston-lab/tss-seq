@@ -19,7 +19,7 @@ bin = function(df, type){
     group_by(change) %>% count() %>% filter(!is.na(change)) %>% mutate(class=type) %>% return()
 }
 
-main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.volcano_free,  out.summary){
+main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.volcano_free,  out.summary, out_summary_table){
     all = import(in.all, alpha) 
     genic = import(in.genic, alpha)
     intra = import(in.intra, alpha)
@@ -109,6 +109,8 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 bind_rows(bin(div, 'divergent')) %>% bind_rows(bin(inter, 'intergenic')) %>%
                 group_by(class) %>% mutate(ymax = cumsum(n), ymin = (cumsum(n)-n)) %>%
                 mutate_at(vars(ymin, ymax), funs(./max(ymax)))
+    countdf %>% select(class, change, n) %>%
+        write_tsv(out_summary_table)
     
     countdf$class = fct_inorder(countdf$class, ordered=TRUE)
     countdf$change = fct_inorder(countdf$change, ordered=TRUE)
@@ -157,4 +159,5 @@ main(in.all = snakemake@input[["total"]],
      out.ma = snakemake@output[["maplot"]],
      out.volcano = snakemake@output[["volcano"]],
      out.volcano_free = snakemake@output[["volcano_free"]],
-     out.summary = snakemake@output[["summary"]])
+     out.summary = snakemake@output[["summary"]],
+     out_summary_table = snakemake@output[["summary_table"]])
