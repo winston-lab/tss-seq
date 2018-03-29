@@ -42,7 +42,7 @@ localrules:
     # get_de_intragenic_frequency
     # plot_de_intragenic_frequency
     # get_intra_orfs
-    separate_sig_de, get_de_category_bed,
+    # separate_sig_de, get_de_category_bed,
     get_peak_sequences_all,
     # meme_chip
     # class_v_genic
@@ -82,21 +82,21 @@ rule all:
         #differential expression of peaks
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-all.bed", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-all.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","unchanged","down"], fmt=["tsv","bed"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","unchanged", "down"], fmt=["tsv","bed"]),
+        expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}-results-libsizenorm-all.bed", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}-results-spikenorm-all.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-libsizenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups, control=controlgroups), dir=["up","unchanged","down"], fmt=["tsv","bed"]),
+        # expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-spikenorm-{{dir}}.{{fmt}}", zip, condition=conditiongroups_si, control=controlgroups_si), dir=["up","unchanged", "down"], fmt=["tsv","bed"]),
         #categorize DE peaks
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
         #DE summary
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
+        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
         #intragenic frequency per ORF
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-libsizenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-spikenorm-{{direction}}-freqperORF.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
-        expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
+        expand("diff_exp/{condition}-v-{control}/libsizenorm/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/spikenorm/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
         #FIMO
         "motifs/allmotifs.bed",
         # expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motifs.tsv.gz", zip, condition=conditiongroups, control=controlgroups), direction=["up","unchanged","down"], category=CATEGORIES),
@@ -104,15 +104,15 @@ rule all:
         #motif_enrichment
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], category=CATEGORIES),
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], category=CATEGORIES),
-        expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
+        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
+        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #GC pct coverage file
         os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw",
         #gene ontology
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
-        expand(expand("diff_exp/{condition}-v-{control}/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
+        expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
+        expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
 
 def plotcorrsamples(wc):
     dd = SAMPLES if wc.status=="all" else PASSING
@@ -814,55 +814,63 @@ rule call_de_peaks:
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     output:
-        results = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
-        #need to write out norm counts here or just in the total qc?
-        normcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-sfnorm-{norm}.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-qcplots-{norm}.svg"
+        results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.tsv",
+        results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-up.tsv",
+        results_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-down.tsv",
+        results_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
+        bed_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.bed",
+        bed_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-up.bed",
+        bed_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-down.bed",
+        bed_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-unchanged.bed",
+        normcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-counts-sfnorm-{norm}.tsv",
+        rldcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-counts-rlog-{norm}.tsv",
+        qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-qcplots-{norm}.svg"
     script:
         "scripts/call_de_peaks.R"
 
-rule separate_de_peaks:
-    input:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
-    output:
-        up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
-        unchanged = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
-        down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
-    params:
-        fdr = -log10(config["deseq"]["fdr"])
-    log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
-    shell: """
-        (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 = "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
-        """
+# #TODO: write the output of the next two rules straight from call_de_peaks
+# rule separate_de_peaks:
+#     input:
+#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
+#     output:
+#         up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
+#         unchanged = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
+#         down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
+#     params:
+#         fdr = -log10(config["deseq"]["fdr"])
+#     log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
+#     shell: """
+#         (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 = "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
+#         """
 
-rule de_peaks_to_bed:
-    input:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.tsv",
-    output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
-    log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}-{direction}.log"
-    shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$11, $3}}' {input} > {output}) &> {log}
-        """
+# rule de_peaks_to_bed:
+#     input:
+#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.tsv",
+#     output:
+#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
+#     log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}-{direction}.log"
+#     shell: """
+#         (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$11, $3}}' {input} > {output}) &> {log}
+#         """
 
 rule get_de_intragenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv"
-    log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
+    log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tORF_start\tORF_end\tORF_name\tdist_ATG_to_peak") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tORF_start\tORF_end\tORF_name\tdist_ATG_to_peak") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
 rule get_de_intragenic_frequency:
     input:
         orfs = config["genome"]["orf-annotation"],
-        intrabed = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
+        intrabed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
     output:
         "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
     shell: """
@@ -871,57 +879,60 @@ rule get_de_intragenic_frequency:
 
 rule plot_de_intragenic_frequency:
     input:
-        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
+        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.svg"
+        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.svg"
     log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
     script: "scripts/intrafreq.R"
 
 rule get_de_antisense:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         transcripts = config["genome"]["transcripts"],
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv"
-    log : "logs/get_de_antisense/get_de_antisense-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-{direction}-antisense.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-{direction}-antisense.bed"
+    log : "logs/get_de_antisense/get_de_antisense-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}} $6=="-"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}} $6=="-"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
 rule get_de_genic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv"
-    log : "logs/get_de_genic/get_de_genic-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-{direction}-genic.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-{direction}-genic.bed",
+    log : "logs/get_de_genic/get_de_genic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10}} $6=="-"{{print $4, $8, $9, $10}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10}} $6=="-"{{print $4, $8, $9, $10}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
 rule get_de_intergenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
         transcripts = config["genome"]["transcripts"],
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv"
-    log : "logs/get_de_intergenic/get_de_intergenic-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}-results-{norm}-{direction}-intergenic.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}-results-{norm}-{direction}-intergenic.bed",
+    log : "logs/get_de_intergenic/get_de_intergenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $4, $8, $9}}$6=="-"{{print $4, $8, $9}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tregion_start\tregion_end") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wo | awk 'BEGIN{{FS=OFS="\t"}}$6=="+"{{print $4, $8, $9}}$6=="-"{{print $4, $8, $9}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tregion_start\tregion_end") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
 rule get_intra_orfs:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv",
         fasta = config["genome"]["fasta"]
     output:
-        "diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-{norm}-{direction}-intragenic-orfs.tsv"
+        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intragenic-orfs/{condition}-v-{control}-{norm}-{direction}-intragenic-orfs.tsv"
     params:
         max_upstr_atgs = config["max-upstr-atgs"],
         max_search_dist = 2000
@@ -932,87 +943,89 @@ rule get_intra_orfs:
 
 rule get_de_convergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv"
-    log : "logs/get_de_convergent/get_de_convergent-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-{direction}-convergent.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-{direction}-convergent.bed"
+    log : "logs/get_de_convergent/get_de_convergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}} $6=="-"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}} $6=="-"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
 rule get_de_divergent:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
         div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv"
+        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv"
-    log : "logs/get_de_divergent/get_de_divergent-{condition}-v-{control}-{norm}.log"
+        table = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-{direction}-divergent.tsv",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-{direction}-divergent.bed"
+    log : "logs/get_de_divergent/get_de_divergent-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - > {output}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
 
-rule separate_sig_de:
-    input:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-all-{category}.tsv"
-    output:
-        up = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-up-{category}.tsv",
-        unchanged = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.tsv",
-        down = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-down-{category}.tsv"
-    params:
-        fdr = -log10(config["deseq"]["fdr"])
-    log: "logs/separate_sig_de/separate_sig_de-{condition}-v-{control}-{norm}-{category}.log"
-    shell: """
-        awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr && $8 != "NA" {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr && $8 != "NA" {{print > "{output.down}"}} NR>1 && ($8<=afdr || $8=="NA"){{print > "{output.unchanged}"}}' {input}
-        """
+# rule separate_sig_de:
+#     input:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-all-{category}.tsv"
+#     output:
+#         up = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-up-{category}.tsv",
+#         unchanged = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.tsv",
+#         down = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-down-{category}.tsv"
+#     params:
+#         fdr = -log10(config["deseq"]["fdr"])
+#     log: "logs/separate_sig_de/separate_sig_de-{condition}-v-{control}-{norm}-{category}.log"
+#     shell: """
+#         awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr && $8 != "NA" {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr && $8 != "NA" {{print > "{output.down}"}} NR>1 && ($8<=afdr || $8=="NA"){{print > "{output.unchanged}"}}' {input}
+#         """
 
-rule get_de_category_bed:
-    input:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv"
-    output:
-        "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed"
-    log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
-    shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$8, $3}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
-        """
+# rule get_de_category_bed:
+#     input:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv"
+#     output:
+#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed"
+#     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+#     shell: """
+#         (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$8, $3}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
+#         """
 
 #TODO: account for double-counted peaks when a peak overlaps more than one annotation (more than one genic region, for example)
 rule summarise_de_results:
     input:
-        total = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
-        genic = "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
-        intragenic = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
-        antisense = "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
-        convergent = "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
-        divergent = "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
-        intergenic = "diff_exp/{condition}-v-{control}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv",
+        total = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.tsv",
+        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
+        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
+        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
+        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
+        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
+        intergenic = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv",
     params:
         lfc = config["deseq"]["fold-change-threshold"],
         alpha = config["deseq"]["fdr"]
     output:
-        summary_table = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.tsv",
-        summary = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
-        maplot = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-maplot.svg",
-        volcano = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-volcano.svg",
-        volcano_free = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{norm}-diffexp-volcano-freescale.svg",
+        summary_table = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-summary.tsv",
+        summary = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
+        maplot = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-maplot.svg",
+        volcano = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-volcano.svg",
+        volcano_free = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-volcano-freescale.svg",
     script: "scripts/de_summary.R"
 
 rule genic_v_class:
     input:
-        genic = "diff_exp/{condition}-v-{control}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
-        intragenic = "diff_exp/{condition}-v-{control}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
-        antisense = "diff_exp/{condition}-v-{control}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
-        convergent = "diff_exp/{condition}-v-{control}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
-        divergent = "diff_exp/{condition}-v-{control}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
+        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
+        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
+        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
+        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
+        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
     params:
-        path = "diff_exp/{condition}-v-{control}/genic_v_class/"
+        path = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/"
     output:
-        figure = "diff_exp/{condition}-v-{control}/genic_v_class/{condition}-v-{control}-{norm}-genic-v-class.svg",
-        tables = expand("diff_exp/{{condition}}-v-{{control}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
+        figure = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/{condition}-v-{control}-{norm}-genic-v-class.svg",
+        tables = expand("diff_exp/{{condition}}-v-{{control}}/{{norm}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
 
 #get all motif names from motif databases, cleaning nasty characters in some motif names
@@ -1048,7 +1061,7 @@ rule cat_fimo_motifs:
 #bedtools intersect peaks with fimo motifs
 rule get_upstream_motifs:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         chrsizes = config["genome"]["chrsizes"],
         motifs = "motifs/allmotifs.bed"
     output:
@@ -1061,17 +1074,31 @@ rule get_upstream_motifs:
         (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS="\t|:"; OFS="\t"}}{{print $1, $4, $5, $6, $11, $14, $9, $10, $12}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
         """
 
+rule get_random_motifs:
+    input:
+        chrsizes = config["genome"]["chrsizes"],
+        motifs = "motifs/allmotifs.bed"
+    output:
+        "motifs/random-motifs.tsv.gz"
+    params:
+        n = 6000,
+        size = config["motifs"]["upstream"] + config["motifs"]["enrichment-downstream"]
+    log: "logs/get_random_motifs/get_random_motifs.log"
+    shell: """
+        (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $4, 0, 0, $10, $13, $8, $9, $11}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
+        """
+
 rule test_motif_enrichment:
     input:
         fimo_pos = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz",
-        fimo_neg = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-unchanged-{category}-motifs.tsv.gz"
+        fimo_neg = lambda wc: "motifs/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "_" + wc.norm + "-unchanged-" + wc.category + "-motifs.tsv.gz" if wc.negative=="unchanged" else "motifs/random-motifs.tsv.gz"
     params:
         pval_cutoff = config["motifs"]["fimo-pval"],
         alpha= config["motifs"]["enrichment-fdr"],
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     output:
-        tsv = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-{category}-motif_enrichment.tsv",
-        plot = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-{category}-motif_enrichment.svg",
+        tsv = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.tsv",
+        plot = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.svg",
     script: "scripts/motif_enrichment.R"
 
 # rule get_motif_coverage:
@@ -1139,17 +1166,18 @@ rule plot_motif_freq:
 
 rule peak_positioning:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
     params:
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated",
         n_bins = 100
     output:
-        relative = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
-        absolute = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
-        fc_signif = "diff_exp/{condition}-v-{control}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
+        relative = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
+        absolute = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
+        fc_signif = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
     script:
         "scripts/length_bias.R"
 
+#TODO: move sequence analysis to separate pipeline
 rule get_gc_percentage:
     input:
         fasta = config["genome"]["fasta"],
@@ -1164,16 +1192,16 @@ rule get_gc_percentage:
 rule gene_ontology:
     input:
         universe = lambda wc: config["genome"]["orf-annotation"] if wc.category=="intragenic" else config["genome"]["transcripts"],
-        diffexp_path = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv",
+        diffexp_path = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv",
         go_anno_path = config["gene_ontology_mapping_file"]
     params:
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated" if wc.direction=="down" else wc.direction
     output:
-        results = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-results.tsv",
-        enriched_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-all.svg",
-        depleted_combined = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-all.svg",
-        enriched_facet = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-facetted.svg",
-        depleted_facet = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-facetted.svg",
+        results = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-results.tsv",
+        enriched_combined = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-all.svg",
+        depleted_combined = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-all.svg",
+        enriched_facet = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-enriched-facetted.svg",
+        depleted_facet = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-GO-{norm}-{direction}-{category}-depleted-facetted.svg",
     script:
         "scripts/gene_ontology.R"
 
@@ -1181,7 +1209,7 @@ rule gene_ontology:
 #limit size of dataset
 rule get_meme_de_peak_sequences:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     output:
