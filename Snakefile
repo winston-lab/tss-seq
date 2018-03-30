@@ -104,8 +104,8 @@ rule all:
         #motif_enrichment
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
-        expand(expand("motifs/{condition}-v-{control}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
+        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{negative}}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
+        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{negative}}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
         expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #GC pct coverage file
@@ -1065,7 +1065,7 @@ rule get_upstream_motifs:
         chrsizes = config["genome"]["chrsizes"],
         motifs = "motifs/allmotifs.bed"
     output:
-        "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz"
+        "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz"
     params:
         upstr = config["motifs"]["upstream"],
         dnstr = config["motifs"]["enrichment-downstream"]
@@ -1090,15 +1090,15 @@ rule get_random_motifs:
 
 rule test_motif_enrichment:
     input:
-        fimo_pos = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz",
-        fimo_neg = lambda wc: "motifs/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "_" + wc.norm + "-unchanged-" + wc.category + "-motifs.tsv.gz" if wc.negative=="unchanged" else "motifs/random-motifs.tsv.gz"
+        fimo_pos = "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz",
+        fimo_neg = lambda wc: "motifs/" + wc.condition + "-v-" + wc.control + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "_" + wc.norm + "-unchanged-" + wc.category + "-motifs.tsv.gz" if wc.negative=="unchanged" else "motifs/random-motifs.tsv.gz"
     params:
         pval_cutoff = config["motifs"]["fimo-pval"],
         alpha= config["motifs"]["enrichment-fdr"],
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     output:
-        tsv = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.tsv",
-        plot = "motifs/{condition}-v-{control}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.svg",
+        tsv = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.tsv",
+        plot = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.svg",
     script: "scripts/motif_enrichment.R"
 
 # rule get_motif_coverage:

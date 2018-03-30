@@ -16,6 +16,7 @@ motifs/
 rulegraph.svg
 dag.svg
 Rplots.pdf
+gene_ontology/
 
 config.yaml
 local_execute_cluster.sh
