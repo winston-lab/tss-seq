@@ -47,6 +47,9 @@ localrules:
     # meme_chip
     # class_v_genic
 
+onsuccess:
+    shell("(./mogrify.sh) > mogrify.log")
+
 rule all:
     input:
         #FastQC
