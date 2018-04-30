@@ -3,7 +3,7 @@ channels:
     - bioconda
     - conda-forge
 dependencies:
-    - openmpi
+    # - openmpi
     - python=2
     - meme
     - perl-json

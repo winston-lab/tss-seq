@@ -172,7 +172,7 @@ gene_ontology:
 meme_chip:
     time : 719
     mem : 10000
-    n : 1 #this is hardcoded in the snakefile to run with two cores
+    n : 1 #bioconda meme isn't compiled with multicore
 
 # class_v_genic:
 #     time : 360
@@ -184,5 +184,4 @@ meme_chip:
 # get_de_intragenic_frequency
 # plot_de_intragenic_frequency
 # get_peak_sequences
-# meme_chip
 # class_v_genic

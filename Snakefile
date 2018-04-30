@@ -43,8 +43,7 @@ localrules:
     # plot_de_intragenic_frequency
     # get_intra_orfs
     # separate_sig_de, get_de_category_bed,
-    get_peak_sequences_all,
-    # meme_chip
+    rule get_meme_de_peak_sequences,
     # class_v_genic
 
 onsuccess:
@@ -107,8 +106,12 @@ rule all:
         #motif_enrichment
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
+        # MEME-ChIP
         expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
         expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
+        expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
+        expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
+        ######
         expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{negative}}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/spikenorm/{{negative}}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
@@ -1215,8 +1218,9 @@ rule gene_ontology:
     script:
         "scripts/gene_ontology.R"
 
-#for peaks which are double-counted; only keep one sequence if two are overlapping
-#limit size of dataset
+#0. filter out double counted peaks (sometimes a peak can be 'genic' for two genes, causing it to be listed twice)
+#1. for sequences upstream of peaks: with the START of the peak as reference, extend annotation to upstream and 'downstream' distances; for peak sequences, just take the peak sequence
+#2. for sequences upstream of peaks: if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks); for peak sequences, no such limitation since they should be non-overlapping
 rule get_meme_de_peak_sequences:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
@@ -1225,8 +1229,8 @@ rule get_meme_de_peak_sequences:
     output:
         "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme.fa"
     params:
-        upstr = config["de-novo-motifs"]["upstream"],
-        dnstr = config["de-novo-motifs"]["downstream"]
+        upstr = config["motifs"]["meme-chip"]["upstream"],
+        dnstr = config["motifs"]["meme-chip"]["downstream"]
     log: "logs/get_meme_de_peak_sequences/get_meme_de_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}-{region}.log"
     run:
         if wildcards.region=="upstream":
@@ -1234,22 +1238,23 @@ rule get_meme_de_peak_sequences:
         elif wildcards.region=="peak":
             shell("""(uniq {input.peaks} | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}""")
 
-# rule meme_chip:
-#     input:
-#         seq = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.fa",
-#         background = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.fa",
-#         dbs = config["meme-chip"]["motif-databases"]
-#     output:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-motifs/meme-chip.html"
-#     params:
-#         dbs = ["-db " + x for x in config["meme-chip"]["motif-databases"]],
-#         ccut = config["meme-chip"]["max-frag-size"],
-#         mode = config["meme-chip"]["meme-mode"],
-#         nmotifs = config["meme-chip"]["meme-nmotifs"],
-#     conda: "envs/meme_chip.yaml"
-#     shell: """
-#         meme-chip {input.seq} -neg {input.background} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs {params.dbs} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -nmeme 10000 -meme-maxsize 600000
-#         """
+rule meme_chip:
+    input:
+        seq = "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme.fa",
+        genome_fasta = config["genome"]["fasta"],
+        dbs = config["motifs"]["databases"]
+    output:
+        "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme_chip/meme-chip.html"
+    params:
+        dbs = ["-db " + x for x in config["motifs"]["databases"]],
+        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
+        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
+        meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
+        meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
+    conda: "envs/meme_chip.yaml"
+    shell: """
+        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
+        """
 
 # rule fimo:
 #     input:
