@@ -43,7 +43,7 @@ localrules:
     # plot_de_intragenic_frequency
     # get_intra_orfs
     # separate_sig_de, get_de_category_bed,
-    rule get_meme_de_peak_sequences,
+    get_meme_de_peak_sequences,
     # class_v_genic
 
 onsuccess:
