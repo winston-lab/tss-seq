@@ -17,9 +17,9 @@ rulegraph.svg
 dag.svg
 Rplots.pdf
 gene_ontology/
+mogrify.log
 
 config.yaml
-local_execute_cluster.sh
 
 !fastq/.gitkeep
 !logs/.gitkeep

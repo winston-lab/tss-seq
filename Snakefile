@@ -107,6 +107,8 @@ rule all:
         #motif_enrichment
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
+        expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
+        expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{negative}}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/spikenorm/{{negative}}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
@@ -501,7 +503,7 @@ rule compute_matrix:
         scaled_length = lambda wc: 0 if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else FIGURES[wc.figure]["parameters"]["scaled_length"],
         binsize = lambda wc: FIGURES[wc.figure]["parameters"]["binsize"],
         binstat = lambda wc: FIGURES[wc.figure]["parameters"]["binstat"],
-        nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd", 
+        nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd",
         anno_label = lambda wc: FIGURES[wc.figure]["annotations"][wc.annotation]["label"]
     threads : config["threads"]
     log: "logs/compute_matrix/compute_matrix-{annotation}_{sample}_{norm}-{strand}.log"
@@ -1062,6 +1064,10 @@ rule cat_fimo_motifs:
         """
 
 #bedtools intersect peaks with fimo motifs
+#0. filter out double counted peaks (sometimes a peak can be 'genic' for two genes, causing it to be listed twice)
+#1. with the START of the peak as reference, extend annotation to upstream and 'downstream' distances
+#2. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting, so that poorly called peaks which are erroneously split into multiple peaks do not bias the motif enrichment analyses.)
+#3. intersect with motif file
 rule get_upstream_motifs:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
@@ -1070,11 +1076,11 @@ rule get_upstream_motifs:
     output:
         "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz"
     params:
-        upstr = config["motifs"]["upstream"],
+        upstr = config["motifs"]["enrichment-upstream"],
         dnstr = config["motifs"]["enrichment-downstream"]
     log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{direction}-{category}.log"
     shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS="\t|:"; OFS="\t"}}{{print $1, $4, $5, $6, $11, $14, $9, $10, $12}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
+        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | sed 's/:/\t/g' | bedtools groupby -g 8 -c 6 -o max -full -i stdin | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5":"$6, $7}}' | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS="\t|:"; OFS="\t"}}{{print $1, $4, $5, $6, $11, $14, $9, $10, $12}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
         """
 
 rule get_random_motifs:
@@ -1085,7 +1091,7 @@ rule get_random_motifs:
         "motifs/random-motifs.tsv.gz"
     params:
         n = 6000,
-        size = config["motifs"]["upstream"] + config["motifs"]["enrichment-downstream"]
+        size = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"]
     log: "logs/get_random_motifs/get_random_motifs.log"
     shell: """
         (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $4, 0, 0, $10, $13, $8, $9, $11}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
@@ -1167,6 +1173,7 @@ rule plot_motif_freq:
         "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.svg"
     script: "scripts/motif_metagenes.R"
 
+#TODO: fix the statistical test
 rule peak_positioning:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
@@ -1216,29 +1223,16 @@ rule get_meme_de_peak_sequences:
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     output:
-        "motifs/{condition}-v-{control}/meme/{condition}-v-{control}-results-{norm}-{direction}-{category}-meme.fa"
+        "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme.fa"
     params:
         upstr = config["de-novo-motifs"]["upstream"],
         dnstr = config["de-novo-motifs"]["downstream"]
-    log: "logs/get_meme_de_peak_sequences/get_meme_de_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}.log"
-    shell: """
-        (uniq {input.peaks} | sed -e 's/:/\t/g' | sort -k6,6nr | awk 'BEGIN{{FS=OFS="\t"}} NR<=int(1e5/({params.upstr}+{params.dnstr})){{print $1, $2, $3, $4, $5":"$6, $7}}' | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | awk 'BEGIN{{FS=OFS="\t"}}{{$6=="-" ? $1=$1"-minus":$1=$1"-plus"}}{{print $0}}' | sort -k1,1 -k2,2n | bedtools spacing -i stdin | awk 'BEGIN{{FS=OFS="\t"}} $7!=0{{print $1, $2, $3, $4, $5, $6}}' | sed -e 's/-minus//g;s/-plus//g' | bedtools getfasta -name -s -fi {input.fasta} -bed stdin > {output}) &> {log}
-        """
-# rule fimo:
-#     input:
-#         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
-#         dbs = config["meme-chip"]["motif-databases"]
-#     params:
-#         pval = config["meme-chip"]["fimo-pval"],
-#         qval = config["meme-chip"]["fimo-qval"],
-#     output:
-#         txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
-#         gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
-#         gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
-#     shell: """
-#         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-#         sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
-#         """
+    log: "logs/get_meme_de_peak_sequences/get_meme_de_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}-{region}.log"
+    run:
+        if wildcards.region=="upstream":
+            shell("""(uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | sed 's/:/\t/g' | bedtools groupby -g 8 -c 6 -o max -full -i stdin | sort -k6,6nr | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5":"$6, $7}}' | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}""")
+        elif wildcards.region=="peak":
+            shell("""(uniq {input.peaks} | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}""")
 
 # rule meme_chip:
 #     input:
@@ -1256,3 +1250,20 @@ rule get_meme_de_peak_sequences:
 #     shell: """
 #         meme-chip {input.seq} -neg {input.background} -oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-motifs {params.dbs} -ccut {params.ccut} -meme-mod {params.mode} -meme-nmotifs {params.nmotifs} -nmeme 10000 -meme-maxsize 600000
 #         """
+
+# rule fimo:
+#     input:
+#         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
+#         dbs = config["meme-chip"]["motif-databases"]
+#     params:
+#         pval = config["meme-chip"]["fimo-pval"],
+#         qval = config["meme-chip"]["fimo-qval"],
+#     output:
+#         txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
+#         gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
+#         gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
+#     shell: """
+#         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
+#         sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
+#         """
+
