@@ -9,8 +9,8 @@ configfile: "config.yaml"
 
 SAMPLES = config["samples"]
 sisamples = {k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}
-PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"] == "pass"}
-sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"] == "y"}
+PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"]=="pass"}
+sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
@@ -107,10 +107,8 @@ rule all:
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-libsizenorm.svg", zip, condition=conditiongroups, control=controlgroups),
         # expand("motifs/datavis/allmotifs-{condition}-v-{control}-spikenorm.svg", zip, condition=conditiongroups_si, control=controlgroups_si)
         # MEME-ChIP
-        expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
-        expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme.fa", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
-        expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
-        expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES),
+        expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
+        expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
         ######
         expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{negative}}/{condition}-v-{control}_libsizenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
         expand(expand("motifs/{condition}-v-{control}/spikenorm/{{negative}}/{condition}-v-{control}_spikenorm-{{direction}}-v-{{negative}}-{{category}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES),
@@ -121,6 +119,9 @@ rule all:
         #gene ontology
         expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
         expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]),
+        #sequence logos
+        # expand("seq_logos/{group}/{group}-{category}-seqlogo.tsv", group=set([PASSING[x]['group'] for x in PASSING]), category=CATEGORIES+["all"])
+        expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING]))
 
 def plotcorrsamples(wc):
     dd = SAMPLES if wc.status=="all" else PASSING
@@ -1113,6 +1114,7 @@ rule test_motif_enrichment:
         plot = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.svg",
     script: "scripts/motif_enrichment.R"
 
+#NOTE: below are rules for visualizing motif occurrences, but need to have a way to do this efficiently/in an interpretable way for thousands of motifs
 # rule get_motif_coverage:
 #     input:
 #         bed = "motifs/.{motif}.bed", #this is sorted when created
@@ -1256,19 +1258,43 @@ rule meme_chip:
         meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
         """
 
-# rule fimo:
-#     input:
-#         fa = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}-fimo.fa",
-#         dbs = config["meme-chip"]["motif-databases"]
-#     params:
-#         pval = config["meme-chip"]["fimo-pval"],
-#         qval = config["meme-chip"]["fimo-qval"],
-#     output:
-#         txt = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/fimo.txt",
-#         gff_all = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_all.gff",
-#         gff_filtered = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-{norm}-{direction}-{category}-fimo/{condition}-v-{control}-{norm}-{direction}-{category}-fimo_filtered.gff",
-#     shell: """
-#         fimo --bgfile <(fasta-get-markov {input.fa}) --oc diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo --thresh {params.pval} --parse-genomic-coord <(meme2meme {input.dbs}) {input.fa}
-#         sed 's/peak_[[:digit:]]\+_//g' diff_exp/{wildcards.condition}-v-{wildcards.control}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-fimo/fimo.gff | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{$4=$4+1; $5=$5+1}}{{print $0}}' | awk -v alpha={params.qval} 'BEGIN{{FS="qvalue= |;"}} {{print $0 > "{output.gff_all}"}} NR==1 || $6<alpha {{print $0 > "{output.gff_filtered}"}}'
-#         """
+rule get_seqlogo_data:
+    input:
+        bam = lambda wc: expand("alignment/{sample}-noPCRdup.bam", sample=getsamples(wc.group, wc.group)),
+        bed = lambda wc: "peakcalling/" + wc.category + "/" + wc.group + "-exp-idrpeaks-" + wc.category + ".tsv" if wc.category != "all" else [],
+        chrsizes = config["genome"]["chrsizes"],
+        fasta = config["genome"]["fasta"]
+    params:
+        prefix = config["combinedgenome"]["experimental_prefix"],
+        slop = int(config["consensus"]["window"]),
+        windowsize = int(2*config["consensus"]["window"]+1),
+        intersect_cmd = lambda wc: "bedtools intersect -wa -s -a stdin -b peakcalling/" + wc.category + "/" + wc.group + "-exp-idrpeaks-" + wc.category + ".tsv | " if wc.category != "all" else ""
+    output:
+        seqlogo_data = "seq_logos/{group}/{group}-{category}-seqlogo.tsv",
+    log: "logs/get_seqlogo_data/get_seqlogo_data-{group}-{category}.log"
+    run:
+        fasta_stats = subprocess.run(args="fasta-get-markov " + input.fasta + " | tail -n +4", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
+        composition = "{" + ",".join(["'" + fasta_stats[x] + "':" + str(1e2*float(fasta_stats[x+1])) for x in range(0,8,2)]) + "}"
+        shell("""(samtools merge - {input.bam} | bedtools bamtobed -i stdin | grep -e "{params.prefix}" | sed 's/{params.prefix}//g' | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $2+1, $4, $5, $6}} $6=="-"{{print $1, $3-1, $3, $4, $5, $6}}' | {params.intersect_cmd} bedtools slop -b {params.slop} -s -i stdin -g {input.chrsizes} | awk '$3-$2=={params.windowsize}' | bedtools getfasta -s -fi {input.fasta} -bed stdin | weblogo --format logodata --sequence-type dna --composition "{composition}" > {output.seqlogo_data}) &> {log}""")
+
+rule plot_seqlogos:
+    input:
+        seqlogo_data = expand("seq_logos/{{group}}/{{group}}-{category}-seqlogo.tsv", category = ["all"] + CATEGORIES),
+        fasta = config["genome"]["fasta"]
+    params:
+        tss_classes = ["all"] + CATEGORIES,
+        slop = int(config["consensus"]["window"]),
+    output:
+        "seq_logos/{group}/{group}-seqlogos.svg",
+    log: "logs/plot_seqlogos/plot_seqlogos-{group}.log"
+    run:
+        gc_pct = float(subprocess.run(args="fasta-get-markov " + input.fasta + " | tail -n +4", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()[3])*2
+        shell(""" (Rscript scripts/plot_seqlogo.R --input {input.seqlogo_data} --tss_classes {params.tss_classes} -b {params.slop} --gc_pct {gc_pct} -l {wildcards.group} -o {output}) &> {log}""")
+
+
+# | Rscript scripts/plot_seqlogo.R -b {params.slop} -g {gc_pct} -l {wildcards.category} -o {output.seqlogo}
+
+
+
+        # seqlogo = "seq_logos/{group}/{group}-{category}-seqlogo.svg"
 

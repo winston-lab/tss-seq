@@ -17,6 +17,7 @@ rulegraph.svg
 dag.svg
 Rplots.pdf
 gene_ontology/
+seq_logos/
 mogrify.log
 
 config.yaml
