@@ -44,6 +44,7 @@ localrules:
     # get_intra_orfs
     # separate_sig_de, get_de_category_bed,
     get_meme_de_peak_sequences,
+    plot_seqlogos,
     # class_v_genic
 
 onsuccess:
