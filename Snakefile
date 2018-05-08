@@ -8,17 +8,17 @@ from math import log2, log10
 configfile: "config.yaml"
 
 SAMPLES = config["samples"]
-sisamples = {k:v for (k,v) in SAMPLES.items() if v["spikein"]=="y"}
-PASSING = {k:v for (k,v) in SAMPLES.items() if v["pass-qc"]=="pass"}
-sipassing = {k:v for (k,v) in PASSING.items() if v["spikein"]=="y"}
+sisamples = {k:v for k,v in SAMPLES.items() if v["spikein"]=="y"}
+PASSING = {k:v for k,v in SAMPLES.items() if v["pass-qc"]=="pass"}
+sipassing = {k:v for k,v in PASSING.items() if v["spikein"]=="y"}
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
 validgroups_si = set([z for z in [PASSING[x]['group'] for x in PASSING if PASSING[x]['spikein']=="y"] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
-controlgroups = [g for g in config["comparisons"]["libsizenorm"]["controls"] if g in validgroups]
-conditiongroups = [g for g in config["comparisons"]["libsizenorm"]["conditions"] if g in validgroups]
-controlgroups_si = [g for g in config["comparisons"]["spikenorm"]["controls"] if g in validgroups_si]
-conditiongroups_si = [g for g in config["comparisons"]["spikenorm"]["conditions"] if g in validgroups_si]
+controlgroups = [v for k,v in config["comparisons"]["libsizenorm"].items() if v in validgroups]
+conditiongroups = [k for k,v in config["comparisons"]["libsizenorm"].items() if k in validgroups]
+controlgroups_si = [v for k,v in config["comparisons"]["spikenorm"].items() if v in validgroups_si]
+conditiongroups_si = [k for k,v in config["comparisons"]["spikenorm"].items() if k in validgroups_si]
 
 CATEGORIES = ["genic", "intragenic", "antisense", "convergent", "divergent", "intergenic"]
 
@@ -125,16 +125,15 @@ rule all:
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING]))
 
 def plotcorrsamples(wc):
-    dd = SAMPLES if wc.status=="all" else PASSING
     if wc.condition=="all":
         if wc.norm=="libsizenorm": #condition==all,norm==lib
-            return list(dd.keys())
+            return list(SAMPLES.keys())
         else: #condition==all,norm==spike
-            return [k for k,v in dd.items() if v["spikein"]=="y"]
+            return list(sisamples.keys())
     elif wc.norm=="libsizenorm": #condition!=all;norm==lib
-        return [k for k,v in dd.items() if v["group"]==wc.control or v["group"]==wc.condition]
+        return [k for k,v in PASSING.items() if v["group"] in [wc.condition, wc.control]]
     else: #condition!=all;norm==spike
-        return [k for k,v in dd.items() if (v["group"]==wc.control or v["group"]==wc.condition) and v["spikein"]=="y"]
+        return [k for k,v in sipassing.items() if v["group"] in [wc.control, wc.condition]]
 
 def cluster_samples(status, norm, cluster_groups, cluster_strands):
     ll = []
@@ -411,10 +410,10 @@ rule normalize:
 
 rule get_si_pct:
     input:
-        plmin = expand("coverage/counts/{sample}-tss-counts-plmin.bedgraph", sample=SAMPLES),
-        SIplmin = expand("coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph", sample=SAMPLES)
+        plmin = expand("coverage/counts/{sample}-tss-counts-plmin.bedgraph", sample=sisamples),
+        SIplmin = expand("coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph", sample=sisamples)
     params:
-        group = [v["group"] for k,v in SAMPLES.items()]
+        group = [v["group"] for k,v in sisamples.items()]
     output:
         "qual_ctrl/all/spikein-counts.tsv"
     log: "logs/get_si_pct.log"
@@ -423,6 +422,8 @@ rule get_si_pct:
         for name, exp, si, g in zip(SAMPLES.keys(), input.plmin, input.SIplmin, params.group):
             shell("""(echo -e "{name}\t{g}\t" $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {si} {exp}) >> {output}) &> {log}""")
 
+#NOTE: since the conditiongroups_si and controlgroups_si lists are subsets of validgroups_si,
+#in the case where there is only one passing sample, the group won't be included as is right now
 rule plot_si_pct:
     input:
         "qual_ctrl/all/spikein-counts.tsv"
@@ -430,9 +431,9 @@ rule plot_si_pct:
         plot = "qual_ctrl/{status}/{status}-spikein-plots.svg",
         stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
     params:
-        samplelist = lambda wc : [k for k,v in SAMPLES.items() if v["spikein"]=="y"] if wc.status=="all" else [k for k,v in PASSING.items() if v["spikein"]=="y"],
-        conditions = config["comparisons"]["spikenorm"]["conditions"],
-        controls = config["comparisons"]["spikenorm"]["controls"],
+        samplelist = lambda wc : list(sisamples.keys()) if wc.status=="all" else list(sipassing.keys()),
+        conditions = conditiongroups_si,
+        controls = controlgroups_si,
     script: "scripts/plotsipct.R"
 
 #make 'stranded' genome for datavis purposes
@@ -799,7 +800,7 @@ rule map_counts_to_peaks:
         """
 
 def getsamples(ctrl, cond):
-    return [k for k,v in PASSING.items() if (v["group"]==ctrl or v["group"]==cond)]
+    return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
 
 rule get_peak_counts:
     input:
@@ -817,7 +818,8 @@ rule get_peak_counts:
 rule call_de_peaks:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
-        sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-exp-peak-counts.tsv"
+        # sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-exp-peak-counts.tsv"
+        sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else []
     params:
         samples = lambda wc : getsamples(wc.control, wc.condition),
         groups = lambda wc : [PASSING[x]["group"] for x in getsamples(wc.control, wc.condition)],
@@ -978,30 +980,6 @@ rule get_de_divergent:
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name\tdist_peak_to_senseTSS") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
         """
-
-# rule separate_sig_de:
-#     input:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-all-{category}.tsv"
-#     output:
-#         up = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-up-{category}.tsv",
-#         unchanged = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-unchanged-{category}.tsv",
-#         down = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-down-{category}.tsv"
-#     params:
-#         fdr = -log10(config["deseq"]["fdr"])
-#     log: "logs/separate_sig_de/separate_sig_de-{condition}-v-{control}-{norm}-{category}.log"
-#     shell: """
-#         awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}}NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}"}} NR>1 && $7>0 && $8>afdr && $8 != "NA" {{print > "{output.up}"}} NR>1 && $7<0 && $8>afdr && $8 != "NA" {{print > "{output.down}"}} NR>1 && ($8<=afdr || $8=="NA"){{print > "{output.unchanged}"}}' {input}
-#         """
-
-# rule get_de_category_bed:
-#     input:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.tsv"
-#     output:
-#         "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed"
-#     log: "logs/get_category_bed/get_category_bed-{condition}-v-{control}-{norm}-{direction}-{category}.log"
-#     shell: """
-#         (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$8, $3}}' {input} | sort -k1,1 -k2,2n  > {output}) &> {log}
-#         """
 
 #TODO: account for double-counted peaks when a peak overlaps more than one annotation (more than one genic region, for example)
 rule summarise_de_results:
@@ -1291,11 +1269,4 @@ rule plot_seqlogos:
     run:
         gc_pct = float(subprocess.run(args="fasta-get-markov " + input.fasta + " | tail -n +4", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()[3])*2
         shell(""" (Rscript scripts/plot_seqlogo.R --input {input.seqlogo_data} --tss_classes {params.tss_classes} -b {params.slop} --gc_pct {gc_pct} -l {wildcards.group} -o {output}) &> {log}""")
-
-
-# | Rscript scripts/plot_seqlogo.R -b {params.slop} -g {gc_pct} -l {wildcards.category} -o {output.seqlogo}
-
-
-
-        # seqlogo = "seq_logos/{group}/{group}-{category}-seqlogo.svg"
 
