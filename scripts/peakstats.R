@@ -33,19 +33,19 @@ main = function(groups, condition, control, table.out, size.out, violin.area.out
     groups = unique(groups)
     for (i in 1:length(groups)){
         g = groups[i]
-        dflist[[g]][['all']] = read_tsv(paste0('peakcalling/', groups[i], '-exp-idrpeaks.narrowPeak'), col_names=FALSE) %>%
+        dflist[[g]][['all']] = read_tsv(paste0('peakcalling/', groups[i], '/', groups[i], '-exp-idrpeaks.narrowPeak'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10) %>% distinct(.keep_all=TRUE)
-        dflist[[g]][['genic']] = read_tsv(paste0('peakcalling/genic/', groups[i], '-exp-idrpeaks-genic.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['genic']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-genic.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10, gene.name=X11)
-        dflist[[g]][['intragenic']] = read_tsv(paste0('peakcalling/intragenic/', groups[i], '-exp-idrpeaks-intragenic.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['intragenic']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-intragenic.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10, gene.name=X11, peak.dist.to.ATG=X12) %>% distinct(chrom, start, end, strand, summit, .keep_all=TRUE) 
-        dflist[[g]][['antisense']] = read_tsv(paste0('peakcalling/antisense/', groups[i], '-exp-idrpeaks-antisense.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['antisense']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-antisense.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10, gene.name=X11, peak.dist.to.senseTSS=X12) %>% distinct(chrom, start, end, strand, summit, .keep_all=TRUE)
-        dflist[[g]][['convergent']] = read_tsv(paste0('peakcalling/convergent/', groups[i], '-exp-idrpeaks-convergent.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['convergent']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-convergent.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10, gene.name=X11, peak.dist.to.senseTSS=X12) %>% distinct(chrom, start, end, strand, summit, .keep_all=TRUE)
-        dflist[[g]][['divergent']] = read_tsv(paste0('peakcalling/divergent/', groups[i], '-exp-idrpeaks-divergent.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['divergent']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-divergent.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10, gene.name=X11, peak.dist.to.senseTSS=X12) %>% distinct(chrom, start, end, strand, summit, .keep_all=TRUE)
-        dflist[[g]][['intergenic']] = read_tsv(paste0('peakcalling/intergenic/', groups[i], '-exp-idrpeaks-intergenic.tsv'), col_names=FALSE) %>%
+        dflist[[g]][['intergenic']] = read_tsv(paste0('peakcalling/', groups[i],'/', groups[i],  '-exp-idrpeaks-intergenic.tsv'), col_names=FALSE) %>%
             select(chrom=X1, start=X2, end=X3, strand=X6, summit=X10) %>% distinct(.keep_all=TRUE)
     }
     

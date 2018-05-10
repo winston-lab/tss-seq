@@ -606,7 +606,7 @@ rule call_tss_peaks:
         window = config["peakcalling"]["local-bg-window"]
     log: "logs/call_tss_peaks/call_tss_peaks-{sample}-{type}.log"
     shell: """
-        (python scripts/tss-peakcalling.py -i {input.bw} -n {params.name} -w {params.window} -b {params.bandwidth} -o peakcalling) &> {log}
+        (python scripts/tss-peakcalling.py -i {input.bw} -n {params.name} -w {params.window} -b {params.bandwidth} -o peakcalling/sample_peaks) &> {log}
         """
 
 rule tss_peaks_idr:
@@ -624,7 +624,7 @@ rule tss_peaks_idr:
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
         idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max
-        (awk '$5>{params.idr} || $9=="inf"' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &> {log}
+        (awk '$5>{params.idr} || $9=="inf"' {output.allpeaks} | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &> {log}
         """
 
 rule build_genic_annotation:
@@ -799,7 +799,6 @@ rule get_peak_counts:
 rule call_de_peaks:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
-        # sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-exp-peak-counts.tsv"
         sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else []
     params:
         samples = lambda wc : getsamples(wc.control, wc.condition),
@@ -820,31 +819,6 @@ rule call_de_peaks:
         qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-qcplots-{norm}.svg"
     script:
         "scripts/call_de_peaks.R"
-
-# #TODO: write the output of the next two rules straight from call_de_peaks
-# rule separate_de_peaks:
-#     input:
-#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-all.tsv",
-#     output:
-#         up = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-up.tsv",
-#         unchanged = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
-#         down = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-down.tsv",
-#     params:
-#         fdr = -log10(config["deseq"]["fdr"])
-#     log: "logs/separate_de_peaks/separate_de_peaks-{condition}-v-{control}-{norm}.log"
-#     shell: """
-#         (awk -v afdr={params.fdr} 'BEGIN{{FS=OFS="\t"}} NR==1{{print > "{output.up}"; print > "{output.unchanged}"; print > "{output.down}" }} NR>1 && $11>afdr && $11 != "NA" && $7>0 {{print > "{output.up}"}} NR>1 && $11>afdr && $11 != "NA" && $7<0 {{print > "{output.down}"}} NR>1 && ($11<=afdr || $11 = "NA"){{print > "{output.unchanged}"}}' {input}) &> {log}
-#         """
-
-# rule de_peaks_to_bed:
-#     input:
-#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.tsv",
-#     output:
-#         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-results-{norm}-{direction}.bed",
-#     log: "logs/de_peaks_to_bed/de_peaks_to_bed-{condition}-v-{control}-{norm}-{direction}.log"
-#     shell: """
-#         (awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $2, $4, $5, $1, $7":"$11, $3}}' {input} > {output}) &> {log}
-#         """
 
 rule get_de_intragenic:
     input:
