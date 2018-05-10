@@ -30,7 +30,6 @@ localrules:
     bowtie2_build,
     get_si_pct, plot_si_pct,
     make_stranded_genome, make_stranded_annotations,
-    tss_peaks_to_narrowpeak,
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
     classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
     classify_peaks_convergent, classify_peaks_divergent, classify_peaks_intergenic,
@@ -71,14 +70,14 @@ rule all:
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-libsizenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups, control=controlgroups), direction = ["up", "down"]),
         # expand(expand("diff_exp/{condition}-v-{control}/intragenic/intragenic-orfs/{condition}-v-{control}-spikenorm-{{direction}}-intragenic-orfs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["up", "down"]),
         #peakcalling on all samples
-        expand("peakcalling/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
-        expand("peakcalling/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
+        expand("peakcalling/sample_peaks/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
+        expand("peakcalling/sample_peaks/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
         #IDR for all groups which have at least two passing samples
         expand("peakcalling/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
         expand("peakcalling/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
         #classify peaks into categories
-        expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
-        expand("peakcalling/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
+        expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
@@ -610,8 +609,8 @@ rule call_tss_peaks:
     input:
         bw = lambda wc: "coverage/counts/" + wc.sample + "-tss-counts-SENSE.bw" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "-tss-sicounts-SENSE.bw"
     output:
-        smoothed = expand("peakcalling/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
-        peaks = "peakcalling/{sample}-{type}-allpeaks.narrowPeak"
+        smoothed = expand("peakcalling/sample_peaks/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/sample_peaks/{sample}-{type}-allpeaks.narrowPeak"
     params:
         name = lambda wc: wc.sample + "-" + wc.type,
         bandwidth = config["peakcalling"]["bandwidth"],
@@ -625,25 +624,18 @@ rule tss_peaks_idr:
     input:
         #NOTE: for now we take the first two samples since the IDR script only takes two
         #change this if we find a better way to aggregate results
-        lambda wc: ["peakcalling/" + x + "-" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
+        lambda wc: ["peakcalling/sample_peaks/" + x + "-" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
     output:
-        allpeaks = "peakcalling/{group}-{type}-idrpeaks-all.tsv",
-        filtered = "peakcalling/{group}-{type}-idrpeaks-filtered.tsv",
+        allpeaks = "peakcalling/{group}/{group}-{type}-idrpeaks-all.tsv",
+        filtered = "peakcalling/{group}/{group}-{type}-idrpeaks-filtered.tsv",
+        narrowpeak = "peakcalling/{group}/{group}-{type}-idrpeaks.narrowPeak",
+        summits = "peakcalling/{group}/{group}-{type}-idrpeaks-summits.bed",
     params:
         idr = int(-125*log2(config["peakcalling"]["idr"]))
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
         idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max
-        awk -v threshold={params.idr} '$5>threshold || $9=="inf"' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv > {output.filtered}
-        """
-
-rule tss_peaks_to_narrowpeak:
-    input:
-        "peakcalling/{group}-{type}-idrpeaks-filtered.tsv"
-    output:
-        "peakcalling/{group}-{type}-idrpeaks.narrowPeak"
-    shell: """
-        awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' {input} | sed -e "s/-minus//g" -e "s/-plus//g" > {output}
+        (awk '$5>{params.idr} || $9=="inf"' peakcalling/{wildcards.group}-{wildcards.type}-idrpeaks-all.tsv | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &> {log}
         """
 
 rule build_genic_annotation:
@@ -662,31 +654,31 @@ rule build_genic_annotation:
 
 rule classify_peaks_genic:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "peakcalling/genic/{group}-exp-idrpeaks-genic.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-genic.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | cut --complement -f11-13,15-17 > {output}
         """
 
 rule classify_peaks_intragenic:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "peakcalling/intragenic/{group}-exp-idrpeaks-intragenic.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-intragenic.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
         """
 
 rule classify_peaks_antisense:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         transcripts = config["genome"]["transcripts"]
     output:
-        "peakcalling/antisense/{group}-exp-idrpeaks-antisense.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-antisense.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.transcripts} -wo -S | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
         """
@@ -705,11 +697,11 @@ rule build_convergent_annotation:
 
 rule classify_peaks_convergent:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "peakcalling/convergent/{group}-exp-idrpeaks-convergent.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-convergent.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$12}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $13-$2+$10}}' > {output}
         """
@@ -729,11 +721,11 @@ rule build_divergent_annotation:
 
 rule classify_peaks_divergent:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "peakcalling/divergent/{group}-exp-idrpeaks-divergent.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-divergent.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}}$6=="-"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $12-$2+$10}}$6=="+"{{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $14, $2+$10-$13}}' > {output}
         """
@@ -753,26 +745,26 @@ rule build_intergenic_annotation:
 
 rule classify_peaks_intergenic:
     input:
-        peaks = "peakcalling/{group}-exp-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
         transcripts = config["genome"]["transcripts"],
         orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"
     output:
-        "peakcalling/intergenic/{group}-exp-idrpeaks-intergenic.tsv"
+        "peakcalling/{group}/{group}-exp-idrpeaks-intergenic.tsv"
     shell: """
         bedtools intersect -a {input.peaks} -b {input.transcripts} {input.orfs} -wa -v | bedtools intersect -a stdin -b {input.genic_anno} -wa -v -s | bedtools intersect -a stdin -b {input.annotation} -wa > {output}
         """
 
 rule peakstats:
     input:
-        expand("peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
     output:
-        table = "peakcalling/{condition}-v-{control}-peaknumbers.tsv",
-        size = "peakcalling/{condition}-v-{control}-peaksizes-histogram.svg",
-        violin_area = "peakcalling/{condition}-v-{control}-peaksizes-violin-equalarea.svg",
-        violin_count = "peakcalling/{condition}-v-{control}-peaksizes-violin-countscaled.svg",
-        dist = "peakcalling/{condition}-v-{control}-peakdistances.svg"
+        table = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaknumbers.tsv",
+        size = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-histogram.svg",
+        violin_area = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-violin-equalarea.svg",
+        violin_count = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-violin-countscaled.svg",
+        dist = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg"
     params:
         groups = lambda wc: [g for sublist in zip(controlgroups, conditiongroups) for g in sublist] if wc.condition=="all" else [wc.control, wc.condition]
     script:
@@ -780,8 +772,8 @@ rule peakstats:
 
 rule combine_tss_peaks:
     input:
-        cond = "peakcalling/{condition}-{type}-idrpeaks-filtered.tsv",
-        ctrl = "peakcalling/{control}-{type}-idrpeaks-filtered.tsv",
+        cond = "peakcalling/{condition}/{condition}-{type}-idrpeaks-filtered.tsv",
+        ctrl = "peakcalling/{control}/{control}-{type}-idrpeaks-filtered.tsv",
     output:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed"
     shell: """
