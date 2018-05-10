@@ -66,8 +66,8 @@ rule all:
         expand("peakcalling/sample_peaks/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/sample_peaks/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
-        expand("peakcalling/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
+        expand("peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
+        expand("peakcalling/{group}/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
         #classify peaks into categories
         expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
         expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
