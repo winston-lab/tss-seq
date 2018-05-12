@@ -9,11 +9,10 @@ use : python extractMolecularBarcode.py inFastq outFastq outBarcodes outLigation
 
 """
 
-import sys, itertools
+import sys, itertools, gzip
 
-
-iFastq=open(sys.argv[1], 'r')
-oFastq=open(sys.argv[2], 'w')
+iFastq=gzip.open(sys.argv[1], 'rb')
+oFastq=gzip.open(sys.argv[2], 'wb')
 oBarcode=open(sys.argv[3], 'w')
 oLigation=open(sys.argv[4], 'w')
 
@@ -23,7 +22,6 @@ nct='ACTGN'
 for barcode in list(itertools.product(nct, repeat=6)):
     dicoBarcode["".join(barcode)] = 0
     dicoLigation["".join(barcode)] = 0
-
 
 header= iFastq.readline().rstrip()
 while header != '':

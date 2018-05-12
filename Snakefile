@@ -2,7 +2,6 @@
 import os
 import subprocess
 import itertools
-
 from math import log2, log10
 
 configfile: "config.yaml"
@@ -52,36 +51,36 @@ onsuccess:
 rule all:
     input:
         #FastQC
-        'qual_ctrl/fastqc/per_base_sequence_content.svg',
+        # 'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
         #alignment
-        expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES),
-        #quality controls
-        "qual_ctrl/read_processing-loss.svg",
-        expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
-        #coverage
-        expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        #peakcalling on all samples
-        expand("peakcalling/sample_peaks/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
-        expand("peakcalling/sample_peaks/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
-        #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
-        expand("peakcalling/{group}/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
-        #classify peaks into categories
-        expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
-        expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
-        #combine called peaks for conditions vs control
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
-        #differential expression of peaks
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
-        expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
-        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}-results-libsizenorm-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups),direction=["all", "up", "unchanged", "down"]),
-        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}-results-spikenorm-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si),direction=["all", "up", "unchanged", "down"]),
-        ##categorize differentially expressed peaks
-        #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
-        #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
+        ##quality controls
+        #"qual_ctrl/read_processing-loss.svg",
+        #expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        ##coverage
+        #expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        ##peakcalling on all samples
+        #expand("peakcalling/sample_peaks/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
+        #expand("peakcalling/sample_peaks/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
+        ##IDR for all groups which have at least two passing samples
+        #expand("peakcalling/{group}/{group}-exp-idrpeaks.narrowPeak", group=validgroups),
+        #expand("peakcalling/{group}/{group}-si-idrpeaks.narrowPeak", group=validgroups_si),
+        ##classify peaks into categories
+        #expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        #expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
+        ##combine called peaks for conditions vs control
+        #expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
+        #expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}-si-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
+        ##differential expression of peaks
+        #expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv", zip, condition=conditiongroups, control=controlgroups),
+        #expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups),direction=["all", "up", "unchanged", "down"]),
+        #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si),direction=["all", "up", "unchanged", "down"]),
+        ###categorize differentially expressed peaks
+        #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{category}}-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category="genic"),
+        ## expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
         ##differential expression summary
         #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
         #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
@@ -142,7 +141,7 @@ rule fastqc_raw:
     output:
         "qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt"
     threads: config["threads"]
-    log: "logs/fastqc/raw/fastqc-raw-{sample}.log"
+    log: "logs/fastqc/raw/fastqc_raw-{sample}.log"
     shell: """
         (mkdir -p qual_ctrl/fastqc/raw/{wildcards.sample}) &> {log}
         (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/raw/{wildcards.sample} {input}) &>> {log}
@@ -154,7 +153,8 @@ rule clean_reads:
     input:
         lambda wc: SAMPLES[wc.sample]["fastq"]
     output:
-        fq = temp("fastq/cleaned/{sample}-trim.fastq"),
+        # fq = temp("fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz"),
+        fq = "fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz",
         adapter = "logs/clean_reads/remove_adapter-{sample}.log",
         qual_trim = "logs/clean_reads/remove_3p_bc_and_trim-{sample}.log"
     params:
@@ -164,29 +164,30 @@ rule clean_reads:
         cutadapt -a {params.adapter} -m 18 {input} 2> {output.adapter} | cutadapt -u -6 --nextseq-trim={params.trim_qual} -m 12 -o {output.fq} - &> {output.qual_trim}
         """
 
-rule remove_molec_barcode:
+rule remove_molecular_barcode:
     input:
-        "fastq/cleaned/{sample}-trim.fastq"
+        "fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz"
     output:
-        fq = "fastq/cleaned/{sample}-clean.fastq.gz",
+        fq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz",
         barcodes = "qual_ctrl/molec_barcode/barcodes-{sample}.tsv",
         ligation = "qual_ctrl/molec_barcode/ligation-{sample}.tsv"
     threads: config["threads"]
-    log: "logs/remove_molec_barcode/removeMBC-{sample}.log"
+    log: "logs/remove_molecular_barcode/remove_molecular_barcode-{sample}.log"
     shell: """
-        (python scripts/extractMolecularBarcode.py {input} fastq/cleaned/{wildcards.sample}-clean.fastq {output.barcodes} {output.ligation}) &> {log}
-        (pigz -f fastq/cleaned/{wildcards.sample}-clean.fastq) &>> {log}
+        (python scripts/extractMolecularBarcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}
         """
+        # (python scripts/extractMolecularBarcode.py {input} fastq/cleaned/{wildcards.sample}_tss-seq-clean.fastq {output.barcodes} {output.ligation}) &> {log}
+        # (pigz -f fastq/cleaned/{wildcards.sample}_tss-seq-clean.fastq) &>> {log}
 
 rule fastqc_cleaned:
     input:
-        "fastq/cleaned/{sample}-clean.fastq.gz"
+        "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz"
     params:
         adapter = config["cutadapt"]["adapter"]
     output:
-        "qual_ctrl/fastqc/cleaned/{sample}-clean_fastqc/fastqc_data.txt",
+        "qual_ctrl/fastqc/cleaned/{sample}_clean_fastqc/fastqc_data.txt",
     threads : config["threads"]
-    log: "logs/fastqc/cleaned/fastqc-cleaned-{sample}.log"
+    log: "logs/fastqc/cleaned/fastqc_cleaned-{sample}.log"
     shell: """
         (mkdir -p qual_ctrl/fastqc/cleaned) &> {log}
         (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/cleaned {input}) &>> {log}
@@ -194,39 +195,39 @@ rule fastqc_cleaned:
 
 rule fastqc_aligned:
     input:
-        lambda wc: "alignment/" + wc.sample + "-noPCRdup.bam" if wc.fqtype=="aligned_noPCRdup" else "alignment/" + wc.sample + "/unmapped.bam",
+        lambda wc: "alignment/" + wc.sample + "_tss-seq-noPCRduplicates.bam" if wc.fqtype=="aligned_noPCRdup" else "alignment/" + wc.sample + "/unmapped.bam",
     params:
         adapter = config["cutadapt"]["adapter"]
     output:
-        "qual_ctrl/fastqc/{fqtype}/{sample}-{fqtype}_fastqc/fastqc_data.txt",
+        "qual_ctrl/fastqc/{fqtype}/{sample}_{fqtype}_fastqc/fastqc_data.txt",
     threads : config["threads"]
-    log: "logs/fastqc/{fqtype}/fastqc-{fqtype}-{sample}.log"
+    log: "logs/fastqc/{fqtype}/fastqc_{fqtype}-{sample}.log"
     wildcard_constraints:
         fqtype="aligned_noPCRdup|unaligned"
     shell: """
         (mkdir -p qual_ctrl/fastqc/{wildcards.fqtype}) &> {log}
-        (bedtools bamtofastq -fq qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq -i {input}) &>> {log}
-        (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/{wildcards.fqtype} qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq) &>> {log}
-        (rm qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}-{wildcards.fqtype}.fastq) &>> {log}
+        (bedtools bamtofastq -fq qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}_{wildcards.fqtype}.fastq -i {input}) &>> {log}
+        (fastqc -a <(echo -e "adapter\t{params.adapter}") --nogroup --extract -t {threads} -o qual_ctrl/fastqc/{wildcards.fqtype} qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}_{wildcards.fqtype}.fastq) &>> {log}
+        (rm qual_ctrl/fastqc/{wildcards.fqtype}/{wildcards.sample}_{wildcards.fqtype}.fastq) &>> {log}
         """
 
 rule fastqc_aggregate:
     input:
         raw = expand("qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt", zip, sample=SAMPLES, fname=[os.path.split(v["fastq"])[1].split(".fastq")[0] + "_fastqc" for k,v in SAMPLES.items()]),
-        cleaned = expand("qual_ctrl/fastqc/cleaned/{sample}-clean_fastqc/fastqc_data.txt", sample=SAMPLES),
-        aligned_noPCRdup = expand("qual_ctrl/fastqc/aligned_noPCRdup/{sample}-aligned_noPCRdup_fastqc/fastqc_data.txt", sample=SAMPLES),
-        unaligned = expand("qual_ctrl/fastqc/unaligned/{sample}-unaligned_fastqc/fastqc_data.txt", sample=SAMPLES),
+        cleaned = expand("qual_ctrl/fastqc/cleaned/{sample}_clean_fastqc/fastqc_data.txt", sample=SAMPLES),
+        aligned_noPCRdup = expand("qual_ctrl/fastqc/aligned_noPCRdup/{sample}_aligned_noPCRdup_fastqc/fastqc_data.txt", sample=SAMPLES),
+        unaligned = expand("qual_ctrl/fastqc/unaligned/{sample}_unaligned_fastqc/fastqc_data.txt", sample=SAMPLES),
     output:
-        'qual_ctrl/fastqc/per_base_quality.tsv',
-        'qual_ctrl/fastqc/per_tile_quality.tsv',
-        'qual_ctrl/fastqc/per_sequence_quality.tsv',
-        'qual_ctrl/fastqc/per_base_sequence_content.tsv',
-        'qual_ctrl/fastqc/per_sequence_gc.tsv',
-        'qual_ctrl/fastqc/per_base_n.tsv',
-        'qual_ctrl/fastqc/sequence_length_distribution.tsv',
-        'qual_ctrl/fastqc/sequence_duplication_levels.tsv',
-        'qual_ctrl/fastqc/adapter_content.tsv',
-        'qual_ctrl/fastqc/kmer_content.tsv'
+        'qual_ctrl/fastqc/tss-seq-per_base_quality.tsv',
+        'qual_ctrl/fastqc/tss-seq-per_tile_quality.tsv',
+        'qual_ctrl/fastqc/tss-seq-per_sequence_quality.tsv',
+        'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.tsv',
+        'qual_ctrl/fastqc/tss-seq-per_sequence_gc.tsv',
+        'qual_ctrl/fastqc/tss-seq-per_base_n.tsv',
+        'qual_ctrl/fastqc/tss-seq-sequence_length_distribution.tsv',
+        'qual_ctrl/fastqc/tss-seq-sequence_duplication_levels.tsv',
+        'qual_ctrl/fastqc/tss-seq-adapter_content.tsv',
+        'qual_ctrl/fastqc/tss-seq-kmer_content.tsv'
     run:
         shell("rm -f {output}")
         #for each statistic
@@ -240,30 +241,28 @@ rule fastqc_aggregate:
 
 rule plot_fastqc_summary:
     input:
-        seq_len_dist = 'qual_ctrl/fastqc/sequence_length_distribution.tsv',
-        per_tile = 'qual_ctrl/fastqc/per_tile_quality.tsv',
-        per_base_qual = 'qual_ctrl/fastqc/per_base_quality.tsv',
-        per_base_seq = 'qual_ctrl/fastqc/per_base_sequence_content.tsv',
-        per_base_n = 'qual_ctrl/fastqc/per_base_n.tsv',
-        per_seq_gc = 'qual_ctrl/fastqc/per_sequence_gc.tsv',
-        per_seq_qual = 'qual_ctrl/fastqc/per_sequence_quality.tsv',
-        adapter_content = 'qual_ctrl/fastqc/adapter_content.tsv',
-        seq_dup = 'qual_ctrl/fastqc/sequence_duplication_levels.tsv',
-        kmer = 'qual_ctrl/fastqc/kmer_content.tsv'
+        seq_len_dist = 'qual_ctrl/fastqc/tss-seq-sequence_length_distribution.tsv',
+        per_tile = 'qual_ctrl/fastqc/tss-seq-per_tile_quality.tsv',
+        per_base_qual = 'qual_ctrl/fastqc/tss-seq-per_base_quality.tsv',
+        per_base_seq = 'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.tsv',
+        per_base_n = 'qual_ctrl/fastqc/tss-seq-per_base_n.tsv',
+        per_seq_gc = 'qual_ctrl/fastqc/tss-seq-per_sequence_gc.tsv',
+        per_seq_qual = 'qual_ctrl/fastqc/tss-seq-per_sequence_quality.tsv',
+        adapter_content = 'qual_ctrl/fastqc/tss-seq-adapter_content.tsv',
+        seq_dup = 'qual_ctrl/fastqc/tss-seq-sequence_duplication_levels.tsv',
+        kmer = 'qual_ctrl/fastqc/tss-seq-kmer_content.tsv'
     output:
-        seq_len_dist = 'qual_ctrl/fastqc/sequence_length_distribution.svg',
-        per_tile = 'qual_ctrl/fastqc/per_tile_quality.svg',
-        per_base_qual = 'qual_ctrl/fastqc/per_base_quality.svg',
-        per_base_seq = 'qual_ctrl/fastqc/per_base_sequence_content.svg',
-        per_seq_gc = 'qual_ctrl/fastqc/per_sequence_gc.svg',
-        per_seq_qual = 'qual_ctrl/fastqc/per_sequence_quality.svg',
-        adapter_content = 'qual_ctrl/fastqc/adapter_content.svg',
-        seq_dup = 'qual_ctrl/fastqc/sequence_duplication_levels.svg',
-        # kmer = 'qual_ctrl/fastqc/kmer_content.svg',
+        seq_len_dist = 'qual_ctrl/fastqc/tss-seq-sequence_length_distribution.svg',
+        per_tile = 'qual_ctrl/fastqc/tss-seq-per_tile_quality.svg',
+        per_base_qual = 'qual_ctrl/fastqc/tss-seq-per_base_quality.svg',
+        per_base_seq = 'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
+        per_seq_gc = 'qual_ctrl/fastqc/tss-seq-per_sequence_gc.svg',
+        per_seq_qual = 'qual_ctrl/fastqc/tss-seq-per_sequence_quality.svg',
+        adapter_content = 'qual_ctrl/fastqc/tss-seq-adapter_content.svg',
+        seq_dup = 'qual_ctrl/fastqc/tss-seq-sequence_duplication_levels.svg',
     script: "scripts/fastqc_summary.R"
 
 #align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
-#(because we don't always have a reference gff and it doesn't make much difference)
 rule bowtie2_build:
     input:
         fasta = config["combinedgenome"]["fasta"]
@@ -281,7 +280,7 @@ rule align:
     input:
         expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".{num}.bt2", num=[1,2,3,4]),
         expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
-        fastq = "fastq/cleaned/{sample}-clean.fastq.gz"
+        fastq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz"
     output:
         aligned = "alignment/{sample}/accepted_hits.bam",
         unaligned = "alignment/{sample}/unmapped.bam",
@@ -308,7 +307,7 @@ rule align:
     conda:
         "envs/tophat2.yaml"
     threads : config["threads"]
-    log: "logs/align/align-{sample}.log"
+    log: "logs/align/align_{sample}.log"
     shell:
         """
         (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive {params.idx_path}/{params.basename} {input.fastq}) &> {log}
@@ -318,19 +317,19 @@ rule select_unique_mappers:
     input:
         "alignment/{sample}/accepted_hits.bam"
     output:
-        temp("alignment/{sample}-unique.bam")
+        temp("alignment/{sample}_tss-seq-uniquemappers.bam")
     threads: config["threads"]
-    log: "logs/select_unique_mappers/select_unique_mappers-{sample}.log"
+    log: "logs/select_unique_mappers/select_unique_mappers_{sample}.log"
     shell: """
         (samtools view -buh -q 50 -@ {threads} {input} | samtools sort -T .{wildcards.sample} -@ {threads} - > {output}) &> {log}
         """
 
 rule remove_PCR_duplicates:
     input:
-        "alignment/{sample}-unique.bam"
+        "alignment/{sample}_tss-seq-uniquemappers.bam"
     output:
-        "alignment/{sample}-noPCRdup.bam"
-    log: "logs/remove_PCR_duplicates/removePCRduplicates-{sample}.log"
+        "alignment/{sample}_tss-seq-noPCRduplicates.bam"
+    log: "logs/remove_PCR_duplicates/remove_PCR_duplicates_{sample}.log"
     shell: """
         (python scripts/removePCRdupsFromBAM.py {input} {output}) &> {log}
         """
@@ -340,7 +339,7 @@ rule read_processing_numbers:
         adapter = expand("logs/clean_reads/remove_adapter-{sample}.log", sample=SAMPLES),
         qual_trim = expand("logs/clean_reads/remove_3p_bc_and_trim-{sample}.log", sample=SAMPLES),
         align = expand("alignment/{sample}/align_summary.txt", sample=SAMPLES),
-        nodups = expand("alignment/{sample}-noPCRdup.bam", sample=SAMPLES)
+        nodups = expand("alignment/{sample}_noPCRdup.bam", sample=SAMPLES)
     output:
         "qual_ctrl/read_processing_summary.tsv"
     log: "logs/read_processing_summary.log"
@@ -364,20 +363,20 @@ rule plot_read_processing:
 
 rule get_coverage:
     input:
-        "alignment/{sample}-noPCRdup.bam"
+        "alignment/{sample}-tss-seq-noPCRduplicates.bam"
     params:
         prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.counttype=="counts" else config["combinedgenome"]["spikein_prefix"]
     output:
-        plmin = "coverage/{counttype}/{sample}-tss-{counttype}-plmin.bedgraph",
-        plus = "coverage/{counttype}/{sample}-tss-{counttype}-plus.bedgraph",
-        minus = "coverage/{counttype}/{sample}-tss-{counttype}-minus.bedgraph"
+        plmin = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plmin.bedgraph",
+        plus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plus.bedgraph",
+        minus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-minus.bedgraph"
     wildcard_constraints:
         counttype="counts|sicounts"
     log: "logs/get_coverage/get_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | grep {params.prefix} | sed 's/{params.prefix}//g' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
+        (genomeCoverageBed -bga -5 -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand + -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
+        (genomeCoverageBed -bga -5 -strand - -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
 
 rule normalize:
@@ -774,8 +773,8 @@ rule map_counts_to_peaks:
         bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed",
         bg = lambda wc: "coverage/counts/" + wc.sample + "-tss-counts-SENSE.bedgraph" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "-tss-sicounts-SENSE.bedgraph"
     output:
-        temp("diff_exp/{condition}-v-{control}/{sample}-{type}-allpeakcounts.tsv")
-    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}-{sample}-{type}.log"
+        temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{type}-peakcounts.tsv")
+    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{type}.log"
     shell: """
         (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
         """
@@ -783,82 +782,88 @@ rule map_counts_to_peaks:
 def getsamples(ctrl, cond):
     return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
 
-rule get_peak_counts:
+rule combine_peak_counts:
     input:
-        lambda wc : ["diff_exp/" + wc.condition + "-v-" + wc.control + "/" + x + "-" + wc.type + "-allpeakcounts.tsv" for x in getsamples(wc.control, wc.condition)]
+        lambda wc : ["diff_exp/" + wc.condition + "-v-" + wc.control + "/" + x + "_tss-seq-" + wc.type + "-peakcounts.tsv" for x in getsamples(wc.control, wc.condition)]
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peak-counts.tsv"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{type}-peak-counts.tsv"
     params:
         n = lambda wc: 2*len(getsamples(wc.control, wc.condition)),
         names = lambda wc: "\t".join(getsamples(wc.control, wc.condition))
-    log: "logs/get_peak_counts/get_peak_counts-{condition}-v-{control}-{type}.log"
+    log: "logs/get_peak_counts/get_peak_counts-{condition}-v-{control}_{type}.log"
     shell: """
         (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
         """
 
-rule call_de_peaks:
+rule differential_expression:
     input:
-        expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}-exp-peak-counts.tsv",
-        sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "-si-peak-counts.tsv" if wc.norm=="spikenorm" else []
+        expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv",
+        sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "_tss-seq-spikein-peak-counts.tsv" if wc.norm=="spikenorm" else []
     params:
         samples = lambda wc : getsamples(wc.control, wc.condition),
         groups = lambda wc : [PASSING[x]["group"] for x in getsamples(wc.control, wc.condition)],
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     output:
-        results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.tsv",
-        results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-up.tsv",
-        results_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-down.tsv",
-        results_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-unchanged.tsv",
-        # bed_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.bed",
-        # bed_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-up.bed",
-        # bed_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-down.bed",
-        # bed_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-unchanged.bed",
-        normcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-counts-sfnorm-{norm}.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-counts-rlog-{norm}.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-qcplots-{norm}.svg"
+        results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-all.tsv",
+        results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-up.tsv",
+        results_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-down.tsv",
+        results_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-unchanged.tsv",
+        normcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-sizefactornorm.tsv",
+        rldcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-rlogtransformed.tsv",
+        qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-qc-plots.svg"
     script:
         "scripts/call_de_peaks.R"
 
-rule de_peaks_to_narrowpeak:
+rule diffexp_results_to_narrowpeak:
     input:
         condition_coverage = lambda wc: expand("coverage/{norm}/{sample}-tss-{norm}-SENSE.bw", sample=getsamples(wc.condition, wc.condition), norm=wc.norm),
         control_coverage = lambda wc: expand("coverage/{norm}/{sample}-tss-{norm}-SENSE.bw", sample=getsamples(wc.control, wc.control), norm=wc.norm),
-        diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv",
+        diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
-        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.narrowpeak",
-        summit_bed = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}-summits.bed",
-    log: "logs/de_peaks_to_narrowpeak/de_peaks_to_narrowpeak-{condition}-v-{control}-{norm}-{direction}.log"
+        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
+        summit_bed = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}-summits.bed",
+    log: "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/diffexp_results_to_narrowpeak.py -i {input.condition_coverage} -j {input.control_coverage} -d {input.diffexp_results} -n {output.narrowpeak} -b {output.summit_bed}) &> {log}
         """
 
-rule get_de_genic:
+rule classify_genic_diffexp_peaks:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.narrowpeak",
         annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
+        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
-        table = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-{direction}-genic.tsv",
-        bed = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-{direction}-genic.bed",
-    log : "logs/get_de_genic/get_de_genic-{condition}-v-{control}-{norm}-{direction}.log"
+        results = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-{direction}.tsv",
+        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-{direction}.narrowpeak",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-{direction}-summits.bed",
+    log : "logs/classify_genic_diffexp_peaks/classify_genic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10}} $6=="-"{{print $4, $8, $9, $10}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
+        (bedtools intersect -a {input.results} -b <(cut -f1-6 {input.annotation}) -wo -s | cut --complement -f21 | cat <(paste <(head -n 1 {input.results}) <(echo -e "transcript_chrom\ttranscript_start\ttranscript_end\ttranscript_score\ttranscript_name\ttranscript_score\ttranscript_strand")) - > {output.results}) &> {log}
+        (bedtools intersect -a {input.narrowpeak} -b {input.annotation} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
+    # shell: """
+    #     (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10}} $6=="-"{{print $4, $8, $9, $10}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\ttranscript_start\ttranscript_end\ttranscript_name") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
+    #     """
 
 rule get_de_intragenic:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.bed",
-        orfs = config["genome"]["orf-annotation"],
         genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
-        totalresults = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
+        orf_anno = config["genome"]["orf-annotation"],
+        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.narrowpeak",
+        results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-{direction}.tsv"
     output:
-        table = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.tsv",
-        bed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
-    log: "logs/get_putative_intragenic/get_putative_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
+        results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.tsv",
+        narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.narrowpeak",
+        bed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic-summits.bed"
+    log: "logs/get_de_intragenic/get_de_intragenic-{condition}-v-{control}-{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tORF_start\tORF_end\tORF_name\tdist_ATG_to_peak") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
+        (bedtools intersect -a {input.results} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orfs}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}'  | cat <(paste <(head -n 1 {input.results}) <(echo -e "orf_chrom\torf_start\torf_end\torf_score\torf_name\torf_score\torf_strand\tatg_to_peak_dist")) - > {output.results}) &> {log}
+        (bedtools intersect -a {input.narrowpeak} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
+    # shell: """
+    #     (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orfs} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} $6=="+"{{print $4, $8, $9, $10, ((($2+1)+$3)/2)-$8}} $6=="-"{{print $4, $8, $9, $10, $9-((($2+1)+$3)/2)}}' | sort -k1,1 | join -t $'\t' <(tail -n +2 {input.totalresults} | cut --complement -f8-10 | sort -k1,1) - | sort -k8,8nr | cat <(echo -e "peak_name\tchrom\tstrand\tpeak_start\tpeak_end\tmeanExpr\tlog2FoldChange\tlogpadj\t{wildcards.condition}\t{wildcards.control}\tORF_start\tORF_end\tORF_name\tdist_ATG_to_peak") - | tee {output.table} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $2, $4, $5, $1, $7":"$8, $3}}' > {output.bed}) &> {log}
+    #     """
 
 rule get_de_intragenic_frequency:
     input:
