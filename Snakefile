@@ -27,7 +27,7 @@ localrules:
     all,
     fastqc_aggregate,
     bowtie2_build,
-    get_si_pct, plot_si_pct,
+    build_library_size_table, plot_si_pct,
     make_stranded_genome, make_stranded_annotations,
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
     classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
@@ -59,8 +59,8 @@ rule all:
         #expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
         #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
         #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
-        ##coverage
-        #expand("coverage/{norm}/{sample}-tss-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        #coverage
+        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         ##peakcalling on all samples
         #expand("peakcalling/sample_peaks/{sample}-exp-allpeaks.narrowPeak", sample=SAMPLES),
         #expand("peakcalling/sample_peaks/{sample}-si-allpeaks.narrowPeak", sample=sisamples),
@@ -136,10 +136,10 @@ def cluster_samples(status, norm, cluster_groups, cluster_strands):
 rule fastqc_raw:
     input:
         lambda wc: SAMPLES[wc.sample]["fastq"]
-    params:
-        adapter = config["cutadapt"]["adapter"]
     output:
         "qual_ctrl/fastqc/raw/{sample}/{fname}/fastqc_data.txt"
+    params:
+        adapter = config["cutadapt"]["adapter"]
     threads: config["threads"]
     log: "logs/fastqc/raw/fastqc_raw-{sample}.log"
     shell: """
@@ -180,10 +180,10 @@ rule remove_molecular_barcode:
 rule fastqc_cleaned:
     input:
         "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz"
-    params:
-        adapter = config["cutadapt"]["adapter"]
     output:
         "qual_ctrl/fastqc/cleaned/{sample}_clean_fastqc/fastqc_data.txt",
+    params:
+        adapter = config["cutadapt"]["adapter"]
     threads : config["threads"]
     log: "logs/fastqc/cleaned/fastqc_cleaned-{sample}.log"
     shell: """
@@ -194,10 +194,10 @@ rule fastqc_cleaned:
 rule fastqc_aligned:
     input:
         lambda wc: "alignment/" + wc.sample + "_tss-seq-noPCRduplicates.bam" if wc.fqtype=="aligned_noPCRdup" else "alignment/" + wc.sample + "/unmapped.bam",
-    params:
-        adapter = config["cutadapt"]["adapter"]
     output:
         "qual_ctrl/fastqc/{fqtype}/{sample}_{fqtype}_fastqc/fastqc_data.txt",
+    params:
+        adapter = config["cutadapt"]["adapter"]
     threads : config["threads"]
     log: "logs/fastqc/{fqtype}/fastqc_{fqtype}-{sample}.log"
     wildcard_constraints:
@@ -361,89 +361,98 @@ rule plot_read_processing:
         loss_out  = "qual_ctrl/read_processing-loss.svg",
     script: "scripts/processing_summary.R"
 
-rule genome_coverage:
+rule build_library_size_table:
     input:
-        "alignment/{sample}-tss-seq-noPCRduplicates.bam"
-    params:
-        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.counttype=="counts" else config["combinedgenome"]["spikein_prefix"]
+        bams = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=sisamples),
+        bais = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam.bai", sample=sisamples),
+        chrsizes = config["combinedgenome"]["chrsizes"]
     output:
-        # plmin = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plmin.bedgraph",
-        plus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plus.bedgraph",
-        minus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-minus.bedgraph"
-    wildcard_constraints:
-        counttype="counts|sicounts"
-    log: "logs/genome_coverage/genome_coverage-{sample}.log"
-    shell: """
-        (genomeCoverageBed -bga -5 -strand + -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
-        (genomeCoverageBed -bga -5 -strand - -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
-        """
-        # (genomeCoverageBed -bga -5 -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
-
-rule normalize:
-    input:
-        counts = "coverage/counts/{sample}-tss-counts-{strand}.bedgraph",
-        plmin = lambda wc: "coverage/counts/" + wc.sample + "-tss-counts-plmin.bedgraph" if wc.norm=="libsizenorm" else "coverage/sicounts/" + wc.sample + "-tss-sicounts-plmin.bedgraph"
+        "qual_ctrl/all/tss-seq-library-sizes.tsv"
     params:
-        scalefactor = lambda wc: config["spikein-pct"] if wc.norm=="spikenorm" else 1
-    output:
-        normalized = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
-    wildcard_constraints:
-        norm="libsizenorm|spikenorm",
-        strand="plus|minus"
-    log: "logs/normalize/normalize-{sample}-{norm}.log"
-    shell: """
-        (bash scripts/libsizenorm.sh {input.plmin} {input.counts} {params.scalefactor} > {output.normalized}) &> {log}
-        """
-
-rule get_si_pct:
-    input:
-        plmin = expand("coverage/counts/{sample}-tss-counts-plmin.bedgraph", sample=sisamples),
-        SIplmin = expand("coverage/sicounts/{sample}-tss-sicounts-plmin.bedgraph", sample=sisamples)
-    params:
-        group = [v["group"] for k,v in sisamples.items()]
-    output:
-        "qual_ctrl/all/spikein-counts.tsv"
-    log: "logs/get_si_pct.log"
+        groups = [v["group"] for k,v in sisamples.items()],
+        exp_prefix = config["combinedgenome"]["experimental_prefix"],
+        spikein_prefix = config["combinedgenome"]["spikein_prefix"],
+    log: "logs/build_library_size_table.log"
     run:
-        shell("rm -f {output}")
-        for name, exp, si, g in zip(SAMPLES.keys(), input.plmin, input.SIplmin, params.group):
-            shell("""(echo -e "{name}\t{g}\t" $(awk 'BEGIN{{FS=OFS="\t"; ex=0; si=0}}{{if(NR==FNR){{si+=$4}} else{{ex+=$4}}}} END{{print ex+si, ex, si}}' {si} {exp}) >> {output}) &> {log}""")
+        shell("""(echo -e "sample\tgroup\ttotal_counts\texperimental_counts\tspikein_counts" > {output}) &> {log} """)
+        for sample, group, bam in zip(sisamples.keys(), params.groups, input.bams):
+            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" | xargs samtools view -c {bam}) <(samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
 
 #NOTE: since the conditiongroups_si and controlgroups_si lists are subsets of validgroups_si,
 #in the case where there is only one passing sample, the group won't be included as is right now
+#TODO: fix condition-v-control comparisons
 rule plot_si_pct:
     input:
-        "qual_ctrl/all/spikein-counts.tsv"
+        "qual_ctrl/all/tss-seq-library-sizes.tsv"
     output:
-        plot = "qual_ctrl/{status}/{status}-spikein-plots.svg",
-        stats = "qual_ctrl/{status}/{status}-spikein-stats.tsv"
+        plot = "qual_ctrl/{status}/tss-seq-spikein-plots-{status}.svg",
+        stats = "qual_ctrl/{status}/tss-seq-spikein-stats-{status}.tsv"
     params:
         samplelist = lambda wc : list(sisamples.keys()) if wc.status=="all" else list(sipassing.keys()),
         conditions = conditiongroups_si,
         controls = controlgroups_si,
     script: "scripts/plotsipct.R"
 
+rule genome_coverage:
+    input:
+        "alignment/{sample}_tss-seq-noPCRduplicates.bam"
+    output:
+        "coverage/{counttype}/{sample}_tss-seq-{counttype}-{strand}.bedgraph",
+    params:
+        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.counttype=="counts" else config["combinedgenome"]["spikein_prefix"],
+        strand_symbol = lambda wc: "+" if wc.strand=="plus" else "-"
+    wildcard_constraints:
+        counttype="counts|sicounts",
+        strand="plus|minus"
+    log: "logs/genome_coverage/genome_coverage_{sample}-{counttype}-{strand}.log"
+    shell: """
+        (bedtools genomecov -bga -5 -strand {params.strand_symbol} -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output}) &> {log}
+        """
+
+rule normalize_genome_coverage:
+    input:
+        counts = "coverage/counts/{sample}_tss-seq-counts-{strand}.bedgraph",
+        library_sizes = "qual_ctrl/all/tss-seq-library-sizes.tsv"
+    output:
+        normalized = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
+    params:
+        scale_factor = lambda wc: config["spikein-pct"] if wc.norm=="spikenorm" else 1,
+        table_column = lambda wc: 4 if wc.norm=="libsizenorm" else 5
+    wildcard_constraints:
+        norm="libsizenorm|spikenorm",
+        strand="plus|minus"
+    log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}.log"
+    shell: """
+        awk -v total_read_count=$(grep {wildcards.sample} {input.library_sizes} | cut -f{params.table_column} | paste -d "" - <(echo "*{params.scale_factor}/1000000") | bc -l) '{{$4=$4/total_read_count; print $0}}' > {output.normalized}
+        """
+        # bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        # bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
+        # chrsizes = config["combinedgenome"]["chrsizes"]
+    # shell: """
+    #     (bash scripts/libsizenorm.sh {input.plmin} {input.counts} {params.scalefactor} > {output.normalized}) &> {log}
+    #     """
+
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
     input:
         exp = config["genome"]["chrsizes"],
-        si = config["genome"]["sichrsizes"]
+        spikein = config["genome"]["sichrsizes"]
     output:
         exp = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv",
-        si = os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv",
+        spikein = os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv",
     log: "logs/make_stranded_genome.log"
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.exp} > {output.exp}) &> {log}
-        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.si} > {output.si}) &>> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.spikein} > {output.spikein}) &>> {log}
         """
 
 rule make_stranded_bedgraph:
     input:
-        plus = "coverage/{norm}/{sample}-tss-{norm}-plus.bedgraph",
-        minus = "coverage/{norm}/{sample}-tss-{norm}-minus.bedgraph"
+        plus = "coverage/{norm}/{sample}_tss-seq-{norm}-plus.bedgraph",
+        minus = "coverage/{norm}/{sample}_tss-seq-{norm}-minus.bedgraph"
     output:
-        sense = "coverage/{norm}/{sample}-tss-{norm}-SENSE.bedgraph",
-        antisense = "coverage/{norm}/{sample}-tss-{norm}-ANTISENSE.bedgraph"
+        sense = "coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bedgraph",
+        antisense = "coverage/{norm}/{sample}_tss-seq-{norm}-ANTISENSE.bedgraph"
     log : "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}.log"
     shell: """
         (bash scripts/makeStrandedBedgraph.sh {input.plus} {input.minus} > {output.sense}) &> {log}
@@ -460,7 +469,7 @@ rule make_stranded_annotations:
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """
 
-def selectchrom(wc):
+def select_chromsizes(wc):
     if wc.strand in ["plus", "minus"]:
         if wc.norm=="sicounts":
             return config["genome"]["sichrsizes"]
@@ -469,13 +478,13 @@ def selectchrom(wc):
         return os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv"
     return os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
 
-rule bg_to_bw:
+rule bedgraph_to_bigwig:
     input:
-        bedgraph = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bedgraph",
-        chrsizes = selectchrom
+        bedgraph = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
+        chrsizes = select_chromsizes
     output:
-        "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw",
-    log : "logs/bg_to_bw/bg_to_bw-{sample}-{norm}-{strand}.log"
+        "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw",
+    log : "logs/bedgraph_to_bigwig/bedgraph_to_bigwig-{sample}-{norm}-{strand}.log"
     shell: """
         (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
         """

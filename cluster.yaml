@@ -13,12 +13,12 @@ fastqc_raw:
     mem : 4000
 
 clean_reads:
-    time : 120
+    time : 45
     n: 4
     mem : 2000
 
 remove_molecular_barcode:
-    time : 45
+    time : 120
     n : 1
     mem : 2000
 
@@ -69,7 +69,7 @@ genome_coverage:
     time : 5
     mem : 2000
 
-normalize:
+normalize_genome_coverage:
     time : 3
     mem : 2000
 
@@ -77,7 +77,7 @@ make_stranded_bedgraph:
     time: 3
     mem: 1000
 
-bg_to_bw:
+bedgraph_to_bigwig:
     time: 2
     mem: 1000
 
