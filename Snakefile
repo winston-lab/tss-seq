@@ -376,7 +376,7 @@ rule build_library_size_table:
     run:
         shell("""(echo -e "sample\tgroup\ttotal_counts\texperimental_counts\tspikein_counts" > {output}) &> {log} """)
         for sample, group, bam in zip(sisamples.keys(), params.groups, input.bams):
-            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" | xargs samtools view -c {bam}) <(samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
+            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) <(samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
 
 #NOTE: since the conditiongroups_si and controlgroups_si lists are subsets of validgroups_si,
 #in the case where there is only one passing sample, the group won't be included as is right now
@@ -409,28 +409,27 @@ rule genome_coverage:
         (bedtools genomecov -bga -5 -strand {params.strand_symbol} -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output}) &> {log}
         """
 
+#NOTE: although we could do this slightly more efficiently by looking up library size values
+# from the library sizes file, this way we do not have to wait for all other samples to
+# finish aligning in order to normalize
 rule normalize_genome_coverage:
     input:
         counts = "coverage/counts/{sample}_tss-seq-counts-{strand}.bedgraph",
-        library_sizes = "qual_ctrl/all/tss-seq-library-sizes.tsv"
+        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
+        chrsizes = config["combinedgenome"]["chrsizes"]
     output:
         normalized = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
     params:
         scale_factor = lambda wc: config["spikein-pct"] if wc.norm=="spikenorm" else 1,
-        table_column = lambda wc: 4 if wc.norm=="libsizenorm" else 5
+        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.norm=="libsizenorm" else config["combinedgenome"]["spikein_prefix"],
     wildcard_constraints:
         norm="libsizenorm|spikenorm",
         strand="plus|minus"
     log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}.log"
     shell: """
-        awk -v total_read_count=$(grep {wildcards.sample} {input.library_sizes} | cut -f{params.table_column} | paste -d "" - <(echo "*{params.scale_factor}/1000000") | bc -l) '{{$4=$4/total_read_count; print $0}}' > {output.normalized}
+        awk -v total_read_count=$(grep -oh "\w*{params.prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam} | paste -d "" - <(echo "*{params.scale_factor}/1000000") | bc -l) '{{$4=$4/total_read_count; print $0}}' > {output.normalized}
         """
-        # bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
-        # bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
-        # chrsizes = config["combinedgenome"]["chrsizes"]
-    # shell: """
-    #     (bash scripts/libsizenorm.sh {input.plmin} {input.counts} {params.scalefactor} > {output.normalized}) &> {log}
-    #     """
 
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
