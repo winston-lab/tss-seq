@@ -17,9 +17,9 @@ clean_reads:
     n: 4
     mem : 2000
 
-remove_molec_barcode:
+remove_molecular_barcode:
     time : 45
-    n : 2
+    n : 1
     mem : 2000
 
 fastqc_cleaned:
@@ -65,7 +65,7 @@ remove_PCR_duplicates:
     time : 15
     mem : 4000
 
-get_coverage:
+genome_coverage:
     time : 5
     mem : 2000
 

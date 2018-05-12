@@ -329,10 +329,12 @@ rule remove_PCR_duplicates:
     input:
         "alignment/{sample}_tss-seq-uniquemappers.bam"
     output:
-        "alignment/{sample}_tss-seq-noPCRduplicates.bam"
+        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
     log: "logs/remove_PCR_duplicates/remove_PCR_duplicates_{sample}.log"
     shell: """
-        (python scripts/removePCRdupsFromBAM.py {input} {output}) &> {log}
+        (python scripts/removePCRdupsFromBAM.py {input} {output.bam}) &> {log}
+        (samtools index {output.bam} > {output.bai}) &>> {log}
         """
 
 rule read_processing_numbers:
@@ -362,23 +364,23 @@ rule plot_read_processing:
         loss_out  = "qual_ctrl/read_processing-loss.svg",
     script: "scripts/processing_summary.R"
 
-rule get_coverage:
+rule genome_coverage:
     input:
         "alignment/{sample}-tss-seq-noPCRduplicates.bam"
     params:
         prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.counttype=="counts" else config["combinedgenome"]["spikein_prefix"]
     output:
-        plmin = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plmin.bedgraph",
+        # plmin = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plmin.bedgraph",
         plus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-plus.bedgraph",
         minus = "coverage/{counttype}/{sample}_tss-seq-{counttype}-minus.bedgraph"
     wildcard_constraints:
         counttype="counts|sicounts"
-    log: "logs/get_coverage/get_coverage-{sample}.log"
+    log: "logs/genome_coverage/genome_coverage-{sample}.log"
     shell: """
-        (genomeCoverageBed -bga -5 -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
         (genomeCoverageBed -bga -5 -strand + -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plus}) &>> {log}
         (genomeCoverageBed -bga -5 -strand - -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.minus}) &>> {log}
         """
+        # (genomeCoverageBed -bga -5 -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output.plmin}) &>> {log}
 
 rule normalize:
     input:
