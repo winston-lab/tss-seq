@@ -153,8 +153,7 @@ rule clean_reads:
     input:
         lambda wc: SAMPLES[wc.sample]["fastq"]
     output:
-        # fq = temp("fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz"),
-        fq = "fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz",
+        fq = temp("fastq/cleaned/{sample}_tss-seq-trimmed.fastq.gz"),
         adapter = "logs/clean_reads/remove_adapter-{sample}.log",
         qual_trim = "logs/clean_reads/remove_3p_bc_and_trim-{sample}.log"
     params:
@@ -177,8 +176,6 @@ rule remove_molecular_barcode:
     shell: """
         (python scripts/extractMolecularBarcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}
         """
-        # (python scripts/extractMolecularBarcode.py {input} fastq/cleaned/{wildcards.sample}_tss-seq-clean.fastq {output.barcodes} {output.ligation}) &> {log}
-        # (pigz -f fastq/cleaned/{wildcards.sample}_tss-seq-clean.fastq) &>> {log}
 
 rule fastqc_cleaned:
     input:

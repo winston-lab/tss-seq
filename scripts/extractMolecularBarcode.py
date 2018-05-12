@@ -11,8 +11,8 @@ use : python extractMolecularBarcode.py inFastq outFastq outBarcodes outLigation
 
 import sys, itertools, gzip
 
-iFastq=gzip.open(sys.argv[1], 'rb')
-oFastq=gzip.open(sys.argv[2], 'wb')
+iFastq=gzip.open(sys.argv[1], 'rt')
+oFastq=gzip.open(sys.argv[2], 'wt')
 oBarcode=open(sys.argv[3], 'w')
 oLigation=open(sys.argv[4], 'w')
 
