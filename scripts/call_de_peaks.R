@@ -29,25 +29,25 @@ mean_sd_plot = function(df, ymax){
 reverselog_trans <- function(base = exp(1)) {
     trans <- function(x) -log(x, base)
     inv <- function(x) base^(-x)
-    trans_new(paste0("reverselog-", format(base)), trans, inv, 
-              log_breaks(base = base), 
+    trans_new(paste0("reverselog-", format(base)), trans, inv,
+              log_breaks(base = base),
               domain = c(1e-100, Inf))
 }
 
 main = function(intable, norm, sitable, samples, groups, condition, control, alpha, lfc,
                 results_all, results_up, results_down, results_unch,
-                bed_all, bed_up, bed_down, bed_unch,
+                # bed_all, bed_up, bed_down, bed_unch,
                 normcounts, rldcounts, qcplots){
-    #import data 
+    #import data
     countdata = get_countdata(intable, samples)
     coldata = data.frame(condition=factor(groups,
                                           levels = c(control, condition)),
                          row.names=names(countdata))
-    #run DESeq2 
+    #run DESeq2
     dds = DESeqDataSetFromMatrix(countData = countdata,
                                  colData = coldata,
                                  design = ~ condition)
-    
+
     if (norm=="spikenorm"){
         sicountdata = get_countdata(sitable, samples)
         sidds = DESeqDataSetFromMatrix(countData = sicountdata,
@@ -59,7 +59,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         dds = dds %>% estimateSizeFactors()
     }
     dds = dds %>% estimateDispersions() %>% nbinomWaldTest()
-    
+
     #extract normalized counts and write to file
     ncounts = dds %>%
         counts(normalized=TRUE) %>%
@@ -121,7 +121,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         mutate_if(is.numeric, round, 3) %>%
         mutate_at(vars(start, end), funs(as.integer(.))) %>%
         write_tsv(path=normcounts, col_names=TRUE)
-    
+
     rlogcounts = resdf %>%
         select(name, peak_name) %>%
         inner_join(rlogcounts, by='name') %>%
@@ -137,7 +137,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         mutate_if(is.numeric, round, 3) %>%
         mutate_at(vars(start, end), funs(as.integer(.))) %>%
         write_tsv(path=results_all, col_names=TRUE)
-            
+
     #plot library size vs sizefactor
     sfdf = dds %>%
         sizeFactors() %>%
@@ -155,37 +155,37 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         ylab("size factor (median of ratios)") +
         theme_light() +
         theme(text = element_text(size=8))
-    
+
     #write out up, unchanged, down results
     #MA plot for differential expression
     resdf.sig = resdf %>% filter(logpadj> -log10(alpha))
     resdf.nonsig = resdf %>% filter(logpadj<= -log10(alpha))
-    
-    resdf %>%
-        mutate(score = paste0(log2FoldChange,":",logpadj)) %>% 
-        select(chrom, start, end, peak_name, score, strand) %>% 
-        write_tsv(bed_all, col_names=FALSE)
-    
-    resdf.sig %>%
-        filter(log2FoldChange >=0) %>% 
-        write_tsv(results_up) %>% 
-        mutate(score = paste0(log2FoldChange,":",logpadj)) %>% 
-        select(chrom, start, end, peak_name, score, strand) %>% 
-        write_tsv(bed_up, col_names=FALSE)
-    
-    resdf.sig %>%
-        filter(log2FoldChange <0) %>% 
-        write_tsv(results_down) %>% 
-        mutate(score = paste0(log2FoldChange,":",logpadj)) %>% 
-        select(chrom, start, end, peak_name, score, strand) %>% 
-        write_tsv(bed_down, col_names=FALSE)
-    
-    resdf.nonsig %>% 
-        write_tsv(results_unch) %>% 
-        mutate(score = paste0(log2FoldChange,":",logpadj)) %>% 
-        select(chrom, start, end, peak_name, score, strand) %>% 
-        write_tsv(bed_unch, col_names=FALSE)
-    
+
+    # resdf %>%
+    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
+    #     select(chrom, start, end, peak_name, score, strand) %>%
+    #     write_tsv(bed_all, col_names=FALSE)
+
+    # resdf.sig %>%
+    #     filter(log2FoldChange >=0) %>%
+    #     write_tsv(results_up) %>%
+    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
+    #     select(chrom, start, end, peak_name, score, strand) %>%
+    #     write_tsv(bed_up, col_names=FALSE)
+
+    # resdf.sig %>%
+    #     filter(log2FoldChange <0) %>%
+    #     write_tsv(results_down) %>%
+    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
+    #     select(chrom, start, end, peak_name, score, strand) %>%
+    #     write_tsv(bed_down, col_names=FALSE)
+
+    # resdf.nonsig %>%
+    #     write_tsv(results_unch) %>%
+    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
+    #     select(chrom, start, end, peak_name, score, strand) %>%
+    #     write_tsv(bed_unch, col_names=FALSE)
+
     maplot = ggplot() +
         geom_hline(yintercept = 0, color="black", linetype="dashed") +
         geom_point(data = resdf.nonsig, aes(x=meanExpr, y=log2FoldChange),
@@ -196,7 +196,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         ylab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
         theme_light() +
         theme(text = element_text(size=8))
-    
+
     volcano = ggplot() +
         geom_point(data = resdf.nonsig, aes(x=log2FoldChange, y = logpadj),
                    alpha=0.3, stroke=0, size=0.7) +
@@ -207,7 +207,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         ylab(expression(-log[10]("p value"))) +
         theme_light() +
         theme(text = element_text(size=8))
-    
+
     out = arrangeGrob(sfplot, ggplot()+theme_void(),
                       ntdplot, rldplot,
                       maplot, volcano, ncol=2,
@@ -228,10 +228,10 @@ main(intable = snakemake@input[["expcounts"]],
      results_up = snakemake@output[["results_up"]],
      results_down = snakemake@output[["results_down"]],
      results_unch = snakemake@output[["results_unch"]],
-     bed_all = snakemake@output[["bed_all"]],
-     bed_up = snakemake@output[["bed_up"]],
-     bed_down = snakemake@output[["bed_down"]],
-     bed_unch = snakemake@output[["bed_unch"]],
+     # bed_all = snakemake@output[["bed_all"]],
+     # bed_up = snakemake@output[["bed_up"]],
+     # bed_down = snakemake@output[["bed_down"]],
+     # bed_unch = snakemake@output[["bed_unch"]],
      normcounts = snakemake@output[["normcounts"]],
      rldcounts = snakemake@output[["rldcounts"]],
      qcplots = snakemake@output[["qcplots"]])

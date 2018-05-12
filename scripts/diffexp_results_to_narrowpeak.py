@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import argparse
+import numpy as np
+import pandas as pd
+import pyBigWig as pybw
+
+parser = argparse.ArgumentParser(description='Add back summit information to TSS-seq differential expression results.')
+parser.add_argument('-i', dest = 'condition_paths', type=str, nargs='+', help='BigWigs for all condition samples used in differential expression')
+parser.add_argument('-j', dest = 'control_paths', type=str, nargs='+', help='BigWigs for all control samples used in differential expression')
+parser.add_argument('-d', dest = 'diffexp_path', type=str, help='differential expression results file')
+parser.add_argument('-n', dest = 'narrowpeak_out', type=str, help='output path for narrowPeak file')
+parser.add_argument('-b', dest = 'bed_out', type=str, help='output path for BED file of summit positions')
+args = parser.parse_args()
+
+
+#given paths to bigwig files representing replicates,
+#return a dictionary where keys are chromosome names and
+#values are the average coverage across replicates
+def average_bigwigs(coverage_paths):
+    coverage = {}
+    for index, path in enumerate(coverage_paths):
+        bw = pybw.open(path)
+        chroms = bw.chroms()
+        for chrom in chroms:
+            if index==0:
+                coverage[chrom] = bw.values(chrom, 0, chroms[chrom], numpy=True)
+            else:
+                coverage[chrom] = np.add(bw.values(chrom, 0, chroms[chrom], numpy=True), coverage[chrom])
+            if index==len(coverage_paths):
+                coverage[chrom] = np.divide(coverage[chrom], index)
+        bw.close()
+    return coverage
+
+#given "unstranded" chromosome coordinates,
+#return 0-based offset of summit position from start.
+#If multiple positions have the same max signal, return the mean position
+def get_summit(row, coverage):
+    strand_dict = {"+": "-plus", "-": "-minus"}
+    chrom = row['chrom'] + strand_dict[row['strand']]
+    local_coverage = coverage[chrom][row['start']:row['end']]
+    return int( np.mean( np.argwhere( local_coverage==np.amax( local_coverage))))
+
+def main(condition_paths, control_paths, diffexp_path, narrowpeak_out, bed_out):
+
+    #condition and control coverage are imported separately and
+    #averaged across replicates in case the number of samples
+    #in each group is different
+    condition_coverage = average_bigwigs(condition_paths)
+    coverage = average_bigwigs(control_paths)
+    for chrom in coverage:
+        coverage[chrom] = np.add(coverage[chrom], condition_coverage[chrom])
+
+    diffexp_df = pd.read_csv(diffexp_path, sep="\t")
+
+
+    diffexp_df['summit'] = diffexp_df.apply(get_summit, coverage=coverage, axis=1)
+    diffexp_df = diffexp_df.assign(summit_start = diffexp_df['start'] + diffexp_df['summit'])
+    diffexp_df = diffexp_df.assign(summit_end = diffexp_df['summit_start'] + 1)
+
+    #convert -log10(q-val) to integer score, as in IDR (github.com/nboley/idr)
+    diffexp_df['score'] = diffexp_df['logpadj'].apply(lambda x: np.minimum(np.int(np.multiply(-125,np.log2(np.power(10,np.negative(x))))), int(1000)))
+
+    diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'peak_name', 'score', 'strand', 'log2FoldChange', 'logpval', 'logpadj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8')
+    diffexp_df.to_csv(bed_out, sep="\t", columns=['chrom', 'summit_start', 'summit_end', 'peak_name', 'score', 'strand'], header=False, index=False, float_format="%.3f", encoding='utf-8')
+
+if __name__ == '__main__':
+    main(args.condition_paths, args.control_paths, args.diffexp_path, args.narrowpeak_out, args.bed_out)
+
