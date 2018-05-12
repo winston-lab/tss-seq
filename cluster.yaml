@@ -1,6 +1,6 @@
 __default__:
     queue : "short"
-    time : 60 
+    time : 60
     n : 1
     mem : 2000
     name : "{rule}.{wildcards}"
@@ -8,26 +8,27 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_raw:
-    time : 15 
+    time : 15
     n : 1
     mem : 4000
 
 clean_reads:
-    time : 120 
+    time : 120
+    n: 4
     mem : 2000
 
 remove_molec_barcode:
-    time : 45 
+    time : 45
     n : 2
     mem : 2000
 
 fastqc_cleaned:
-    time : 10 
+    time : 10
     n : 1
     mem : 4000
 
 fastqc_aligned:
-    time : 20 
+    time : 20
     n : 1
     mem : 4000
 
@@ -47,7 +48,7 @@ plot_read_processing:
     mem: 4000
 
 bowtie2_build:
-    time : 10 
+    time : 10
     mem : 2000
 
 align:
@@ -61,31 +62,31 @@ select_unique_mappers:
     mem : 6000
 
 remove_PCR_duplicates:
-    time : 15 
+    time : 15
     mem : 4000
 
 get_coverage:
-    time : 5 
+    time : 5
     mem : 2000
 
 normalize:
-    time : 3 
+    time : 3
     mem : 2000
 
 make_stranded_bedgraph:
-    time: 3 
+    time: 3
     mem: 1000
 
 bg_to_bw:
-    time: 2 
+    time: 2
     mem: 1000
- 
+
 compute_matrix:
-    time : 10 
+    time : 10
     mem : 2000
 
 plot_figures:
-    time : 90 
+    time : 90
     mem : 16000
 
 union_bedgraph:
@@ -93,7 +94,7 @@ union_bedgraph:
     mem: 4000
 
 plotcorrelations:
-    time : 30 
+    time : 30
     mem : 6000
 
 call_tss_peaks:
@@ -105,7 +106,7 @@ tss_peaks_idr:
     mem: 6000
 
 peakstats:
-    time: 20 
+    time: 20
     mem: 10000
 
 call_de_peaks:
@@ -113,7 +114,7 @@ call_de_peaks:
     mem: 10000
 
 summarise_de_results:
-    time: 15 
+    time: 15
     mem: 4000
 
 # get_intra_orfs:
@@ -121,7 +122,7 @@ summarise_de_results:
 #     mem : 20000
 
 fimo:
-    time: 2 
+    time: 2
     mem: 400M
 
 cat_fimo_motifs:
@@ -130,11 +131,11 @@ cat_fimo_motifs:
     mem: 2000
 
 get_upstream_motifs:
-    time: 4 
+    time: 4
     mem: 400M
 
 test_motif_enrichment:
-    time: 5 
+    time: 5
     mem: 2000
 
 get_motif_coverage:
