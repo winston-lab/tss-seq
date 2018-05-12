@@ -51,18 +51,22 @@ def main(condition_paths, control_paths, diffexp_path, narrowpeak_out, bed_out):
     for chrom in coverage:
         coverage[chrom] = np.add(coverage[chrom], condition_coverage[chrom])
 
-    diffexp_df = pd.read_csv(diffexp_path, sep="\t")
-
+    #we only need to perform operations using start and end as integers,
+    #so everything else can be treated as an object to avoid reformatting
+    diffexp_df = pd.read_csv(diffexp_path, sep="\t",
+            dtype={'chrom':str, 'start':np.uint32, 'end':np.uint32, 'peak_name':str,
+                'score':str, 'strand':str, 'log2_foldchange':str, 'lfc_SE':str,
+                'stat':str, 'log10_pval':str, 'log10_padj':str,
+                'mean_expr':str, 'condition_expr':str, 'control_expr':str})
 
     diffexp_df['summit'] = diffexp_df.apply(get_summit, coverage=coverage, axis=1)
     diffexp_df = diffexp_df.assign(summit_start = diffexp_df['start'] + diffexp_df['summit'])
     diffexp_df = diffexp_df.assign(summit_end = diffexp_df['summit_start'] + 1)
 
-    #convert -log10(q-val) to integer score, as in IDR (github.com/nboley/idr)
-    diffexp_df['score'] = diffexp_df['logpadj'].apply(lambda x: np.minimum(np.int(np.multiply(-125,np.log2(np.power(10,np.negative(x))))), int(1000)))
 
-    diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'peak_name', 'score', 'strand', 'log2FoldChange', 'logpval', 'logpadj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8')
-    diffexp_df.to_csv(bed_out, sep="\t", columns=['chrom', 'summit_start', 'summit_end', 'peak_name', 'score', 'strand'], header=False, index=False, float_format="%.3f", encoding='utf-8')
+    #NOTE: we convert NAs (found in pvalue and score columns) to zero for narrowpeak compatibility
+    diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'peak_name', 'score', 'strand', 'log2_foldchange', 'log10_pval', 'log10_padj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
+    diffexp_df.to_csv(bed_out, sep="\t", columns=['chrom', 'summit_start', 'summit_end', 'peak_name', 'score', 'strand'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
 
 if __name__ == '__main__':
     main(args.condition_paths, args.control_paths, args.diffexp_path, args.narrowpeak_out, args.bed_out)

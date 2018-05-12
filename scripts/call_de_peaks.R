@@ -36,7 +36,6 @@ reverselog_trans <- function(base = exp(1)) {
 
 main = function(intable, norm, sitable, samples, groups, condition, control, alpha, lfc,
                 results_all, results_up, results_down, results_unch,
-                # bed_all, bed_up, bed_down, bed_unch,
                 normcounts, rldcounts, qcplots){
     #import data
     countdata = get_countdata(intable, samples)
@@ -68,7 +67,7 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         as_tibble()
     ncountsavg = ncounts %>%
         gather(sample, value, -name) %>%
-        mutate(group = if_else(sample %in% samples[groups==condition], condition, control)) %>%
+        mutate(group = if_else(sample %in% samples[groups==condition], "condition_expr", "control_expr")) %>%
         group_by(name, group) %>% summarise(mean = mean(value)) %>% spread(group, mean) %>%
         ungroup()
 
@@ -110,8 +109,11 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         inner_join(ncountsavg, by='name') %>%
         rownames_to_column(var="peak_name") %>%
         mutate_at(vars(peak_name), funs(paste0("peak_", .))) %>%
+        mutate(score = as.integer(pmin(-125*log2(padj), 1000))) %>%
         mutate_at(c('pvalue','padj'), funs(-log10(.))) %>%
-        mutate_if(is.numeric, round, 3) %>% dplyr::rename(logpval=pvalue, logpadj=padj, meanExpr=baseMean)
+        mutate_if(is.numeric, round, 3) %>%
+        dplyr::rename(log2_foldchange=log2FoldChange, lfc_SE=lfcSE,
+                      log10_pval=pvalue, log10_padj=padj, mean_expr=baseMean)
 
     ncounts = resdf %>%
         select(name, peak_name) %>%
@@ -135,8 +137,45 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         separate(name, into=c('chrom','strand','start','end'), sep="-") %>%
         mutate_at(vars(strand), funs(if_else(.=="minus", "-", "+"))) %>%
         mutate_if(is.numeric, round, 3) %>%
-        mutate_at(vars(start, end), funs(as.integer(.))) %>%
+        mutate_at(vars(start, score, end), funs(as.integer(.))) %>%
+        select(chrom, start, end, peak_name, score, strand,
+               log2_foldchange, lfc_SE, stat, log10_pval, log10_padj,
+               mean_expr, condition_expr, control_expr) %>%
         write_tsv(path=results_all, col_names=TRUE)
+
+    resdf_sig = resdf %>% filter(log10_padj> -log10(alpha))
+    resdf_nonsig = resdf %>% filter(log10_padj<= -log10(alpha)) %>%
+        write_tsv(results_unch)
+
+    resdf_sig %>%
+        filter(log2_foldchange >=0) %>%
+        write_tsv(results_up)
+
+    resdf_sig %>%
+        filter(log2_foldchange <0) %>%
+        write_tsv(results_down)
+
+    maplot = ggplot() +
+        geom_hline(yintercept = 0, color="black", linetype="dashed") +
+        geom_point(data = resdf_nonsig, aes(x=mean_expr, y=log2_foldchange),
+                   color="black", alpha=0.3, stroke=0, size=0.7) +
+        geom_point(data = resdf_sig, aes(x=mean_expr, y=log2_foldchange),
+                   color="red", alpha=0.3, stroke=0, size=0.7) +
+        scale_x_log10(name="mean of normalized counts") +
+        ylab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
+        theme_light() +
+        theme(text = element_text(size=8))
+
+    volcano = ggplot() +
+        geom_point(data = resdf_nonsig, aes(x=log2_foldchange, y = log10_padj),
+                   alpha=0.3, stroke=0, size=0.7) +
+        geom_point(data = resdf_sig, aes(x=log2_foldchange, y = log10_padj),
+                   alpha=0.3, stroke=0, size=0.7) +
+        geom_hline(yintercept = -log10(alpha), color="red", linetype="dashed") +
+        xlab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
+        ylab(expression(-log[10]("p value"))) +
+        theme_light() +
+        theme(text = element_text(size=8))
 
     #plot library size vs sizefactor
     sfdf = dds %>%
@@ -153,58 +192,6 @@ main = function(intable, norm, sitable, samples, groups, condition, control, alp
         geom_text_repel(aes(label=sample), size=2) +
         xlab("library size (M reads)") +
         ylab("size factor (median of ratios)") +
-        theme_light() +
-        theme(text = element_text(size=8))
-
-    #write out up, unchanged, down results
-    #MA plot for differential expression
-    resdf.sig = resdf %>% filter(logpadj> -log10(alpha))
-    resdf.nonsig = resdf %>% filter(logpadj<= -log10(alpha))
-
-    # resdf %>%
-    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
-    #     select(chrom, start, end, peak_name, score, strand) %>%
-    #     write_tsv(bed_all, col_names=FALSE)
-
-    # resdf.sig %>%
-    #     filter(log2FoldChange >=0) %>%
-    #     write_tsv(results_up) %>%
-    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
-    #     select(chrom, start, end, peak_name, score, strand) %>%
-    #     write_tsv(bed_up, col_names=FALSE)
-
-    # resdf.sig %>%
-    #     filter(log2FoldChange <0) %>%
-    #     write_tsv(results_down) %>%
-    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
-    #     select(chrom, start, end, peak_name, score, strand) %>%
-    #     write_tsv(bed_down, col_names=FALSE)
-
-    # resdf.nonsig %>%
-    #     write_tsv(results_unch) %>%
-    #     mutate(score = paste0(log2FoldChange,":",logpadj)) %>%
-    #     select(chrom, start, end, peak_name, score, strand) %>%
-    #     write_tsv(bed_unch, col_names=FALSE)
-
-    maplot = ggplot() +
-        geom_hline(yintercept = 0, color="black", linetype="dashed") +
-        geom_point(data = resdf.nonsig, aes(x=meanExpr, y=log2FoldChange),
-                   color="black", alpha=0.3, stroke=0, size=0.7) +
-        geom_point(data = resdf.sig, aes(x=meanExpr, y=log2FoldChange),
-                   color="red", alpha=0.3, stroke=0, size=0.7) +
-        scale_x_log10(name="mean of normalized counts") +
-        ylab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
-        theme_light() +
-        theme(text = element_text(size=8))
-
-    volcano = ggplot() +
-        geom_point(data = resdf.nonsig, aes(x=log2FoldChange, y = logpadj),
-                   alpha=0.3, stroke=0, size=0.7) +
-        geom_point(data = resdf.sig, aes(x=log2FoldChange, y = logpadj),
-                   alpha=0.3, stroke=0, size=0.7) +
-        geom_hline(yintercept = -log10(alpha), color="red", linetype="dashed") +
-        xlab(substitute(log[2]~frac(cond,cont), list(cond=condition, cont=control))) +
-        ylab(expression(-log[10]("p value"))) +
         theme_light() +
         theme(text = element_text(size=8))
 
@@ -228,10 +215,6 @@ main(intable = snakemake@input[["expcounts"]],
      results_up = snakemake@output[["results_up"]],
      results_down = snakemake@output[["results_down"]],
      results_unch = snakemake@output[["results_unch"]],
-     # bed_all = snakemake@output[["bed_all"]],
-     # bed_up = snakemake@output[["bed_up"]],
-     # bed_down = snakemake@output[["bed_down"]],
-     # bed_unch = snakemake@output[["bed_unch"]],
      normcounts = snakemake@output[["normcounts"]],
      rldcounts = snakemake@output[["rldcounts"]],
      qcplots = snakemake@output[["qcplots"]])
