@@ -27,8 +27,9 @@ FIGURES = config["figures"]
 localrules:
     all,
     fastqc_aggregate,
+    aggregate_read_numbers,
     bowtie2_build,
-    build_library_size_table, plot_si_pct,
+    build_spikein_counts_table, plot_spikein_pct,
     make_stranded_genome, make_stranded_annotations,
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
     classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
@@ -55,8 +56,8 @@ rule all:
         #alignment
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
         ##quality controls
-        #"qual_ctrl/read_processing-loss.svg",
-        #expand("qual_ctrl/{status}/{status}-spikein-plots.svg", status=["all", "passing"]),
+        "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
+        expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
         #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
         #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #coverage
@@ -132,65 +133,6 @@ def cluster_samples(status, norm, cluster_groups, cluster_strands):
         if strand in ["antisense", "both"]:
             ll.append([sample + "-" + "antisense" for sample in sublist])
     return(list(itertools.chain(*ll)))
-
-rule read_processing_numbers:
-    input:
-        adapter = expand("logs/clean_reads/remove_adapter-{sample}.log", sample=SAMPLES),
-        qual_trim = expand("logs/clean_reads/remove_3p_bc_and_trim-{sample}.log", sample=SAMPLES),
-        align = expand("alignment/{sample}/align_summary.txt", sample=SAMPLES),
-        nodups = expand("alignment/{sample}_noPCRdup.bam", sample=SAMPLES)
-    output:
-        "qual_ctrl/read_processing_summary.tsv"
-    log: "logs/read_processing_summary.log"
-    run:
-        shell("""(echo -e "sample\traw\tadapter_removed\tquality_trimmed\tmapped\tunique_map\tnoPCRdup" > {output}) &> {log}""")
-        for sample, adapter, qual_trim, align, nodups in zip(SAMPLES.keys(), input.adapter, input.qual_trim, input.align, input.nodups):
-            shell("""(grep -e "Total reads processed:" -e "Reads written" {adapter} | cut -d: -f2 | sed 's/,//g' | awk 'BEGIN{{ORS="\t"; print "{sample}"}}{{print $1}}' >> {output}) &> {log}""")
-            shell("""(grep -e "Reads written" {qual_trim} | cut -d: -f2 | sed 's/,//g' | awk 'BEGIN{{ORS="\t"}}{{print $1}}' >> {output}) &> {log}""")
-            shell("""(awk 'BEGIN{{ORS="\t"}} NR==3 || NR==4{{print $3}}' {align} >> {output}) &> {log}""")
-            shell("""(samtools view -c {nodups} | awk '{{print $1}}' >> {output}) &> {log}""")
-        shell("""(awk 'BEGIN{{FS=OFS="\t"}} NR==1; NR>1{{$6=$5-$6; print $0}}' {output} > qual_ctrl/.readnumbers.temp; mv qual_ctrl/.readnumbers.temp {output}) &> {log}""")
-
-rule plot_read_processing:
-    input:
-        "qual_ctrl/read_processing_summary.tsv"
-    output:
-        surv_abs_out = "qual_ctrl/read_processing-survival-absolute.svg",
-        surv_rel_out = "qual_ctrl/read_processing-survival-relative.svg",
-        loss_out  = "qual_ctrl/read_processing-loss.svg",
-    script: "scripts/processing_summary.R"
-
-rule build_library_size_table:
-    input:
-        bams = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=sisamples),
-        bais = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam.bai", sample=sisamples),
-        chrsizes = config["combinedgenome"]["chrsizes"]
-    output:
-        "qual_ctrl/all/tss-seq-library-sizes.tsv"
-    params:
-        groups = [v["group"] for k,v in sisamples.items()],
-        exp_prefix = config["combinedgenome"]["experimental_prefix"],
-        spikein_prefix = config["combinedgenome"]["spikein_prefix"],
-    log: "logs/build_library_size_table.log"
-    run:
-        shell("""(echo -e "sample\tgroup\ttotal_counts\texperimental_counts\tspikein_counts" > {output}) &> {log} """)
-        for sample, group, bam in zip(sisamples.keys(), params.groups, input.bams):
-            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) <(samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
-
-#NOTE: since the conditiongroups_si and controlgroups_si lists are subsets of validgroups_si,
-#in the case where there is only one passing sample, the group won't be included as is right now
-#TODO: fix condition-v-control comparisons
-rule plot_si_pct:
-    input:
-        "qual_ctrl/all/tss-seq-library-sizes.tsv"
-    output:
-        plot = "qual_ctrl/{status}/tss-seq-spikein-plots-{status}.svg",
-        stats = "qual_ctrl/{status}/tss-seq-spikein-stats-{status}.tsv"
-    params:
-        samplelist = lambda wc : list(sisamples.keys()) if wc.status=="all" else list(sipassing.keys()),
-        conditions = conditiongroups_si,
-        controls = controlgroups_si,
-    script: "scripts/plotsipct.R"
 
 #make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
@@ -303,6 +245,7 @@ rule get_gc_percentage:
 include: "rules/tss-seq_clean_reads.smk"
 include: "rules/tss-seq_alignment.smk"
 include: "rules/tss-seq_fastqc.smk"
+include: "rules/tss-seq_library-processing-summary.smk"
 include: "rules/tss-seq_genome_coverage.smk"
 include: "rules/tss-seq_datavis.smk"
 include: "rules/tss-seq_peakcalling.smk"
