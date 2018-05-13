@@ -68,7 +68,7 @@ rule plot_figures:
         # abusing snakemake a bit here...using params as output paths in order to use lambda functions
         annotations_out = lambda wc: ["datavis/" + wc.figure + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "/" + wc.status + "/" + annotation + "_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
         clusters_out = lambda wc: ["datavis/" + wc.figure + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "/" + wc.status + "/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
-        samplelist = plotcorrsamples,
+        samplelist = get_condition_control_samples,
         plottype = lambda wc: FIGURES[wc.figure]["parameters"]["type"],
         upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"],
         dnstream = lambda wc: FIGURES[wc.figure]["parameters"]["dnstream"],

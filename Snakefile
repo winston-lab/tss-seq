@@ -55,17 +55,17 @@ rule all:
         'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
         #alignment
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
-        ##quality controls
-        "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
-        expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
-        #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-libsizenorm-correlations.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        #expand(expand("qual_ctrl/{{status}}/{condition}-v-{control}/{condition}-v-{control}-tss-{{status}}-spikenorm-correlations.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #coverage
         expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        #quality controls
+        "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
+        expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
+        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #peakcalling on all samples
         expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=sisamples),
-        ##IDR for all groups which have at least two passing samples
+        #IDR for all groups which have at least two passing samples
         expand("peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak", group=validgroups),
         expand("peakcalling/{group}/{group}_spikein-idrpeaks.narrowPeak", group=validgroups_si),
         ##classify peaks into categories
@@ -81,7 +81,7 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si),direction=["all", "up", "unchanged", "down"]),
         #categorize differentially expressed peaks
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{category}}-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES),
-        ## expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{category}}-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES),
         ##differential expression summary
         #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["summary", "maplot", "volcano"]),
         #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["summary", "maplot", "volcano"]),
@@ -112,7 +112,7 @@ rule all:
         ##find intragenic ORFs
         ##intragenic frequency per ORF
 
-def plotcorrsamples(wc):
+def get_condition_control_samples(wc):
     if wc.condition=="all":
         if wc.norm=="libsizenorm": #condition==all,norm==lib
             return list(SAMPLES.keys())
@@ -157,30 +157,6 @@ rule make_stranded_annotations:
     shell: """
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """
-
-rule union_bedgraph:
-    input:
-        exp = expand("coverage/{{norm}}/{sample}-tss-{{norm}}-SENSE.bedgraph", sample=SAMPLES)
-    output:
-        exp = "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz",
-    params:
-        names = list(SAMPLES.keys())
-    log: "logs/union_bedgraph-{norm}.log"
-    shell: """
-        (bedtools unionbedg -i {input.exp} -header -names {params.names} | bash scripts/cleanUnionbedg.sh | pigz > {output.exp}) &> {log}
-        """
-
-#TODO: plot correlations over multiple binsizes, as well as over annotations
-rule plotcorrelations:
-    input:
-        "coverage/{norm}/union-bedgraph-allsamples-{norm}.tsv.gz"
-    output:
-        "qual_ctrl/{status}/{condition}-v-{control}/{condition}-v-{control}-tss-{status}-{norm}-correlations.svg"
-    params:
-        pcount = 0.1,
-        samplelist = plotcorrsamples
-    script:
-        "scripts/plotcorr.R"
 
 def getsamples(ctrl, cond):
     return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
@@ -246,6 +222,7 @@ include: "rules/tss-seq_clean_reads.smk"
 include: "rules/tss-seq_alignment.smk"
 include: "rules/tss-seq_fastqc.smk"
 include: "rules/tss-seq_library-processing-summary.smk"
+include: "rules/tss-seq_sample_similarity.smk"
 include: "rules/tss-seq_genome_coverage.smk"
 include: "rules/tss-seq_datavis.smk"
 include: "rules/tss-seq_peakcalling.smk"

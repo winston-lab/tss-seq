@@ -10,12 +10,12 @@ main = function(intable, pcount, samplelist, outpath){
         mutate_at(vars(sample), funs(fct_inorder(., ordered=TRUE))) %>%
         spread(sample, signal) %>%
         select(-name)
-    
+
     df = df[which(rowSums(df)>0),]
     maxsignal = max(df) + pcount
-    mincor = min(cor(df, use="complete.obs")) * .99
+    mincor = min(cor(log10(df+pcount), use="complete.obs")) * .99
     plots = list()
-    
+
     #for each row
     for (i in 1:ncol(df)){
         #for each column
@@ -39,17 +39,17 @@ main = function(intable, pcount, samplelist, outpath){
                         geom_density(aes(y=..scaled..), fill="#114477", size=0.8) +
                         scale_y_continuous(breaks=c(0,.5,1)) +
                         scale_x_log10(limit = c(pcount, maxsignal)) +
-                        annotate("text", x=.90*maxsignal, y=0.5, hjust=1, 
-                                 label=unique(subdf$sample), size=4, fontface="bold") 
+                        annotate("text", x=.90*maxsignal, y=0.5, hjust=1,
+                                 label=unique(subdf$sample), size=4, fontface="bold")
                 plots[[idx]] = plot
             }
             #bottom left (scatter)
             else {
-                #the filtering is a quick hack to avoid the (0,0) bin taking up
+                #filtering is an optional hack to avoid the (0,0) bin taking up
                 #all of the colorspace
                 subdf = df %>% select(i,j) %>% gather(xsample, xvalue, -1) %>%
-                            gather(ysample, yvalue, -c(2:3)) %>%
-                            filter(!(xvalue < 6*pcount & yvalue < 6*pcount))
+                            gather(ysample, yvalue, -c(2:3)) #%>%
+                            # filter(!(xvalue < 6*pcount & yvalue < 6*pcount))
                 plot = ggplot(data = subdf, aes(x=xvalue+pcount, y=yvalue+pcount)) +
                             geom_abline(intercept = 0, slope=1, color="grey80", size=.5) +
                             stat_bin_hex(geom="point", aes(color=log10(..count..)), binwidth=c(.04,.04), size=.5, shape=16, stroke=0) +
@@ -61,7 +61,7 @@ main = function(intable, pcount, samplelist, outpath){
             }
         }
     }
-    
+
     mat = ggmatrix(plots, nrow=ncol(df), ncol=ncol(df),
                    title = "TSS-seq signal, 1nt bins",
                    xAxisLabels = names(df), yAxisLabels = names(df), switch="both") +
@@ -78,7 +78,7 @@ main = function(intable, pcount, samplelist, outpath){
     h = 9/16*w+0.5
     ggsave(outpath, mat, width=w, height=h, units="cm")
     print(warnings())
-}    
+}
 
 main(intable = snakemake@input[[1]],
      pcount = snakemake@params[["pcount"]],

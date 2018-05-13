@@ -88,7 +88,7 @@ union_bedgraph:
     time: 30
     mem: 4000
 
-plotcorrelations:
+plot_scatter_plots:
     time : 30
     mem : 6000
 
