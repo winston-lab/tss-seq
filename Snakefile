@@ -6,19 +6,6 @@ from math import log2, log10
 
 configfile: "config.yaml"
 
-include: "tss-seq_clean_reads.smk"
-include: "tss-seq_alignment.smk"
-include: "tss-seq_fastqc.smk"
-include: "tss-seq_genome_coverage.smk"
-include: "tss-seq_datavis.smk"
-include: "tss-seq_peakcalling.smk"
-include: "tss-seq_differential_expression.smk"
-include: "tss-seq_build_annotations.smk"
-include: "tss-seq_classify_peaks.smk"
-include: "tss-seq_gene_ontology.smk"
-include: "tss-seq_motifs.smk"
-include: "tss-seq_sequence_logos.smk"
-
 SAMPLES = config["samples"]
 sisamples = {k:v for k,v in SAMPLES.items() if v["spikein"]=="y"}
 PASSING = {k:v for k,v in SAMPLES.items() if v["pass-qc"]=="pass"}
@@ -312,4 +299,17 @@ rule get_gc_percentage:
     shell: """
         python scripts/gc_content.py -f {input.fasta} -w {params.binsize} -o {output}
         """
+
+include: "rules/tss-seq_clean_reads.smk"
+include: "rules/tss-seq_alignment.smk"
+include: "rules/tss-seq_fastqc.smk"
+include: "rules/tss-seq_genome_coverage.smk"
+include: "rules/tss-seq_datavis.smk"
+include: "rules/tss-seq_peakcalling.smk"
+include: "rules/tss-seq_differential_expression.smk"
+include: "rules/tss-seq_build_annotations.smk"
+include: "rules/tss-seq_classify_peaks.smk"
+include: "rules/tss-seq_gene_ontology.smk"
+include: "rules/tss-seq_motifs.smk"
+include: "rules/tss-seq_sequence_logos.smk"
 

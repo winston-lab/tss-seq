@@ -2,10 +2,10 @@
 
 rule call_tss_peaks:
     input:
-        bw = lambda wc: "coverage/counts/" + wc.sample + "-tss-counts-SENSE.bw" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "-tss-sicounts-SENSE.bw"
+        bw = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bw" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bw"
     output:
-        smoothed = expand("peakcalling/sample_peaks/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
-        peaks = "peakcalling/sample_peaks/{sample}-{type}-allpeaks.narrowPeak"
+        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/sample_peaks/{sample}_{type}-allpeaks.narrowPeak"
     params:
         name = lambda wc: wc.sample + "-" + wc.type,
         bandwidth = config["peakcalling"]["bandwidth"],
@@ -19,12 +19,12 @@ rule tss_peaks_idr:
     input:
         #NOTE: for now we take the first two samples since the IDR script only takes two
         #change this if we find a better way to aggregate results
-        lambda wc: ["peakcalling/sample_peaks/" + x + "-" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
+        lambda wc: ["peakcalling/sample_peaks/" + x + "_" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
     output:
-        allpeaks = "peakcalling/{group}/{group}-{type}-idrpeaks-all.tsv",
-        filtered = "peakcalling/{group}/{group}-{type}-idrpeaks-filtered.tsv",
-        narrowpeak = "peakcalling/{group}/{group}-{type}-idrpeaks.narrowPeak",
-        summits = "peakcalling/{group}/{group}-{type}-idrpeaks-summits.bed",
+        allpeaks = "peakcalling/{group}/{group}_{type}-idrpeaks-all.tsv",
+        filtered = "peakcalling/{group}/{group}_{type}-idrpeaks-filtered.tsv",
+        narrowpeak = "peakcalling/{group}/{group}_{type}-idrpeaks.narrowPeak",
+        summits = "peakcalling/{group}/{group}_{type}-idrpeaks-summits.bed",
     params:
         idr = int(-125*log2(config["peakcalling"]["idr"]))
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
@@ -35,8 +35,8 @@ rule tss_peaks_idr:
 
 rule combine_tss_peaks:
     input:
-        cond = "peakcalling/{condition}/{condition}-{type}-idrpeaks-filtered.tsv",
-        ctrl = "peakcalling/{control}/{control}-{type}-idrpeaks-filtered.tsv",
+        cond = "peakcalling/{condition}/{condition}_{type}-idrpeaks-filtered.tsv",
+        ctrl = "peakcalling/{control}/{control}_{type}-idrpeaks-filtered.tsv",
     output:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed"
     shell: """

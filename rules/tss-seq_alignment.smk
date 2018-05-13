@@ -43,7 +43,7 @@ rule align:
         min_segment_intron = config["tophat2"]["min-segment-intron"],
         max_segment_intron = config["tophat2"]["max-segment-intron"],
     conda:
-        "envs/tophat2.yaml"
+        "../envs/tophat2.yaml"
     threads : config["threads"]
     log: "logs/align/align_{sample}.log"
     shell:
