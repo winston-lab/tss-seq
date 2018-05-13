@@ -38,7 +38,7 @@ rule combine_tss_peaks:
         cond = "peakcalling/{condition}/{condition}_{type}-idrpeaks-filtered.tsv",
         ctrl = "peakcalling/{control}/{control}_{type}-idrpeaks-filtered.tsv",
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}-{type}-peaks.bed"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{type}-peaks.bed"
     shell: """
         sort -k1,1 -k2,2n {input.cond} | bedtools multiinter -i stdin <(sort -k1,1 -k2,2n {input.ctrl}) -cluster | cut -f1-3 | LC_COLLATE=C sort -k1,1 -k2,2n > {output}
         """
