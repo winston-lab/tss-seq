@@ -42,7 +42,7 @@ rule differential_expression:
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     script:
-        "scripts/call_de_peaks.R"
+        "../scripts/call_de_peaks.R"
 
 rule diffexp_results_to_narrowpeak:
     input:

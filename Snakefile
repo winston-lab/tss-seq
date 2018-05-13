@@ -32,7 +32,7 @@ localrules:
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
     classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
     classify_peaks_convergent, classify_peaks_divergent, classify_peaks_intergenic,
-    combine_tss_peaks, map_counts_to_peaks, get_peak_counts,
+    combine_tss_peaks, map_counts_to_peaks, combine_peak_counts,
     classify_genic_diffexp_peaks, classify_intragenic_diffexp_peaks, classify_antisense_diffexp_peaks,
     classify_convergent_diffexp_peaks, classify_divergent_diffexp_peaks, classify_intergenic_diffexp_peaks,
     cat_matrices,

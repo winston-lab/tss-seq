@@ -109,9 +109,13 @@ peakstats:
     time: 20
     mem: 10000
 
-call_de_peaks:
+differential_expression:
     time: 20
     mem: 10000
+
+diffexp_results_to_narrowpeak:
+  time: 5
+  mem: 4000
 
 summarise_de_results:
     time: 15
