@@ -4,10 +4,10 @@ rule call_tss_peaks:
     input:
         bw = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bw" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bw"
     output:
-        smoothed = expand("peakcalling/sample_peaks/{{sample}}-{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
-        peaks = "peakcalling/sample_peaks/{sample}-{type}-allpeaks.narrowPeak"
+        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/sample_peaks/{sample}_{type}-allpeaks.narrowPeak"
     params:
-        name = lambda wc: wc.sample + "-" + wc.type,
+        name = lambda wc: wc.sample + "_" + wc.type,
         bandwidth = config["peakcalling"]["bandwidth"],
         window = config["peakcalling"]["local-bg-window"]
     log: "logs/call_tss_peaks/call_tss_peaks-{sample}-{type}.log"
@@ -19,7 +19,7 @@ rule tss_peaks_idr:
     input:
         #NOTE: for now we take the first two samples since the IDR script only takes two
         #change this if we find a better way to aggregate results
-        lambda wc: ["peakcalling/sample_peaks/" + x + "-" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
+        lambda wc: ["peakcalling/sample_peaks/" + x + "_" + wc.type + "-allpeaks.narrowPeak" for x in PASSING if PASSING[x]['group']==wc.group][0:2]
     output:
         allpeaks = "peakcalling/{group}/{group}_{type}-idrpeaks-all.tsv",
         filtered = "peakcalling/{group}/{group}_{type}-idrpeaks-filtered.tsv",

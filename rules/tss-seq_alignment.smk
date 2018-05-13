@@ -67,10 +67,18 @@ rule remove_PCR_duplicates:
         "alignment/{sample}_tss-seq-uniquemappers.bam"
     output:
         bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
-        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
     log: "logs/remove_PCR_duplicates/remove_PCR_duplicates_{sample}.log"
     shell: """
         (python scripts/removePCRdupsFromBAM.py {input} {output.bam}) &> {log}
-        (samtools index {output.bam} > {output.bai}) &>> {log}
+        """
+
+rule index_bam:
+    input:
+        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+    output:
+        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
+    log: "logs/index_bam/index_bam-{sample}.log"
+    shell: """
+        (samtools index {input.bam} > {output.bai}) &> {log}
         """
 
