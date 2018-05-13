@@ -172,7 +172,7 @@ rule classify_intergenic_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intergenic-{direction}-summits.bed",
     log : "logs/classify_intergenic_diffexp_peaks/classify_intergenic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (bedtools intersect -a {input.results} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | cat <(head -n 1 {input.results}) - > {output.results} &> {log}
+        (bedtools intersect -a {input.results} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | cat <(head -n 1 {input.results}) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 

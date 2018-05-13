@@ -7,9 +7,9 @@ __default__:
     log : "logs/cluster/{rule}.{wildcards}.log"
     err : "logs/cluster/{rule}.{wildcards}.err"
 
-fastqc_raw:
+fastqc_prealignment:
     time : 15
-    n : 1
+    n : 2
     mem : 4000
 
 clean_reads:
@@ -22,14 +22,9 @@ remove_molecular_barcode:
     n : 1
     mem : 2000
 
-fastqc_cleaned:
-    time : 10
-    n : 1
-    mem : 4000
-
-fastqc_aligned:
+fastqc_postalignment:
     time : 20
-    n : 1
+    n : 2
     mem : 4000
 
 plot_fastqc_summary:

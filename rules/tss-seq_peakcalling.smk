@@ -2,7 +2,7 @@
 
 rule call_tss_peaks:
     input:
-        bw = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bw" if wc.type=="exp" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bw"
+        bw = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bw" if wc.type=="experimental" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bw"
     output:
         smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{type}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
         peaks = "peakcalling/sample_peaks/{sample}_{type}-allpeaks.narrowPeak"

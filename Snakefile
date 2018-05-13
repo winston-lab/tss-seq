@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import re
 import subprocess
 import itertools
 from math import log2, log10
@@ -50,7 +51,7 @@ onsuccess:
 rule all:
     input:
         #FastQC
-        # 'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
+        'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
         #alignment
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
         ##quality controls
