@@ -3,7 +3,7 @@
 rule map_counts_to_peaks:
     input:
         bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{type}-peaks.bed",
-        bg = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bedgraph" if wc.type=="experimental" else "coverage/sicounts/" + wc.sample + "-tss-sicounts-SENSE.bedgraph"
+        bg = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bedgraph" if wc.type=="experimental" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bedgraph"
     output:
         temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{type}-peakcounts.tsv")
     log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{type}.log"
