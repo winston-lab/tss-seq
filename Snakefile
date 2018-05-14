@@ -29,6 +29,7 @@ localrules:
     fastqc_aggregate,
     aggregate_read_numbers,
     bowtie2_build,
+    index_bam,
     build_spikein_counts_table, plot_spikein_pct,
     make_stranded_genome, make_stranded_annotations,
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
