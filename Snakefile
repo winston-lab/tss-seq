@@ -32,8 +32,8 @@ localrules:
     build_spikein_counts_table, plot_spikein_pct,
     make_stranded_genome, make_stranded_annotations,
     build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
-    classify_peaks_genic, classify_peaks_intragenic, classify_peaks_antisense,
-    classify_peaks_convergent, classify_peaks_divergent, classify_peaks_intergenic,
+    classify_genic_peaks, classify_intragenic_peaks, classify_antisense_peaks,
+    classify_convergent_peaks, classify_divergent_peaks, classify_intergenic_peaks,
     combine_tss_peaks, map_counts_to_peaks, combine_peak_counts,
     classify_genic_diffexp_peaks, classify_intragenic_diffexp_peaks, classify_antisense_diffexp_peaks,
     classify_convergent_diffexp_peaks, classify_divergent_diffexp_peaks, classify_intergenic_diffexp_peaks,
@@ -68,8 +68,8 @@ rule all:
         #IDR for all groups which have at least two passing samples
         expand("peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak", group=validgroups),
         expand("peakcalling/{group}/{group}_spikein-idrpeaks.narrowPeak", group=validgroups_si),
-        ##classify peaks into categories
-        #expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        #classify peaks into categories
+        expand("peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
         #expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}_experimental-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
