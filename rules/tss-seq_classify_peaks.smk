@@ -117,7 +117,7 @@ rule classify_genic_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_genic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.annotation} -wo -s | cut --complement -f22 | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\tgenic_chrom\tgenic_start\tgenic_end\tgenic_score\tgenic_name\tgenic_score\tgenic_strand")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.annotation} -wo -s | cut --complement -f22 | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\tgenic_chrom\tgenic_start\tgenic_end\tgenic_name\tgenic_score\tgenic_strand")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.annotation} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -133,7 +133,7 @@ rule classify_intragenic_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_intragenic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}'  | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\torf_chrom\torf_start\torf_end\torf_score\torf_name\torf_score\torf_strand\tatg_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}'  | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orf_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -148,7 +148,7 @@ rule classify_antisense_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_antisense_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_score\ttranscript_name\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.transcript_anno} -u -S | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -164,7 +164,7 @@ rule classify_convergent_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-convergent-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_convergent_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_start\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_score\ttranscript_name\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -180,7 +180,7 @@ rule classify_divergent_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-divergent-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_divergent_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.div_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_score\ttranscript_name\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.div_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
