@@ -5,7 +5,7 @@ library(ggpmisc)
 
 import = function(path, alpha){
     read_tsv(path) %>%
-    mutate(sig = if_else(logpadj > -log10(alpha), TRUE, FALSE)) %>% 
+    mutate(sig = if_else(logpadj > -log10(alpha), TRUE, FALSE)) %>%
     return()
 }
 
@@ -20,21 +20,21 @@ bin = function(df, type){
 }
 
 main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, cond, ctrl, lfc, alpha, out.ma, out.volcano, out.volcano_free,  out.summary, out_summary_table){
-    all = import(in.all, alpha) 
+    all = import(in.all, alpha)
     genic = import(in.genic, alpha)
     intra = import(in.intra, alpha)
     as = import(in.as, alpha)
     conv = import(in.conv, alpha)
     div = import(in.div, alpha)
     inter = import(in.inter, alpha)
-    
-    cleandf = clean(all, 'peak_name', 'all') %>% bind_rows(clean(genic, 'transcript_name', 'genic')) %>% 
-                bind_rows(clean(intra, 'ORF_name', 'intragenic')) %>% bind_rows(clean(as, 'transcript_name', 'antisense')) %>% 
-                bind_rows(clean(conv, 'transcript_name', 'convergent')) %>% bind_rows(clean(div, 'transcript_name', 'divergent')) %>% 
+
+    cleandf = clean(all, 'peak_name', 'all') %>% bind_rows(clean(genic, 'transcript_name', 'genic')) %>%
+                bind_rows(clean(intra, 'ORF_name', 'intragenic')) %>% bind_rows(clean(as, 'transcript_name', 'antisense')) %>%
+                bind_rows(clean(conv, 'transcript_name', 'convergent')) %>% bind_rows(clean(div, 'transcript_name', 'divergent')) %>%
                 bind_rows(clean(inter, 'peak_name', 'intergenic'))
     cleandf$type = fct_inorder(cleandf$type, ordered=TRUE)
     minx = quantile(cleandf$meanExpr, .2)
-    
+
     maplot = ggplot(data = cleandf, aes(x=meanExpr, y=log2FoldChange)) +
                 geom_hline(yintercept = 0, linetype="dashed") +
                 geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=.8) +
@@ -54,7 +54,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                                    point.padding = unit(0.1, "lines"),
                                    box.padding = unit(0.1, "lines"),
                                    nudge_y = -.3,
-                                   size=1.5) + 
+                                   size=1.5) +
                 scale_x_log10(name="mean expression level", limits=c(1, NA),
                               expand=c(0,0)) +
                 scale_y_continuous(breaks = scales::pretty_breaks(n=5)) +
@@ -68,9 +68,9 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                       axis.title.y = element_text(angle=0, vjust=0.5),
                       strip.background = element_blank(),
                       strip.text = element_text(size=12, face="bold", color="black"))
-    
+
     ggsave(out.ma, maplot, height=16, width=22, units="cm")
-    
+
     volcano = ggplot(data = cleandf, aes(x = log2FoldChange, y = logpadj))+
                 geom_point(aes(color=sig), shape=16, alpha=0.4, stroke=0, size=.8) +
                 scale_color_manual(values = c("grey40", "red"), guide=FALSE) +
@@ -100,10 +100,10 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                       axis.title.y = element_text(angle=0, vjust=0.5),
                       strip.background = element_blank(),
                       strip.text = element_text(size=12, face="bold", color="black"))
-    
+
     ggsave(out.volcano, volcano + facet_wrap(~type) , height=16, width=20, units="cm")
     ggsave(out.volcano_free, volcano + facet_wrap(~type, scales="free_y") , height=16, width=20, units="cm")
-    
+
     countdf = bind_rows(bin(genic, 'genic')) %>% bind_rows(bin(intra, 'intragenic')) %>%
                 bind_rows(bin(as, 'antisense')) %>% bind_rows(bin(conv, 'convergent')) %>%
                 bind_rows(bin(div, 'divergent')) %>% bind_rows(bin(inter, 'intergenic')) %>%
@@ -111,19 +111,19 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                 mutate_at(vars(ymin, ymax), funs(./max(ymax)))
     countdf %>% select(class, change, n) %>%
         write_tsv(out_summary_table)
-    
+
     countdf$class = fct_inorder(countdf$class, ordered=TRUE)
     countdf$change = fct_inorder(countdf$change, ordered=TRUE)
-    
+
     csx = countdf %>% group_by(class) %>% summarise(classn = sum(n)) %>%
             mutate(xmax = cumsum(classn), xmin = cumsum(classn)-classn) %>% select(-classn)
     countdf = countdf %>% left_join(csx, by='class')
-    
+
     gsummary = ggplot() +
                 geom_rect(data=countdf, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=change),
                           color="white", alpha=0.9, size=1.5) +
                 geom_text(data = countdf, aes(x=(xmin+xmax)/2, y=(ymin+ymax)/2, label=n),
-                          size=4, color="black", fontface="bold") + 
+                          size=4, color="black", fontface="bold") +
                 geom_text(data = (countdf %>% summarise(x = (max(xmax)+min(xmin))/2)),
                             aes(x=x, label=class), y=1.04, angle=30, hjust=.1, size=4, fontface="bold") +
                 scale_fill_brewer(palette = "Set1") +
@@ -141,7 +141,7 @@ main = function(in.all, in.genic, in.intra, in.as, in.conv, in.div, in.inter, co
                       plot.margin = unit(c(.5, 3.25, 0, 0.25), "cm"),
                       plot.title = element_text(size=12, face="bold", color="black"),
                       plot.subtitle = element_text(size=10))
-    
+
     ggsave(out.summary, gsummary, height=10, width=20, units="cm")
 }
 

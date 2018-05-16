@@ -57,24 +57,23 @@ rule diffexp_results_to_narrowpeak:
         (python scripts/diffexp_results_to_narrowpeak.py -i {input.condition_coverage} -j {input.control_coverage} -d {input.diffexp_results} -n {output.narrowpeak} -b {output.summit_bed}) &> {log}
         """
 
-#TODO: account for double-counted peaks when a peak overlaps more than one annotation (more than one genic region, for example)
-rule summarise_de_results:
+rule summarise_diffexp_results:
     input:
-        total = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-results-{norm}-all.tsv",
-        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
-        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
-        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
-        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
-        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
-        intergenic = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}-results-{norm}-all-intergenic.tsv",
+        total = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-all.tsv",
+        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-all.tsv",
+        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-all.tsv",
+        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-all.tsv",
+        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-convergent-all.tsv",
+        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-divergent-all.tsv",
+        intergenic = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intergenic-all.tsv",
     params:
         lfc = config["deseq"]["fold-change-threshold"],
         alpha = config["deseq"]["fdr"]
     output:
-        summary_table = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-summary.tsv",
-        summary = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-summary.svg",
-        maplot = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-maplot.svg",
-        volcano = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-volcano.svg",
-        volcano_free = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}-{norm}-diffexp-volcano-freescale.svg",
-    script: "scripts/de_summary.R"
+        summary_table = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-summary.tsv",
+        mosaic = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-mosaic.svg",
+        maplot = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-maplot.svg",
+        volcano = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-volcano.svg",
+        volcano_free = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-volcano-freescale.svg",
+    script: "../scripts/plot_diffexp_summary.R"
 

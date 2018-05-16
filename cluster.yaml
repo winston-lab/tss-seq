@@ -112,7 +112,7 @@ diffexp_results_to_narrowpeak:
   time: 5
   mem: 4000
 
-summarise_de_results:
+summarise_diffexp_results:
     time: 15
     mem: 4000
 
