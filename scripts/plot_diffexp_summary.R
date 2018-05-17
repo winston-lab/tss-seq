@@ -160,3 +160,4 @@ main(in_all = snakemake@input[["total"]],
      out_volcano_free = snakemake@output[["volcano_free"]],
      out_mosaic = snakemake@output[["mosaic"]],
      out_summary_table = snakemake@output[["summary_table"]])
+
