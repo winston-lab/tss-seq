@@ -4,7 +4,7 @@ peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_str
 
 rule classify_genic_peaks:
     input:
-        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        annotation = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.tsv",
@@ -18,7 +18,7 @@ rule classify_genic_peaks:
 
 rule classify_intragenic_peaks:
     input:
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         orf_anno = config["genome"]["orf-annotation"],
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
@@ -47,8 +47,8 @@ rule classify_antisense_peaks:
 
 rule classify_convergent_peaks:
     input:
-        conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        conv_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"),
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.tsv",
@@ -62,8 +62,8 @@ rule classify_convergent_peaks:
 
 rule classify_divergent_peaks:
     input:
-        div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        div_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"),
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.tsv",
@@ -77,10 +77,10 @@ rule classify_divergent_peaks:
 
 rule classify_intergenic_peaks:
     input:
-        intergenic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
+        intergenic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"),
         transcript_anno = config["genome"]["transcripts"],
         orf_anno = config["genome"]["orf-annotation"],
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.tsv",
@@ -108,7 +108,7 @@ rule peakstats:
 
 rule classify_genic_diffexp_peaks:
     input:
-        annotation = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        annotation = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -123,7 +123,7 @@ rule classify_genic_diffexp_peaks:
 
 rule classify_intragenic_diffexp_peaks:
     input:
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         orf_anno = config["genome"]["orf-annotation"],
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
@@ -133,7 +133,7 @@ rule classify_intragenic_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_intragenic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}'  | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=summit-$17}} $6=="-"{{$22=$18-(summit+1)}} {{print $0}}'  | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.orf_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -148,14 +148,14 @@ rule classify_antisense_diffexp_peaks:
         bed = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-{direction}-summits.bed",
     log : "logs/classify_diffexp_peaks/classify_antisense_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
+        (tail -n +2 {input.results} | paste - <(cut -f10 {input.narrowpeak}) | bedtools intersect -a stdin -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | cat <(paste <(head -n 1 {input.results}) <(echo -e "\tpeak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - > {output.results}) &> {log}
         (bedtools intersect -a {input.narrowpeak} -b {input.transcript_anno} -u -S | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
 rule classify_convergent_diffexp_peaks:
     input:
-        conv_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed",
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        conv_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"),
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -170,8 +170,8 @@ rule classify_convergent_diffexp_peaks:
 
 rule classify_divergent_diffexp_peaks:
     input:
-        div_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed",
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        div_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"),
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -186,10 +186,10 @@ rule classify_divergent_diffexp_peaks:
 
 rule classify_intergenic_diffexp_peaks:
     input:
-        intergenic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed",
+        intergenic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"),
         transcript_anno = config["genome"]["transcripts"],
         orf_anno = config["genome"]["orf-annotation"],
-        genic_anno = os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed",
+        genic_anno = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
