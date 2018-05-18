@@ -105,8 +105,6 @@ rule all:
         ## MEME-ChIP
         #expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
         #expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
-        ##GC pct coverage file
-        #os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw",
         ##gene ontology
         #expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
         #expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
@@ -208,18 +206,6 @@ rule peak_positioning:
         fc_signif = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
     script:
         "scripts/length_bias.R"
-
-#TODO: move sequence analysis to separate pipeline
-rule get_gc_percentage:
-    input:
-        fasta = config["genome"]["fasta"],
-    params:
-        binsize = 11 #must be odd integer
-    output:
-        os.path.splitext(config["genome"]["fasta"])[0] + "-GC_pct.bw"
-    shell: """
-        python scripts/gc_content.py -f {input.fasta} -w {params.binsize} -o {output}
-        """
 
 include: "rules/tss-seq_clean_reads.smk"
 include: "rules/tss-seq_alignment.smk"
