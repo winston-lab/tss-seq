@@ -35,7 +35,7 @@ rule normalize_genome_coverage:
         strand="plus|minus"
     log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}.log"
     shell: """
-        awk -v total_read_count=$(grep -oh "\w*{params.prefix}\w*" {input.chrsizes} | xargs samtools view -c {input.bam} | paste -d "" - <(echo "*{params.scale_factor}/1000000") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/total_read_count; print $0}}' {input.counts} > {output.normalized}
+        awk -v total_read_count=$(grep -oh "\w*{params.prefix}\w*" {input.chrsizes} | xargs samtools view -c {input.bam} | paste -d "" - <(echo "/({params.scale_factor}*1000000)") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/total_read_count; print $0}}' {input.counts} > {output.normalized}
         """
 
 rule make_stranded_bedgraph:

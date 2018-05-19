@@ -26,6 +26,9 @@ CATEGORIES = ["genic", "intragenic", "antisense", "convergent", "divergent", "in
 
 FIGURES = config["figures"]
 
+#get all motif names from motif databases, cleaning nasty characters in some motif names
+MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
+
 localrules:
     all,
     fastqc_aggregate,
@@ -189,9 +192,6 @@ rule genic_v_class:
         figure = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/{condition}-v-{control}-{norm}-genic-v-class.svg",
         tables = expand("diff_exp/{{condition}}-v-{{control}}/{{norm}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
-
-#get all motif names from motif databases, cleaning nasty characters in some motif names
-MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()
 
 #TODO: fix the statistical test
 rule peak_positioning:

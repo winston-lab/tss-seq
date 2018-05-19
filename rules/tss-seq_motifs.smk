@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#run fimo in parallel for each motif for speed
+#run fimo in parallel for each motif
 rule fimo:
     input:
         fasta = config["genome"]["fasta"],
@@ -11,7 +11,7 @@ rule fimo:
         tsv = temp("motifs/.{motif}.tsv"),
         bed = temp("motifs/.{motif}.bed") #first 6 columns are BED6, plus extra info in later columns
     shell: """
-        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
+        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
         """
 
 rule cat_fimo_motifs:
@@ -28,23 +28,22 @@ rule cat_fimo_motifs:
         """
 
 #bedtools intersect peaks with fimo motifs
-#0. filter out double counted peaks (sometimes a peak can be 'genic' for two genes, causing it to be listed twice)
-#1. with the START of the peak as reference, extend annotation to upstream and 'downstream' distances
-#2. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting, so that poorly called peaks which are erroneously split into multiple peaks do not bias the motif enrichment analyses.)
-#3. intersect with motif file
+#0. with the summit of the peak as reference, extend annotation to upstream and 'downstream' distances
+#1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting, so that poorly called peaks which are erroneously split into multiple peaks do not bias the motif enrichment analyses.)
+#2. intersect with motif file
 rule get_upstream_motifs:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
         chrsizes = config["genome"]["chrsizes"],
         motifs = "motifs/allmotifs.bed"
     output:
-        "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz"
+        "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-motifs.tsv.gz"
     params:
         upstr = config["motifs"]["enrichment-upstream"],
         dnstr = config["motifs"]["enrichment-downstream"]
-    log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{direction}-{category}.log"
+    log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
-        (uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | sed 's/:/\t/g' | bedtools groupby -g 8 -c 6 -o max -full -i stdin | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5":"$6, $7}}' | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS="\t|:"; OFS="\t"}}{{print $1, $4, $5, $6, $11, $14, $9, $10, $12}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao |  cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\peak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tpeak_summit\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
 rule get_random_motifs:
