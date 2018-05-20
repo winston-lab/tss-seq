@@ -3,11 +3,11 @@
 #fastqc for raw or cleaned reads
 rule fastqc_prealignment:
     input:
-        lambda wc: SAMPLES[wc.sample]["fastq"] if wc.read_status=="raw" else "fastq/cleaned/" + wc.sample + "_tss-seq-clean.fastq.gz"
+        lambda wc: SAMPLES[wc.sample]["fastq"] if wc.read_status=="raw" else "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz".format(**wc)
     output:
         "qual_ctrl/fastqc/{read_status}/{sample}_fastqc-data-{read_status}.txt"
     params:
-        fname = lambda wc: re.split('.fq|.fastq', os.path.split(SAMPLES[wc.sample]["fastq"])[1])[0] if wc.read_status=="raw" else wc.sample + "_tss-seq-clean",
+        fname = lambda wc: re.split('.fq|.fastq', os.path.split(SAMPLES[wc.sample]["fastq"])[1])[0] if wc.read_status=="raw" else "{sample}_tss-seq-clean".format(**wc),
         adapter = config["cutadapt"]["adapter"]
     wildcard_constraints:
         read_status="raw|cleaned"
@@ -22,11 +22,11 @@ rule fastqc_prealignment:
 #fastqc for no PCR duplicates and unalignd reads
 rule fastqc_postalignment:
     input:
-        lambda wc: "alignment/" + wc.sample + "_tss-seq-noPCRduplicates.bam" if wc.read_status=="aligned_noPCRdup" else "alignment/" + wc.sample + "/unmapped.bam",
+        lambda wc: "alignment/{sample}_tss-seq-noPCRduplicates.bam".format(**wc) if wc.read_status=="aligned_noPCRdup" else "alignment/{sample}/unmapped.bam".format(**wc),
     output:
         "qual_ctrl/fastqc/{read_status}/{sample}_fastqc-data-{read_status}.txt"
     params:
-        fname = lambda wc: wc.sample + "_" + wc.read_status,
+        fname = lambda wc: "{sample}_{read_status}".format(**wc),
         adapter = config["cutadapt"]["adapter"]
     wildcard_constraints:
         read_status="aligned_noPCRdup|unaligned"

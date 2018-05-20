@@ -3,7 +3,7 @@
 rule map_counts_to_peaks:
     input:
         bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{type}-peaks.bed",
-        bg = lambda wc: "coverage/counts/" + wc.sample + "_tss-seq-counts-SENSE.bedgraph" if wc.type=="experimental" else "coverage/sicounts/" + wc.sample + "_tss-seq-sicounts-SENSE.bedgraph"
+        bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.type=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
     output:
         temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{type}-peakcounts.tsv")
     log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{type}.log"
@@ -13,7 +13,7 @@ rule map_counts_to_peaks:
 
 rule combine_peak_counts:
     input:
-        lambda wc : ["diff_exp/" + wc.condition + "-v-" + wc.control + "/" + x + "_tss-seq-" + wc.type + "-peakcounts.tsv" for x in getsamples(wc.control, wc.condition)]
+        lambda wc : ["diff_exp/{condition}-v-{control}/".format(**wc) + x + "_tss-seq-{type}-peakcounts.tsv".format(**wc) for x in getsamples(wc.control, wc.condition)]
     output:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{type}-peak-counts.tsv"
     params:
@@ -27,7 +27,7 @@ rule combine_peak_counts:
 rule differential_expression:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv",
-        sicounts = lambda wc: "diff_exp/" + wc.condition + "-v-" + wc.control + "/" + wc.condition + "-v-" + wc.control + "_tss-seq-spikein-peak-counts.tsv" if wc.norm=="spikenorm" else []
+        sicounts = lambda wc: "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv".format(**wc) if wc.norm=="spikenorm" else []
     output:
         results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-all.tsv",
         results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-up.tsv",

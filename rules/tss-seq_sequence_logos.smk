@@ -3,14 +3,14 @@
 rule get_seqlogo_data:
     input:
         bam = lambda wc: expand("alignment/{sample}-noPCRdup.bam", sample=getsamples(wc.group, wc.group)),
-        bed = lambda wc: "peakcalling/" + wc.category + "/" + wc.group + "-exp-idrpeaks-" + wc.category + ".tsv" if wc.category != "all" else [],
+        bed = lambda wc: "peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv".format(**wc) if wc.category != "all" else [],
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
     params:
         prefix = config["combinedgenome"]["experimental_prefix"],
         slop = int(config["consensus"]["window"]),
         windowsize = int(2*config["consensus"]["window"]+1),
-        intersect_cmd = lambda wc: "bedtools intersect -wa -s -a stdin -b peakcalling/" + wc.category + "/" + wc.group + "-exp-idrpeaks-" + wc.category + ".tsv | " if wc.category != "all" else ""
+        intersect_cmd = lambda wc: "bedtools intersect -wa -s -a stdin -b peakcalling/{category}/{group}-exp-idrpeaks-{category}.tsv | ".format(**wc) if wc.category != "all" else ""
     output:
         seqlogo_data = "seq_logos/{group}/{group}-{category}-seqlogo.tsv",
     log: "logs/get_seqlogo_data/get_seqlogo_data-{group}-{category}.log"

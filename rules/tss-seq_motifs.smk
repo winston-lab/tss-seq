@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 #run fimo in parallel for each motif
+# TODO: for maximum efficiency should chunk the motif list into
+# something bigger than a single motif to avoid eating the
+# overhead of waiting for cluster job submission
 rule fimo:
     input:
         fasta = config["genome"]["fasta"],
@@ -11,7 +14,7 @@ rule fimo:
         tsv = temp("motifs/.{motif}.tsv"),
         bed = temp("motifs/.{motif}.bed") #first 6 columns are BED6, plus extra info in later columns
     shell: """
-        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
+        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme -bg <(fasta-get-markov {input.fasta}) {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
         """
 
 rule cat_fimo_motifs:
@@ -43,7 +46,7 @@ rule get_upstream_motifs:
         dnstr = config["motifs"]["enrichment-downstream"]
     log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao |  cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\peak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tpeak_summit\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | cut -f19 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tpeak_summit\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
 rule get_random_motifs:
@@ -55,23 +58,23 @@ rule get_random_motifs:
     params:
         n = 6000,
         size = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"]
-    log: "logs/get_random_motifs/get_random_motifs.log"
+    log: "logs/get_random_motifs.log"
     shell: """
-        (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $4, 0, 0, $10, $13, $8, $9, $11}}' | cat <(echo -e "chrom\ttss_peak_id\tpeak_lfc\tpeak_logpadj\tmotif_id\tmotif_alt_id\tmotif_start\tmotif_end\tmotif_logpadj") - | pigz -f > {output}) &> {log}
+        (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | cut -f15 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tregion_id\tregion_length\tregion_strand\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
 rule test_motif_enrichment:
     input:
-        fimo_pos = "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_{norm}-{direction}-{category}-motifs.tsv.gz",
-        fimo_neg = lambda wc: "motifs/" + wc.condition + "-v-" + wc.control + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "_" + wc.norm + "-unchanged-" + wc.category + "-motifs.tsv.gz" if wc.negative=="unchanged" else "motifs/random-motifs.tsv.gz"
+        fimo_pos = "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-motifs.tsv.gz",
+        fimo_neg = lambda wc: "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{category}-unchanged-motifs.tsv.gz".format(**wc) if wc.negative=="unchanged" else "motifs/random-motifs.tsv.gz"
     params:
         pval_cutoff = config["motifs"]["fimo-pval"],
         alpha= config["motifs"]["enrichment-fdr"],
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     output:
-        tsv = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.tsv",
-        plot = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_{norm}-{direction}-v-{negative}-{category}-motif_enrichment.svg",
-    script: "scripts/motif_enrichment.R"
+        tsv = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.tsv",
+        plot = "motifs/{condition}-v-{control}/{norm}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.svg",
+    script: "../scripts/motif_enrichment.R"
 
 #NOTE: below are rules for visualizing motif occurrences, but need to have a way to do this efficiently/in an interpretable way for thousands of motifs
 # rule get_motif_coverage:
