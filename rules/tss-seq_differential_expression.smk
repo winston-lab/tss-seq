@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+localrules: map_counts_to_peaks,
+    combine_peak_counts,
+
+
 rule map_counts_to_peaks:
     input:
         bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{type}-peaks.bed",

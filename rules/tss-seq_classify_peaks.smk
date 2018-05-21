@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+localrules: classify_genic_peaks, classify_intragenic_peaks, classify_antisense_peaks,
+    classify_convergent_peaks, classify_divergent_peaks, classify_intergenic_peaks,
+    classify_genic_diffexp_peaks, classify_intragenic_diffexp_peaks, classify_antisense_diffexp_peaks,
+    classify_convergent_diffexp_peaks, classify_divergent_diffexp_peaks, classify_intergenic_diffexp_peaks,
+
 peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_strand\tpeak_enrichment\tpeak_logpval\tpeak_logqval\tpeak_summit\t"
 
 rule classify_genic_peaks:

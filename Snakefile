@@ -31,18 +31,7 @@ MOTIFS = subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases
 
 localrules:
     all,
-    fastqc_aggregate,
-    aggregate_read_numbers,
-    bowtie2_build,
-    index_bam,
-    build_spikein_counts_table, plot_spikein_pct,
     make_stranded_genome, make_stranded_annotations,
-    build_genic_annotation, build_convergent_annotation, build_divergent_annotation, build_intergenic_annotation,
-    classify_genic_peaks, classify_intragenic_peaks, classify_antisense_peaks,
-    classify_convergent_peaks, classify_divergent_peaks, classify_intergenic_peaks,
-    combine_tss_peaks, map_counts_to_peaks, combine_peak_counts,
-    classify_genic_diffexp_peaks, classify_intragenic_diffexp_peaks, classify_antisense_diffexp_peaks,
-    classify_convergent_diffexp_peaks, classify_divergent_diffexp_peaks, classify_intergenic_diffexp_peaks,
     cat_matrices,
     # get_de_intragenic_frequency
     # plot_de_intragenic_frequency
@@ -51,6 +40,7 @@ localrules:
     get_meme_de_peak_sequences,
     plot_seqlogos,
     # class_v_genic
+
 
 onsuccess:
     shell("(./mogrify.sh) > mogrify.log")
@@ -101,11 +91,11 @@ rule all:
         ##correlations of transcript classes with genic TSSs
         #expand("diff_exp/{condition}-v-{control}/libsizenorm/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
         #expand("diff_exp/{condition}-v-{control}/spikenorm/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
-        ##enrichment of known motifs
-        "motifs/allmotifs.bed" if config["motifs"]["run_motif_analyses"] else [],
-        "motifs/random-motifs.tsv.gz" if config["motifs"]["run_motif_analyses"] else [],
-        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{negative}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
-        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{negative}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
+        #enrichment of known motifs
+        # "motifs/allmotifs.bed" if config["motifs"]["run_motif_analyses"] else [],
+        # "motifs/random-motifs.tsv.gz" if config["motifs"]["run_motif_analyses"] else [],
+        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
+        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
         ## MEME-ChIP
         #expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
         #expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],

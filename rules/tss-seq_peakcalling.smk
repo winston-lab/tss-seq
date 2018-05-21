@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+localrules: combine_tss_peaks
+
 rule call_tss_peaks:
     input:
         bw = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bw".format(**wc) if wc.type=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bw".format(**wc)

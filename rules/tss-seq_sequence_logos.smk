@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+localrules: plot_seqlogos
+
 rule get_seqlogo_data:
     input:
         bam = lambda wc: expand("alignment/{sample}-noPCRdup.bam", sample=getsamples(wc.group, wc.group)),

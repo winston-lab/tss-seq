@@ -1,44 +1,42 @@
 library(tidyverse)
+library(magrittr)
 library(broom)
 library(ggrepel)
 library(ggpmisc)
 
-get_motif_counts = function(df){
-    df %>% group_by(motif_id, motif_alt_id, tss_peak_id) %>% slice(1) %>%
-        group_by(motif_id, motif_alt_id) %>% count()
+#if motif is found more than once for a region,
+#count only one
+get_motif_counts = function(path, alpha, type="unchanged"){
+    read_tsv(path, col_types = if(type=="unchanged"){'ciicdcdddiciicdccc'} else {'ciiiicciicdccc'}) %>%
+        mutate(total_count = n_distinct(region_id)) %>%
+        filter(motif_logpval > -log10(alpha)) %>%
+        group_by(motif_id, motif_alt_id, region_id) %>%
+        slice(1) %>%
+        group_by(motif_id, motif_alt_id) %>%
+        summarise(total_count=first(total_count), n=n()) %>%
+        return()
 }
 
-main = function(pval, alpha, condition, control, txn_type, direction,
+main = function(fimo_pval, fdr_cutoff, condition, control, txn_type, direction, background_type,
                 in_fimo_pos, in_fimo_neg, in_pos_total, in_neg_total,
                 out_path, out_plot){
-    fimo_positive = in_fimo_pos %>% read_tsv()
-    pos_total = n_distinct(fimo_positive$tss_peak_id)
-    fimo_positive = fimo_positive %>% filter(motif_logpadj>-log10(pval)) %>%
-        get_motif_counts()
-
-    fimo_negative = in_fimo_neg %>% read_tsv()
-    neg_total = n_distinct(fimo_negative$tss_peak_id)
-    fimo_negative = fimo_negative %>% filter(motif_logpadj>-log10(pval)) %>%
-        get_motif_counts()
-
-    df = full_join(fimo_positive, fimo_negative, by=c("motif_id", "motif_alt_id"),
-                   suffix = c("_pos", "_neg")) %>%
-        rename(pos_withmotif=n_pos, neg_withmotif=n_neg) %>%
-        mutate(pos_nomotif=pos_total-pos_withmotif,
-               neg_nomotif=neg_total-neg_withmotif) %>%
-        mutate_if(is.integer, funs(if_else(is.na(.), as.integer(0), .)))
-
-    fisherdf = df %>% do(fisher.test(matrix(c(.$pos_withmotif, .$pos_nomotif,
-                                              .$neg_withmotif, .$neg_nomotif),2,2),
-                                     alternative="two.sided") %>% tidy()) %>%
-        rename(odds_ratio=estimate) %>%
-        select(-c(method,alternative))
-
-    df = df %>% left_join(fisherdf, by=c("motif_id", "motif_alt_id"))
-    df$fdr = p.adjust(df$p.value, method="BH")
-    df = df %>% mutate_at(vars(odds_ratio, conf.low, conf.high), funs(log2(.))) %>%
-        arrange(fdr, p.value, desc(odds_ratio), desc(pos_withmotif)) %>%
-        select(motif_id, motif_alt_id, fdr, log2_odds_ratio=odds_ratio,
+    df = get_motif_counts(in_fimo_pos, alpha=fimo_pval) %>%
+        full_join(get_motif_counts(in_fimo_neg, alpha=fimo_pval, type=background_type),
+                  by=c("motif_id", "motif_alt_id"),
+                  suffix = c("_pos", "_neg")) %>%
+        rename(pos_withmotif = n_pos, neg_withmotif = n_neg) %>%
+        mutate(pos_nomotif = total_count_pos-pos_withmotif,
+               neg_nomotif = total_count_neg-neg_withmotif) %>%
+        mutate_if(is.integer, funs(if_else(is.na(.), as.integer(0), .))) %>%
+        group_by(motif_id, motif_alt_id, pos_withmotif, neg_withmotif, pos_nomotif, neg_nomotif) %>%
+        do(fisher.test(matrix(c(.$pos_withmotif, .$pos_nomotif,
+                                .$neg_withmotif, .$neg_nomotif),2,2),
+                       alternative="two.sided") %>% tidy()) %>%
+        ungroup() %>%
+        mutate(fdr = p.adjust(p.value, method="BH")) %>%
+        mutate_at(vars(estimate, conf.low, conf.high), funs(log2(.))) %>%
+        arrange(fdr, p.value, desc(estimate), desc(pos_withmotif)) %>%
+        select(motif_id, motif_alt_id, fdr, log2_odds_ratio=estimate,
                conf_low=conf.low, conf_high=conf.high,
                pos_withmotif, pos_nomotif, neg_withmotif, neg_nomotif) %>%
         mutate_if(is_double, funs(signif(., digits=3))) %>%
@@ -46,7 +44,8 @@ main = function(pval, alpha, condition, control, txn_type, direction,
         mutate(label=if_else(is.na(motif_alt_id), motif_id, motif_alt_id))
 
     plot = ggplot() +
-        geom_hline(yintercept=-log10(alpha), linetype="dashed") +
+        geom_vline(xintercept=0, color="grey65") +
+        geom_hline(yintercept=-log10(fdr_cutoff), linetype="dashed") +
         geom_point(data=df, aes(x=log2_odds_ratio, y=-log10(fdr)),
                    shape=16, size=1, alpha=0.8, stroke=0) +
         xlab(expression(bold(paste(log[2], " odds-ratio")))) +
@@ -58,28 +57,29 @@ main = function(pval, alpha, condition, control, txn_type, direction,
         theme(text = element_text(size=12, face="bold", color="black"),
               axis.text = element_text(size=10, color="black"),
               plot.subtitle = element_text(face="plain"))
-    if(nrow(df %>% filter(fdr<alpha))>10){
+    if(nrow(df %>% filter(fdr < fdr_cutoff)) > 10){
         plot = plot +
-            stat_dens2d_labels(data = df %>% filter(fdr<alpha),
+            stat_dens2d_labels(data = df %>% filter(fdr < fdr_cutoff),
                                aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
                                geom="text_repel", keep.number=25, size=4)
     } else{
         plot = plot +
-            geom_text_repel(data = df %>% filter(fdr<alpha),
+            geom_text_repel(data = df %>% filter(fdr < fdr_cutoff),
                             aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
                             size=4)
     }
     ggsave(out_plot, plot=plot, width=14, height=12, units="cm")
 }
 
-
-main(pval= snakemake@params[["pval_cutoff"]],
-     alpha= snakemake@params[["alpha"]],
+main(fimo_pval = snakemake@params[["fimo_pval"]],
+     fdr_cutoff = snakemake@params[["fdr"]],
      condition= snakemake@wildcards[["condition"]],
      control= snakemake@wildcards[["control"]],
      txn_type = snakemake@wildcards[["category"]],
      direction= snakemake@params[["direction"]],
+     background_type = snakemake@wildcards[["negative"]],
      in_fimo_pos = snakemake@input[["fimo_pos"]],
      in_fimo_neg = snakemake@input[["fimo_neg"]],
      out_path = snakemake@output[["tsv"]],
      out_plot = snakemake@output[["plot"]])
+

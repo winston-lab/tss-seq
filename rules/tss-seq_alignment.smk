@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+localrules: bowtie2_build,
+    index_bam
+
 #align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
 rule bowtie2_build:
     input:

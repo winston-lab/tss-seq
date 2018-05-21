@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+localrules: aggregate_read_numbers,
+    build_spikein_counts_table,
+    plot_spikein_pct
+
 rule aggregate_read_numbers:
     input:
         adapter = expand("logs/clean_reads/remove_adapter-{sample}.log", sample=SAMPLES),

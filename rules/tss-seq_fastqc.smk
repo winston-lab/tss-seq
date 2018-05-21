@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+localrules: fastqc_aggregate,
+
 #fastqc for raw or cleaned reads
 rule fastqc_prealignment:
     input:
