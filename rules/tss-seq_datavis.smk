@@ -1,9 +1,22 @@
 #!/usr/bin/env python
 
+localrules: make_stranded_annotations,
+    cat_matrices
+
+rule make_stranded_annotations:
+    input:
+        lambda wc : FIGURES[wc.figure]["annotations"][wc.annotation]["path"]
+    output:
+        "datavis/{figure}/{annotation}.bed"
+    log : "logs/make_stranded_annotations/make_stranded_annotations-{figure}-{annotation}.log"
+    shell: """
+        (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
+        """
+
 rule compute_matrix:
     input:
-        annotation = lambda wc: os.path.dirname(FIGURES[wc.figure]["annotations"][wc.annotation]["path"]) + "/stranded/" + wc.figure + "_" + wc.annotation + "-STRANDED" + os.path.splitext(FIGURES[wc.figure]["annotations"][wc.annotation]["path"])[1],
-        bw = "coverage/{norm}/{sample}-tss-{norm}-{strand}.bw"
+        annotation = "datavis/{figure}/{annotation}.bed",
+        bw = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw"
     output:
         dtfile = temp("datavis/{figure}/{norm}/{annotation}_{sample}-{norm}-{strand}.mat.gz"),
         matrix = temp("datavis/{figure}/{norm}/{annotation}_{sample}-{norm}-{strand}.tsv"),
@@ -43,31 +56,31 @@ rule plot_figures:
         matrices = expand("datavis/{{figure}}/{{norm}}/{{figure}}-allsamples-allannotations-{{norm}}-{strand}.tsv.gz", strand=["SENSE", "ANTISENSE"]),
         annotations = lambda wc: [v["path"] for k,v in FIGURES[wc.figure]["annotations"].items()]
     output:
-        heatmap_sample_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-bothstrands.svg",
-        heatmap_sample_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-sense.svg",
-        heatmap_sample_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-antisense.svg",
-        heatmap_group_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-bothstrands.svg",
-        heatmap_group_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-sense.svg",
-        heatmap_group_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-antisense.svg",
-        metagene_sample_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-bothstrands.svg",
-        metagene_sample_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-sense.svg",
-        metagene_sample_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-antisense.svg",
-        metagene_sample_overlay_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-bothstrands.svg",
-        metagene_sample_overlay_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-sense.svg",
-        metagene_sample_overlay_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-antisense.svg",
-        metagene_group_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-bothstrands.svg",
-        metagene_group_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-sense.svg",
-        metagene_group_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-antisense.svg",
-        metagene_sampleclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-bothstrands.svg",
-        metagene_sampleclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-sense.svg",
-        metagene_sampleclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-antisense.svg",
-        metagene_groupclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-bothstrands.svg",
-        metagene_groupclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-sense.svg",
-        metagene_groupclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-antisense.svg",
+        heatmap_sample_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-bothstrands.svg",
+        heatmap_sample_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-sense.svg",
+        heatmap_sample_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-antisense.svg",
+        heatmap_group_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-bothstrands.svg",
+        heatmap_group_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-sense.svg",
+        heatmap_group_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bygroup-antisense.svg",
+        metagene_sample_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-bothstrands.svg",
+        metagene_sample_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-sense.svg",
+        metagene_sample_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bysample-antisense.svg",
+        metagene_sample_overlay_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-bothstrands.svg",
+        metagene_sample_overlay_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-sense.svg",
+        metagene_sample_overlay_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-sampleoverlay-antisense.svg",
+        metagene_group_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-bothstrands.svg",
+        metagene_group_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-sense.svg",
+        metagene_group_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-bygroup-antisense.svg",
+        metagene_sampleclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-bothstrands.svg",
+        metagene_sampleclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-sense.svg",
+        metagene_sampleclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustersample-antisense.svg",
+        metagene_groupclust_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-bothstrands.svg",
+        metagene_groupclust_sense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-sense.svg",
+        metagene_groupclust_antisense = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_metagene-byclustergroup-antisense.svg",
     params:
         # abusing snakemake a bit here...using params as output paths in order to use lambda functions
-        annotations_out = lambda wc: ["datavis/" + wc.figure + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "/" + wc.status + "/" + annotation + "_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
-        clusters_out = lambda wc: ["datavis/" + wc.figure + "/" + wc.norm + "/" + wc.condition + "-v-" + wc.control + "/" + wc.status + "/" + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
+        annotations_out = lambda wc: ["datavis/{figure}/{norm}/{condition}-v-{control}/{status}/".format(**wc) + annotation + "_cluster-" + str(cluster) + ".bed" for annotation in FIGURES[wc.figure]["annotations"] for cluster in range(1, FIGURES[wc.figure]["annotations"][annotation]["n_clusters"]+1)],
+        clusters_out = lambda wc: ["datavis/{figure}/{norm}/{condition}-v-{control}/{status}/".format(**wc) + annotation + ".pdf" for annotation in FIGURES[wc.figure]["annotations"]],
         samplelist = get_condition_control_samples,
         plottype = lambda wc: FIGURES[wc.figure]["parameters"]["type"],
         upstream = lambda wc: FIGURES[wc.figure]["parameters"]["upstream"],
@@ -87,5 +100,5 @@ rule plot_figures:
         cluster_three = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_three"],
         k = lambda wc: [v["n_clusters"] for k,v in FIGURES[wc.figure]["annotations"].items()],
     script:
-        "scripts/plot_tss_figures.R"
+        "../scripts/plot_tss_figures.R"
 
