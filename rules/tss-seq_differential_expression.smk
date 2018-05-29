@@ -31,7 +31,7 @@ rule combine_peak_counts:
 rule differential_expression:
     input:
         expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv",
-        sicounts = lambda wc: "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv".format(**wc) if wc.norm=="spikenorm" else []
+        sicounts = lambda wc: [] if wc.norm=="libsizenorm" else "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv".format(**wc)
     output:
         results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-all.tsv",
         results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-up.tsv",
@@ -46,7 +46,7 @@ rule differential_expression:
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     script:
-        "../scripts/call_de_peaks.R"
+        "../scripts/call_diffexp_peaks.R"
 
 rule diffexp_results_to_narrowpeak:
     input:

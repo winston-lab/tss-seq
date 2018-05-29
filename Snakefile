@@ -101,8 +101,8 @@ rule all:
         ##gene ontology
         #expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
         #expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
-        ##sequence logos
-        #expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING]))
+        #sequence logos
+        expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING]))
         ##find intragenic ORFs
         ##intragenic frequency per ORF
 
@@ -145,6 +145,22 @@ rule make_stranded_genome:
 def getsamples(ctrl, cond):
     return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
 
+#TODO: fix the statistical test
+# rule peak_positioning:
+#     input:
+#         peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
+#         peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{ttype}-{direction}.tsv",
+#     params:
+#         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated",
+#         n_bins = 100
+#     output:
+#         relative = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
+#         absolute = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
+#         fc_signif = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
+#     script:
+#         "scripts/length_bias.R"
+
+
 # rule get_intra_orfs:
 #     input:
 #         peaks = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv",
@@ -172,20 +188,6 @@ rule genic_v_class:
         figure = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/{condition}-v-{control}-{norm}-genic-v-class.svg",
         tables = expand("diff_exp/{{condition}}-v-{{control}}/{{norm}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
     script: "scripts/classvgenic.R"
-
-#TODO: fix the statistical test
-rule peak_positioning:
-    input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
-    params:
-        direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated",
-        n_bins = 100
-    output:
-        relative = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
-        absolute = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
-        fc_signif = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
-    script:
-        "scripts/length_bias.R"
 
 include: "rules/tss-seq_clean_reads.smk"
 include: "rules/tss-seq_alignment.smk"

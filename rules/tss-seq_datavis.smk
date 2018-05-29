@@ -32,7 +32,7 @@ rule compute_matrix:
         nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd",
         anno_label = lambda wc: FIGURES[wc.figure]["annotations"][wc.annotation]["label"]
     threads : config["threads"]
-    log: "logs/compute_matrix/compute_matrix-{annotation}_{sample}_{norm}-{strand}.log"
+    log: "logs/compute_matrix/compute_matrix-{figure}_{annotation}_{sample}-{norm}-{strand}.log"
     run:
         if FIGURES[wildcards.figure]["parameters"]["type"]=="absolute":
             shell("""(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} {params.nan_afterend} --binSize {params.binsize} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
@@ -43,9 +43,9 @@ rule compute_matrix:
 
 rule cat_matrices:
     input:
-        lambda wc: expand("datavis/{figure}/{norm}/{annotation}_{sample}-{norm}-{strand}-melted.tsv.gz", annotation=[k for k,v in FIGURES[wc.figure]["annotations"].items()], sample=SAMPLES, figure=wc.figure, norm=wc.norm, strand=wc.strand)
+        lambda wc: expand("datavis/{figure}/{norm}/{annotation}_{sample}-{norm}-{strand}-melted.tsv.gz", annotation=list(FIGURES[wc.figure]["annotations"].keys()), sample=SAMPLES, figure=wc.figure, norm=wc.norm, strand=wc.strand)
     output:
-        "datavis/{figure}/{norm}/{figure}-allsamples-allannotations-{norm}-{strand}.tsv.gz"
+        "datavis/{figure}/{norm}/{figure}-allsamples-allannotations-tss-seq-{norm}-{strand}.tsv.gz"
     log: "logs/cat_matrices/cat_matrices-{figure}_{norm}-{strand}.log"
     shell: """
         (cat {input} > {output}) &> {log}
@@ -53,7 +53,7 @@ rule cat_matrices:
 
 rule plot_figures:
     input:
-        matrices = expand("datavis/{{figure}}/{{norm}}/{{figure}}-allsamples-allannotations-{{norm}}-{strand}.tsv.gz", strand=["SENSE", "ANTISENSE"]),
+        matrices = expand("datavis/{{figure}}/{{norm}}/{{figure}}-allsamples-allannotations-tss-seq-{{norm}}-{strand}.tsv.gz", strand=["SENSE", "ANTISENSE"]),
         annotations = lambda wc: [v["path"] for k,v in FIGURES[wc.figure]["annotations"].items()]
     output:
         heatmap_sample_both = "datavis/{figure}/{norm}/{condition}-v-{control}/{status}/tss-seq_{figure}-{norm}-{status}_{condition}-v-{control}_heatmap-bysample-bothstrands.svg",
