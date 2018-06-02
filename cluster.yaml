@@ -134,8 +134,8 @@ get_overlapping_motifs:
     mem: 400M
 
 test_motif_enrichment:
-    time: 15
-    mem: 4000
+    time: 30
+    mem: 8000
 
 get_motif_coverage:
     time: 1
