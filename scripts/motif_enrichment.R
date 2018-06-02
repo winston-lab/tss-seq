@@ -3,6 +3,7 @@ library(forcats)
 library(magrittr)
 library(broom)
 library(ggrepel)
+library(ggpmisc)
 
 import = function(path, annotation_id){
     read_tsv(path, col_types = 'ciicdcdddciicdccc') %>%
@@ -141,16 +142,27 @@ main = function(fdr_cutoff, direction, txn_category,
         geom_hline(yintercept=-log10(fdr_cutoff), linetype="dashed") +
         geom_point(data=fisher_df, aes(x=log2_odds_ratio, y=-log10(fdr)),
                    shape=16, size=1, alpha=0.8, stroke=0) +
-        geom_text_repel(data = fisher_df, aes(x=log2_odds_ratio, y=-log10(fdr), label=label)) +
         xlab(expression(bold(paste(log[2], " odds-ratio")))) +
         ylab(expression(bold(paste(-log[10], " FDR")))) +
         ggtitle(paste0("motif enrichment upstream of ", txn_category, " TSSs\n",
-                       direction, "in", condition, " vs. ", control),
+                       direction, " in ", condition, " vs. ", control),
                 subtitle="Fisher's exact test (two-tailed)") +
         theme_light() +
         theme(text = element_text(size=12, face="bold", color="black"),
               axis.text = element_text(size=10, color="black"),
               plot.subtitle = element_text(face="plain"))
+    if (nrow(fisher_df %>% filter(fdr<fdr_cutoff)) > 10){
+        plot = plot +
+            stat_dens2d_labels(data = fisher_df %>% filter(fdr<fdr_cutoff),
+                               aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
+                               geom="text_repel", keep.number=25, size=10/72*25.4)
+    } else {
+        plot = plot +
+            geom_text_repel(data = fisher_df %>% filter(fdr<fdr_cutoff),
+                            aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
+                            size=4)
+
+    }
     ggsave(out_plot, plot=plot, width=14, height=12, units="cm")
 }
 
