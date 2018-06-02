@@ -12,11 +12,11 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     diffexp_results = read_tsv(diffexp_path, col_names=FALSE) %>%
         rename(logpadj=X8, feature_name=X13) %>%
         group_by(feature_name) %>%
-        arrange(desc(logpadj), .by_group=TRUE) %>% 
+        arrange(desc(logpadj), .by_group=TRUE) %>%
         dplyr::slice(1) %>% ungroup()
 
-    all_genes = universe %>% left_join(diffexp_results, by=c('name'='feature_name')) %>% 
-        dplyr::select(name, logpadj) %>% 
+    all_genes = universe %>% left_join(diffexp_results, by=c('name'='feature_name')) %>%
+        dplyr::select(name, logpadj) %>%
         mutate(logpadj = if_else(is.na(logpadj), 0,1))
 
     all_genes_vector = all_genes[['logpadj']]
@@ -25,16 +25,16 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     lengths_vector = universe %>% transmute(length=end-start) %>% pull(length)
 
     go_anno = read_tsv(go_anno_path,
-                       col_names = c('sys_name', 'common_name', 'go_id')) %>% 
-        filter(!(is.na(go_id))) %>% 
-        mutate(id = if_else(is.na(common_name), sys_name, common_name)) %>% 
-        dplyr::select(id, go_id) %>% 
-        filter(id %in% universe[['name']]) %>% 
+                       col_names = c('sys_name', 'common_name', 'go_id')) %>%
+        filter(!(is.na(go_id))) %>%
+        mutate(id = if_else(is.na(common_name), sys_name, common_name)) %>%
+        dplyr::select(id, go_id) %>%
+        filter(id %in% universe[['name']]) %>%
         as.data.frame()
 
     pwf = nullp(DEgenes = all_genes_vector, bias.data=lengths_vector, plot.fit=FALSE)
 
-    results = goseq(pwf, gene2cat=go_anno) %>% as_tibble() %>% 
+    results = goseq(pwf, gene2cat=go_anno) %>% as_tibble() %>%
         mutate(over_represented_pvalue = p.adjust(over_represented_pvalue, method="BH"),
                under_represented_pvalue = p.adjust(under_represented_pvalue, method="BH")) %>%
         write_tsv(results_out) %>%
@@ -44,16 +44,16 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
                                     ontology=="CC" ~ "cellular compartment",
                                     is.na(ontology) ~ "other"))
 
-    results_enriched = results %>% 
-        rename(pval = over_represented_pvalue) %>% 
-        filter(pval < 0.2) %>% 
-        arrange(pval) %>% 
+    results_enriched = results %>%
+        rename(pval = over_represented_pvalue) %>%
+        filter(pval < 0.2) %>%
+        arrange(pval) %>%
         mutate(term = fct_rev(fct_inorder(term, ordered=TRUE)))
 
-    results_depleted = results %>% 
-        rename(pval = under_represented_pvalue) %>% 
-        filter(pval < 0.2) %>% 
-        arrange(pval) %>% 
+    results_depleted = results %>%
+        rename(pval = under_represented_pvalue) %>%
+        filter(pval < 0.2) %>%
+        arrange(pval) %>%
         mutate(term = fct_rev(fct_inorder(term, ordered=TRUE)))
 
     combined_plot = function(df, enrichment_direction){
@@ -90,7 +90,7 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
         coord_flip() +
         ylab(expression(bold(-log[10] ~ "adj. p-value"))) +
         ggtitle(paste0(enrichment_direction, " ", ontology_type,
-                      if(ontology_type=="other") {" misc. categories"} 
+                      if(ontology_type=="other") {" misc. categories"}
                       else if(substr(ontology_type, nchar(ontology_type), nchar(ontology_type))=="s"){"es"}
                       else {"s"}),
                 subtitle = paste(ttype, "TSSs", diffexp_direction, "in", condition, "vs.", control)) +
@@ -109,25 +109,25 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
                       filtered_plot(results_enriched, "cellular compartment", "enriched"),
                       filtered_plot(results_enriched, "molecular function", "enriched"),
                       filtered_plot(results_enriched, "other", "enriched"))
-    
+
     d_plotlist = list(filtered_plot(results_depleted, "biological process", "depleted"),
                       filtered_plot(results_depleted, "cellular compartment", "depleted"),
                       filtered_plot(results_depleted, "molecular function", "depleted"),
                       filtered_plot(results_depleted, "other", "depleted"))
-    
+
     get_heights = function(df){
         df %>% count(ontology) %>%
             complete(ontology = c("biological process", "cellular compartment",
                                   "molecular function", "other"),
                      fill=list(n=0)) %>% pull(n) %>% return()
     }
-    
+
     e_heights = get_heights(results_enriched)
     d_heights = get_heights(results_depleted)
 
     e_facet_out = plot_grid(plotlist = e_plotlist, align="v", axis="l", ncol=1,
                             rel_heights = e_heights/sum(1e-3+e_heights)+0.45)
-    
+
     d_facet_out = plot_grid(plotlist = d_plotlist, align="v", axis="l", ncol=1,
                             rel_heights = d_heights/sum(1e-3+d_heights)+0.45)
 

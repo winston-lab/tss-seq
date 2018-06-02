@@ -121,7 +121,7 @@ summarise_diffexp_results:
 #     mem : 20000
 
 fimo:
-    time: 2
+    time: 3
     mem: 400M
 
 cat_fimo_motifs:
@@ -129,13 +129,13 @@ cat_fimo_motifs:
     n: 4
     mem: 2000
 
-get_upstream_motifs:
+get_overlapping_motifs:
     time: 4
     mem: 400M
 
 test_motif_enrichment:
-    time: 5
-    mem: 2000
+    time: 15
+    mem: 4000
 
 get_motif_coverage:
     time: 1

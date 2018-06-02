@@ -1,206 +1,81 @@
 #!/usr/bin/env python
 
-localrules: make_motif_database,
-    get_peak_sequences,
-    get_random_sequences,
-    fimo,
-    fimo_random,
-    cat_fimo_results,
-    cat_fimo_random,
-    intersect_fimo_results,
-    intersect_fimo_random,
-    test_motif_enrichment
+localrules: build_motif_database,
+    get_random_motifs,
 
-##run fimo in parallel for each motif
-## TODO: for maximum efficiency should chunk the motif list into
-## something bigger than a single motif to avoid eating the
-## overhead of waiting for cluster job submission
-#rule fimo:
-#    input:
-#        fasta = config["genome"]["fasta"],
-#        motif_db = config["motifs"]["databases"]
-#    params:
-#        alpha = config["motifs"]["fimo-pval"]
-#    output:
-#        tsv = temp("motifs/.{motif}.tsv"),
-#        bed = temp("motifs/.{motif}.bed") #first 6 columns are BED6, plus extra info in later columns
-#    shell: """
-#        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text <(meme2meme -bg <(fasta-get-markov {input.fasta}) {input.motif_db}) {input.fasta} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' | tee {output.tsv} | awk 'BEGIN{{FS=OFS="\t"}} NR>1{{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' | sort -k1,1 -k2,2n > {output.bed}
-#        """
-
-#rule cat_fimo_motifs:
-#    input:
-#        tsv = expand("motifs/.{motif}.tsv", motif=MOTIFS),
-#        bed = expand("motifs/.{motif}.bed", motif=MOTIFS)
-#    output:
-#        tsv = "motifs/allmotifs.tsv.gz",
-#        bed = "motifs/allmotifs.bed",
-#    threads: config["threads"]
-#    shell: """
-#        cat {input.tsv} | pigz -f > {output.tsv}
-#        cat {input.bed} | sort -k1,1 -k2,2n --parallel={threads} > {output.bed}
-#        """
-
-##bedtools intersect peaks with fimo motifs
-##0. with the summit of the peak as reference, extend annotation to upstream and 'downstream' distances
-##1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting, so that poorly called peaks which are erroneously split into multiple peaks do not bias the motif enrichment analyses.)
-##2. intersect with motif file
-#rule get_upstream_motifs:
-#    input:
-#        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
-#        chrsizes = config["genome"]["chrsizes"],
-#        motifs = "motifs/allmotifs.bed"
-#    output:
-#        "motifs/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-motifs.tsv.gz"
-#    params:
-#        upstr = config["motifs"]["enrichment-upstream"],
-#        dnstr = config["motifs"]["enrichment-downstream"]
-#    log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
-#    shell: """
-#        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | cut -f19 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tpeak_summit\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
-#        """
-
-rule make_motif_database:
+rule build_motif_database:
     input:
-        motif_db = config["motifs"]["databases"],
         fasta = config["genome"]["fasta"],
+        motif_db = config["motifs"]["databases"]
     output:
         "motifs/allmotifs.meme"
-    log: "logs/make_motif_database.log"
+    log: "logs/build_motif_database.log"
     shell: """
         (meme2meme -bg <(fasta-get-markov {input.fasta}) {input.motif_db} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' > {output}) &> {log}
         """
 
-rule get_peak_sequences:
-    input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
-        chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"],
-    output:
-        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}.fa",
-    params:
-        upstr = config["motifs"]["enrichment-upstream"],
-        dnstr = config["motifs"]["enrichment-downstream"]
-    log: "logs/get_peak_sequences/get_peak_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
-    shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
-        """
-
-rule get_random_sequences:
-    input:
-        chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"],
-        # motifs = "motifs/allmotifs.bed"
-    output:
-        bed = "motifs/random_sequences.bed",
-        fasta = "motifs/random_sequences.fa"
-    params:
-        n = 6000,
-        size = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"]
-    log: "logs/get_random_motifs.log"
-    shell: """
-        (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | tee {output.bed} | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output.fasta}) &> {log}
-        """
-
+#run fimo in parallel for each motif
 rule fimo:
     input:
-        fasta = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}.fa",
+        fasta = config["genome"]["fasta"],
         motif_db = "motifs/allmotifs.meme"
+    output:
+        bed = temp("motifs/.{motif}.bed") # a BED6+2 format
     params:
         alpha = config["motifs"]["fimo-pval"]
-    output:
-        temp("motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}_motif-{motif}.bed")
-        # temp=$(echo {output} | sed 's/.bed$/.temp/g')
+    log: "logs/fimo/fimo_{motif}.log"
     shell: """
-        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}} ' > {output}
-        """
-        # qvalue --header 1 --column 8 --append $temp | awk 'BEGIN{{FS=OFS="\t"}} NR>1 && $11<{params.alpha} {{print $3, $4, $5+1, $1, -log($11)/log(10), $6, $2, $10}}' > {output}
-        # rm $temp
-
-rule fimo_random:
-    input:
-        fasta = "motifs/random_sequences.fa",
-        motif_db = "motifs/allmotifs.meme"
-    params:
-        alpha = config["motifs"]["fimo-pval"]
-    output:
-        temp("motifs/random_sequences_motif-{motif}.bed")
-    shell: """
-        fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}} ' > {output}
+        (fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}) &> {log}
         """
 
-rule cat_fimo_results:
+rule cat_fimo_motifs:
     input:
-        expand("motifs/{{condition}}-v-{{control}}/{{norm}}/{{category}}/{{condition}}-v-{{control}}_tss-seq-{{norm}}-{{category}}-{{direction}}_motif-{motif}.bed", motif=MOTIFS)
+        bed = expand("motifs/.{motif}.bed", motif=MOTIFS)
     output:
-        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}_allmotifs.bed",
+        bed = "motifs/allmotifs.bed",
     threads: config["threads"]
     shell: """
-        cat {input} | sort -k1,1 -k2,2n --parallel={threads} > {output}
+        cat {input.bed} | sort -k1,1 -k2,2n --parallel={threads} > {output.bed}
         """
 
-rule cat_fimo_random:
-    input:
-        expand("motifs/random_sequences_motif-{motif}.bed", motif=MOTIFS)
-    output:
-        "motifs/random_sequences_allmotifs.bed",
-    threads: config["threads"]
-    shell: """
-        cat {input} | sort -k1,1 -k2,2n --parallel={threads} > {output}
-        """
-
-rule intersect_fimo_results:
+#bedtools intersect peaks with fimo motifs
+#0. with the summit of the peak as reference, extend annotation to upstream and 'downstream' distances
+#1. merge overlapping (but not book-ended) features
+#2. intersect with motif file
+rule get_overlapping_motifs:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
-        results = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}_allmotifs.bed",
         chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"],
+        motifs = "motifs/allmotifs.bed"
     output:
-        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv",
+        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
     params:
         upstr = config["motifs"]["enrichment-upstream"],
         dnstr = config["motifs"]["enrichment-downstream"]
-    log: "logs/intersect_fimo_results/intersect_fimo_results-{condition}-v-{control}-{norm}-{category}-{direction}.log"
+    log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 11 -c 9 -o max -full -i stdin | cut -f1-10 | bedtools intersect -a stdin -b {input.results} -wao | cut -f19 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tregion_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tpeak_summit\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6,7,8,9 -o collapse,max,first,max,max,max -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | cut -f18 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
-rule intersect_fimo_random:
+rule get_random_motifs:
     input:
-        peaks = "motifs/random_sequences.bed",
-        results = "motifs/random_sequences_allmotifs.bed",
         chrsizes = config["genome"]["chrsizes"],
-        fasta = config["genome"]["fasta"],
+        motifs = "motifs/allmotifs.bed",
     output:
-        "motifs/random_sequences-allFIMOresults.tsv",
+        "motifs/random_sequences-allFIMOresults.tsv.gz"
     params:
-        upstr = config["motifs"]["enrichment-upstream"],
-        dnstr = config["motifs"]["enrichment-downstream"]
-    log: "logs/intersect_fimo_random/intersect_fimo_random.log"
+        window = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"] + 1,
+        n = 6000
+    log: "logs/get_random_motifs.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.results} -wao | cut -f15 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tregion_id\tregion_length\tregion_strand\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - > {output}) &> {log}
+        (bedtools random -l {params.window} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6 -o collapse,first,first -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, 0, 0, 0, $7, $8, $9, $10, $11, $12, $13, $14}}' | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
-
-# rule get_random_motifs:
-#     input:
-#         chrsizes = config["genome"]["chrsizes"],
-#         motifs = "motifs/allmotifs.bed"
-#     output:
-#         "motifs/random-motifs.tsv.gz"
-#     params:
-#         n = 6000,
-#         size = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"]
-#     log: "logs/get_random_motifs.log"
-#     shell: """
-#         (bedtools random -l {params.size} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -wao | cut -f15 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tregion_id\tregion_length\tregion_strand\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
-#         """
 
 rule test_motif_enrichment:
     input:
-        fimo_pos = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv",
-        fimo_neg = lambda wc: "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-unchanged-allFIMOresults.tsv".format(**wc) if wc.negative=="unchanged" else "motifs/random_sequences-allFIMOresults.tsv",
+        fimo_pos = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
+        fimo_neg = lambda wc: "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-unchanged-allFIMOresults.tsv.gz".format(**wc) if wc.negative=="unchanged" else "motifs/random_sequences-allFIMOresults.tsv.gz",
     params:
-        fimo_pval = config["motifs"]["fimo-pval"],
         fdr = config["motifs"]["enrichment-fdr"],
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     output:
