@@ -160,7 +160,7 @@ main = function(fdr_cutoff, direction, txn_category,
         plot = plot +
             geom_text_repel(data = fisher_df %>% filter(fdr<fdr_cutoff),
                             aes(x=log2_odds_ratio, y=-log10(fdr), label=label),
-                            size=4)
+                            size=10/72*25.4)
 
     }
     ggsave(out_plot, plot=plot, width=14, height=12, units="cm")

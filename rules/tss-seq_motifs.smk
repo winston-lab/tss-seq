@@ -25,7 +25,7 @@ rule fimo:
         alpha = config["motifs"]["fimo-pval"]
     log: "logs/fimo/fimo_{motif}.log"
     shell: """
-        (fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --parse-genomic-coord --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4, $5+1, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}) &> {log}
+        (fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}) &> {log}
         """
 
 rule cat_fimo_motifs:
