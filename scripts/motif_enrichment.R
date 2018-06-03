@@ -89,18 +89,18 @@ main = function(fdr_cutoff, direction, txn_category,
     # 3. get number of unique regions matched per motif based on unique coordinates
     df %<>%
         select(chrom, region_start, region_end, peak_id, peak_strand, peak_score,
-               motif_start, motif_id, motif_alt_id, annotation) %>% 
-        group_by(annotation) %>% 
-        mutate(n_regions = n_distinct(chrom, region_start, region_end, peak_strand)) %>% 
-        filter(motif_start >= 0) %>% 
-        group_by(annotation, motif_id, motif_alt_id, n_regions) %>% 
-        summarise(n_matches = n_distinct(chrom, region_start, region_end, peak_strand)) %>% 
+               motif_start, motif_id, motif_alt_id, annotation) %>%
+        group_by(annotation) %>%
+        mutate(n_regions = n_distinct(chrom, region_start, region_end, peak_strand)) %>%
+        filter(motif_start >= 0) %>%
+        group_by(annotation, motif_id, motif_alt_id, n_regions) %>%
+        summarise(n_matches = n_distinct(chrom, region_start, region_end, peak_strand)) %>%
         ungroup()
-    
-    fisher_df = df %>% filter(annotation==condition) %>% 
+
+    fisher_df = df %>% filter(annotation==condition) %>%
         transmute(motif_id, motif_alt_id,
                   condition_withmotif = n_matches,
-                  condition_nomotif = n_regions-n_matches) %>% 
+                  condition_nomotif = n_regions-n_matches) %>%
         left_join(df %>% filter(annotation==control) %>%
                       transmute(motif_id, motif_alt_id,
                                 control_withmotif = n_matches,
@@ -142,7 +142,8 @@ main = function(fdr_cutoff, direction, txn_category,
                            control_withmotif = integer(),
                            control_nomotif = integer(),
                            control_fraction = double(),
-                           label = character())
+                           label = character()) %>%
+        write_tsv(out_path)
     }
 
     plot = ggplot() +
