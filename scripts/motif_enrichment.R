@@ -83,25 +83,28 @@ main = function(fdr_cutoff, direction, txn_category,
 
     #TODO: possible to add in logistic regression based on the region scores using
     # this df before counting
-    df %<>% select(region_start, region_end, peak_id, peak_strand, peak_score,
-                  motif_start, motif_id, motif_alt_id, annotation) %>%
-        complete(nesting(annotation, region_start, region_end, peak_id, peak_strand, peak_score),
-                 nesting(motif_id, motif_alt_id)) %>%
-        filter(motif_id != ".") %>%
-        group_by(annotation, region_start, region_end, peak_id, peak_strand, peak_score,
-                 motif_id, motif_alt_id) %>%
-        summarise(match = if_else(all(! is.na(motif_start)), TRUE, FALSE)) %>%
+    # 0. get total number of unique regions per annotation based on unique coordinates
+    # 1. filter out regions matching no motifs
+    # 2. group by motif id
+    # 3. get number of unique regions matched per motif based on unique coordinates
+    df %<>%
+        select(chrom, region_start, region_end, peak_id, peak_strand, peak_score,
+               motif_start, motif_id, motif_alt_id, annotation) %>% 
+        group_by(annotation) %>% 
+        mutate(n_regions = n_distinct(chrom, region_start, region_end, peak_strand)) %>% 
+        filter(motif_start >= 0) %>% 
+        group_by(annotation, motif_id, motif_alt_id, n_regions) %>% 
+        summarise(n_matches = n_distinct(chrom, region_start, region_end, peak_strand)) %>% 
         ungroup()
-
-    fisher_df = df %>%
-        filter(annotation==condition) %>%
-        count(motif_id, motif_alt_id, match) %>%
-        spread(match, n) %>%
-        magrittr::set_colnames(c("motif_id", "motif_alt_id", "condition_nomotif", "condition_withmotif")) %>%
+    
+    fisher_df = df %>% filter(annotation==condition) %>% 
+        transmute(motif_id, motif_alt_id,
+                  condition_withmotif = n_matches,
+                  condition_nomotif = n_regions-n_matches) %>% 
         left_join(df %>% filter(annotation==control) %>%
-                      count(motif_id, motif_alt_id, match) %>%
-                      spread(match, n) %>%
-                      magrittr::set_colnames(c("motif_id", "motif_alt_id", "control_nomotif", "control_withmotif")),
+                      transmute(motif_id, motif_alt_id,
+                                control_withmotif = n_matches,
+                                control_nomotif = n_regions-n_matches),
                   by=c("motif_id", "motif_alt_id")) %>%
         filter(! is.na(condition_nomotif) & ! is.na(condition_withmotif) &
                    ! is.na(control_nomotif) & ! is.na(control_withmotif))
@@ -114,12 +117,15 @@ main = function(fdr_cutoff, direction, txn_category,
                                     .$control_withmotif, .$control_nomotif), nrow=2, ncol=2, byrow=TRUE),
                            alternative="two.sided") %>% tidy()) %>%
             ungroup() %>%
-            mutate(fdr = p.adjust(p.value, method="BH")) %>%
+            mutate(fdr = p.adjust(p.value, method="BH"),
+                   condition_fraction = condition_withmotif/(condition_withmotif+condition_nomotif),
+                   control_fraction = control_withmotif/(control_withmotif+control_nomotif)) %>%
             mutate_at(vars(estimate, conf.low, conf.high), funs(log2(.))) %>%
             arrange(fdr, p.value, desc(estimate), desc(condition_withmotif)) %>%
             select(motif_id, motif_alt_id, fdr, log2_odds_ratio=estimate,
                    conf_low=conf.low, conf_high=conf.high,
-                   condition_withmotif, condition_nomotif, control_withmotif, control_nomotif) %>%
+                   condition_withmotif, condition_nomotif, condition_fraction,
+                   control_withmotif, control_nomotif, control_fraction) %>%
             mutate_if(is_double, funs(signif(., digits=3))) %>%
             write_tsv(out_path) %>%
             mutate(label=if_else(is.na(motif_alt_id), motif_id, motif_alt_id))
@@ -132,8 +138,10 @@ main = function(fdr_cutoff, direction, txn_category,
                            conf_high = double(),
                            condition_withmotif = integer(),
                            condition_nomotif = integer(),
+                           condition_fraction = double(),
                            control_withmotif = integer(),
                            control_nomotif = integer(),
+                           control_fraction = double(),
                            label = character())
     }
 
