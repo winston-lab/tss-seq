@@ -153,8 +153,9 @@ rule intragenic_position_bias:
         atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
         rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",
         stop = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-STOP.tsv",
+    log: "logs/intragenic_position_bias/intragenic_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
-        python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c {input.chrom_sizes} -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}
+        (python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c {input.chrom_sizes} -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}) &> {log}
         """
 
 #TODO: fix the statistical test
