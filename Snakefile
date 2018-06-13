@@ -32,7 +32,6 @@ MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["datab
 localrules:
     all,
     make_stranded_genome,
-    cat_matrices,
     # get_de_intragenic_frequency
     # plot_de_intragenic_frequency
     # get_intra_orfs
@@ -40,7 +39,6 @@ localrules:
     get_meme_de_peak_sequences,
     plot_seqlogos,
     # class_v_genic
-
 
 onsuccess:
     shell("(./mogrify.sh) > mogrify.log")
@@ -56,8 +54,9 @@ rule all:
         #quality controls
         "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
         expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
-        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status = ["all", "passing"]),
-        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
+        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
+        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
+        # expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #peakcalling on all samples
         expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=sisamples),

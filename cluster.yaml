@@ -84,8 +84,12 @@ plot_figures:
     time : 90
     mem : 16000
 
-union_bedgraph:
-    time: 30
+map_to_windows:
+    time: 20
+    mem: 4000
+
+join_window_counts:
+    time: 15
     mem: 4000
 
 plot_scatter_plots:
