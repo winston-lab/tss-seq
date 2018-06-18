@@ -32,13 +32,6 @@ MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["datab
 localrules:
     all,
     make_stranded_genome,
-    # get_de_intragenic_frequency
-    # plot_de_intragenic_frequency
-    # get_intra_orfs
-    # separate_sig_de, get_de_category_bed,
-    get_meme_de_peak_sequences,
-    plot_seqlogos,
-    # class_v_genic
 
 onsuccess:
     shell("(./mogrify.sh) > mogrify.log")
@@ -56,7 +49,6 @@ rule all:
         expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
-        # expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status = ["all", "passing"]),
         #peakcalling on all samples
         expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=sisamples),
@@ -86,9 +78,9 @@ rule all:
         #datavis
         expand(expand("datavis/{{figure}}/libsizenorm/{condition}-v-{control}/{{status}}/tss-seq_{{figure}}-libsizenorm-{{status}}_{condition}-v-{control}_heatmap-bygroup-sense.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), figure=FIGURES, status=["all","passing"]) if config["plot_figures"] else [],
         expand(expand("datavis/{{figure}}/spikenorm/{condition}-v-{control}/{{status}}/tss-seq_{{figure}}-spikenorm-{{status}}_{condition}-v-{control}_heatmap-bygroup-sense.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), figure=FIGURES, status=["all","passing"]) if config["plot_figures"] else [],
-        ##correlations of transcript classes with genic TSSs
-        #expand("diff_exp/{condition}-v-{control}/libsizenorm/genic_v_class/{condition}-v-{control}-libsizenorm-genic-v-class.svg", zip, condition=conditiongroups, control=controlgroups),
-        #expand("diff_exp/{condition}-v-{control}/spikenorm/genic_v_class/{condition}-v-{control}-spikenorm-genic-v-class.svg", zip, condition=conditiongroups_si, control=controlgroups_si),
+        #correlations of transcript classes with genic TSSs
+        expand("diff_exp/{condition}-v-{control}/libsizenorm/class_v_genic/{condition}-v-{control}_tss-seq-libsizenorm-class-v-genic.tsv", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/{condition}-v-{control}/spikenorm/class_v_genic/{condition}-v-{control}_tss-seq-spikenorm-class-v-genic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
         #enrichment of known motifs
         expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
         expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
@@ -104,6 +96,9 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/spikenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-spikenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
         ##find intragenic ORFs
         ##intragenic frequency per ORF
+
+def getsamples(ctrl, cond):
+    return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
 
 def get_condition_control_samples(wc):
     if wc.condition=="all":
@@ -141,9 +136,6 @@ rule make_stranded_genome:
         (awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2}}{{print $1"-minus", $2}}' {input.spikein} > {output.spikein}) &>> {log}
         """
 
-def getsamples(ctrl, cond):
-    return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
-
 rule intragenic_position_bias:
     input:
         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}.tsv",
@@ -158,49 +150,19 @@ rule intragenic_position_bias:
         (python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c {input.chrom_sizes} -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}) &> {log}
         """
 
-#TODO: fix the statistical test
-# rule peak_positioning:
-#     input:
-#         peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-results-{norm}-{direction}-{ttype}.tsv",
-#         peaks = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{ttype}-{direction}.tsv",
-#     params:
-#         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated",
-#         n_bins = 100
-#     output:
-#         relative = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-relative-distances-{norm}-{direction}-{ttype}.svg",
-#         absolute = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-absolute-distances-{norm}-{direction}-{ttype}.svg",
-#         fc_signif = "diff_exp/{condition}-v-{control}/{norm}/{ttype}/{condition}-v-{control}-foldchange-significance-{norm}-{direction}-{ttype}.svg"
-#     script:
-#         "scripts/length_bias.R"
-
-
-# rule get_intra_orfs:
-#     input:
-#         peaks = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-de-clusters-{norm}-{direction}-intragenic.tsv",
-#         fasta = config["genome"]["fasta"]
-#     output:
-#         "diff_exp/{condition}-v-{control}/{norm}/intragenic/intragenic-orfs/{condition}-v-{control}-{norm}-{direction}-intragenic-orfs.tsv"
-#     params:
-#         max_upstr_atgs = config["max-upstr-atgs"],
-#         max_search_dist = 2000
-#     log: "logs/get_intra_orfs/get_intra_orfs-{condition}-v-{control}-{norm}-{direction}.log"
-#     shell: """
-#         (python scripts/find_intra_orfs.py -p {input.peaks} -f {input.fasta} -m {params.max_search_dist} -a {params.max_upstr_atgs} -o {output}) &> {log}
-#         """
-
 rule genic_v_class:
     input:
-        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}-results-{norm}-all-genic.tsv",
-        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-all-intragenic.tsv",
-        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}-results-{norm}-all-antisense.tsv",
-        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}-results-{norm}-all-convergent.tsv",
-        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}-results-{norm}-all-divergent.tsv",
-    params:
-        path = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/"
+        genic = "diff_exp/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-genic-all.tsv",
+        intragenic = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-all.tsv",
+        antisense = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-all.tsv",
+        convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-convergent-all.tsv",
+        divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-divergent-all.tsv",
     output:
-        figure = "diff_exp/{condition}-v-{control}/{norm}/genic_v_class/{condition}-v-{control}-{norm}-genic-v-class.svg",
-        tables = expand("diff_exp/{{condition}}-v-{{control}}/{{norm}}/genic_v_class/{{condition}}-v-{{control}}-{{norm}}-genic-v-{ttype}.tsv", ttype=["intragenic", "antisense", "convergent", "divergent"])
-    script: "scripts/classvgenic.R"
+        tsv = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic.tsv",
+        lfc_v_lfc = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-lfc-v-lfc.svg",
+        lfc_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-lfc-v-expr.svg",
+        expr_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-expr-v-expr.svg",
+    script: "scripts/tss_class_v_genic.R"
 
 include: "rules/tss-seq_clean_reads.smk"
 include: "rules/tss-seq_alignment.smk"
