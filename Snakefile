@@ -32,6 +32,7 @@ MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["datab
 localrules:
     all,
     make_stranded_genome,
+    genic_v_class,
 
 onsuccess:
     shell("(./mogrify.sh) > mogrify.log")
@@ -87,15 +88,13 @@ rule all:
         ## MEME-ChIP
         #expand(expand("motifs/meme/{condition}-v-{control}/libsizenorm/{{region}}/{condition}-v-{control}-results-libsizenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups, control=controlgroups), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
         #expand(expand("motifs/meme/{condition}-v-{control}/spikenorm/{{region}}/{condition}-v-{control}-results-spikenorm-{{direction}}-{{category}}-{{region}}-meme_chip/meme-chip.html", zip, condition=conditiongroups_si, control=controlgroups_si), region=["upstream","peak"], direction=["up", "down"], category=CATEGORIES) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
-        ##gene ontology
-        #expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}-GO-libsizenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
-        #expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}-GO-spikenorm-{{direction}}-{{category}}-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
+        #gene ontology
+        expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-gene-ontology-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
+        expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-gene-ontology-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
         #sequence logos
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-libsizenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
         expand(expand("diff_exp/{condition}-v-{control}/spikenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-spikenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
-        ##find intragenic ORFs
-        ##intragenic frequency per ORF
 
 def getsamples(ctrl, cond):
     return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]

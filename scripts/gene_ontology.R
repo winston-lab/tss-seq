@@ -9,8 +9,8 @@ main = function(universe_path, diffexp_path, go_anno_path, ttype, diffexp_direct
     universe = read_tsv(universe_path,
                     col_names=c('chrom', 'start', 'end', 'name', 'score', 'strand'))
 
-    diffexp_results = read_tsv(diffexp_path, col_names=FALSE) %>%
-        rename(logpadj=X8, feature_name=X13) %>%
+    diffexp_results = read_tsv(diffexp_path, col_names=FALSE, skip=1) %>%
+        rename(logpadj=X11, feature_name=X19) %>%
         group_by(feature_name) %>%
         arrange(desc(logpadj), .by_group=TRUE) %>%
         dplyr::slice(1) %>% ungroup()
