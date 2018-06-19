@@ -657,13 +657,17 @@ main = function(in_paths, samplelist, anno_paths, ptype, upstream, dnstream, sca
                    low_antisense = mid_antisense-sd_antisense,
                    high_antisense = mid_antisense+sd_antisense)
 
+        #with SD correction for small sample sizes (Gurland and Tripathi 1971)
         metadf_group = metadf_sample %>%
             group_by(group, annotation, position, cluster) %>%
-            summarise(sem_sense = sd(mid_sense)/sqrt(n_distinct(replicate)),
-                      sem_antisense = sd(mid_antisense)/sqrt(n_distinct(replicate)),
+            summarise(sd_sense = sd(mid_sense),
+                      sd_antisense = sd(mid_antisense),
+                      n = n_distinct(replicate),
                       mid_sense = mean(mid_sense),
                       mid_antisense = mean(mid_antisense)) %>%
-            mutate(high_sense = mid_sense + 1.96*sem_sense,
+            mutate(sem_sense = sqrt((n-1)/2)*gamma((n-1)/2)/gamma(n/2)*sd_sense/sqrt(n),
+                   sem_antisense = sqrt((n-1)/2)*gamma((n-1)/2)/gamma(n/2)*sd_antisense/sqrt(n),
+                   high_sense = mid_sense + 1.96*sem_sense,
                    low_sense = mid_sense - 1.96*sem_sense,
                    high_antisense = mid_antisense + 1.96*sem_antisense,
                    low_antisense = mid_antisense - 1.96*sem_antisense)
