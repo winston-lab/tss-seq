@@ -588,8 +588,7 @@ main = function(in_paths, samplelist, anno_paths, ptype, upstream, dnstream, sca
             facet_grid(annotation ~ group, scales="free_y", space="free_y")
         heatmap_group_antisense = heatmap_group_antisense +
             facet_grid(annotation ~ group, scales="free_y", space="free_y")
-    }
-    else if (n_anno>1 && max(k)>1){
+    } else if (n_anno>1 && max(k)>1){
         heatmap_sample_both = heatmap_sample_both +
             facet_grid(replicate + annotation + cluster ~ group + strand,
                        scales="free_y", space="free_y") +

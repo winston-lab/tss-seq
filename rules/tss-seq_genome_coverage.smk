@@ -33,7 +33,7 @@ rule normalize_genome_coverage:
     wildcard_constraints:
         norm="libsizenorm|spikenorm",
         strand="plus|minus"
-    log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}.log"
+    log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}-{strand}.log"
     shell: """
         (awk -v norm_factor=$(grep -oh "\w*{params.prefix}\w*" {input.chrsizes} | xargs samtools view -c {input.bam} | paste -d "" - <(echo "/({params.scale_factor}*1000000)") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/norm_factor; print $0}}' {input.counts} > {output.normalized}) &> {log}
         """

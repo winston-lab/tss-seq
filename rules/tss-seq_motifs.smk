@@ -83,6 +83,40 @@ rule test_motif_enrichment:
         plot = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.svg",
     script: "../scripts/motif_enrichment.R"
 
+#TODO: this all changes with MEME suite 5.0
+##0. extend peak summit annotation to upstream and downstream distances ##1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
+#rule get_meme_sequences:
+#    input:
+#        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-summits.bed",
+#        chrsizes = config["genome"]["chrsizes"],
+#        fasta = config["genome"]["fasta"]
+#    output:
+#        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
+#    params:
+#        upstr = config["motifs"]["meme-chip"]["upstream"],
+#        dnstr = config["motifs"]["meme-chip"]["downstream"]
+#    log: "logs/get_meme_sequences/get_meme_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
+#    shell: """
+#        (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 7 -c 5 -o max -full -i stdin | sort -k5,5nr | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+#        """
+
+#rule meme_chip:
+#    input:
+#        seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
+#        genome_fasta = config["genome"]["fasta"],
+#        dbs = "motifs/allmotifs.meme"
+#    output:
+#        "motifs/{condition}-v-{control}/{norm}/{category}/{background}/meme_chip/meme-chip.html"
+#    params:
+#        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
+#        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
+#        meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
+#        meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
+#    conda: "envs/meme_chip.yaml"
+#    shell: """
+#        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
+#        """
+
 ##NOTE: below are rules for visualizing motif occurrences, but need to have a way to do this efficiently/in an interpretable way for thousands of motifs
 ## rule get_motif_coverage:
 ##     input:
@@ -146,42 +180,4 @@ rule test_motif_enrichment:
 #    output:
 #        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.svg"
 #    script: "scripts/motif_metagenes.R"
-
-##0. filter out double counted peaks (sometimes a peak can be 'genic' for two genes, causing it to be listed twice)
-##1. for sequences upstream of peaks: with the START of the peak as reference, extend annotation to upstream and 'downstream' distances; for peak sequences, just take the peak sequence
-##2. for sequences upstream of peaks: if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks); for peak sequences, no such limitation since they should be non-overlapping
-#rule get_meme_de_peak_sequences:
-#    input:
-#        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
-#        chrsizes = config["genome"]["chrsizes"],
-#        fasta = config["genome"]["fasta"]
-#    output:
-#        "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme.fa"
-#    params:
-#        upstr = config["motifs"]["meme-chip"]["upstream"],
-#        dnstr = config["motifs"]["meme-chip"]["downstream"]
-#    log: "logs/get_meme_de_peak_sequences/get_meme_de_peak_sequences-{condition}-v-{control}-{norm}-{direction}-{category}-{region}.log"
-#    run:
-#        if wildcards.region=="upstream":
-#            shell("""(uniq {input.peaks} | bedtools flank -l {params.upstr} -r 0 -s -i stdin -g {input.chrsizes} | bedtools slop -l 0 -r {params.dnstr} -s -i stdin -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | sed 's/:/\t/g' | bedtools groupby -g 8 -c 6 -o max -full -i stdin | sort -k6,6nr | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5":"$6, $7}}' | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}""")
-#        elif wildcards.region=="peak":
-#            shell("""(uniq {input.peaks} | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}""")
-
-#rule meme_chip:
-#    input:
-#        seq = "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme.fa",
-#        genome_fasta = config["genome"]["fasta"],
-#        dbs = config["motifs"]["databases"]
-#    output:
-#        "motifs/meme/{condition}-v-{control}/{norm}/{region}/{condition}-v-{control}-results-{norm}-{direction}-{category}-{region}-meme_chip/meme-chip.html"
-#    params:
-#        dbs = ["-db " + x for x in config["motifs"]["databases"]],
-#        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
-#        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
-#        meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
-#        meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
-#    conda: "envs/meme_chip.yaml"
-#    shell: """
-#        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
-#        """
 

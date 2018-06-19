@@ -12,7 +12,7 @@ rule bowtie2_build:
         expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2])
     params:
         idx_path = config["tophat2"]["index-path"],
-    log: "logs/bowtie2_build.log"
+    log: "logs/bowtie2_build-{basename}.log"
     shell: """
         (bowtie2-build {input.fasta} {params.idx_path}/{wildcards.basename}) &> {log}
         """
