@@ -104,10 +104,6 @@ tss_peaks_idr:
     time: 10
     mem: 6000
 
-peakstats:
-    time: 20
-    mem: 10000
-
 differential_expression:
     time: 20
     mem: 10000

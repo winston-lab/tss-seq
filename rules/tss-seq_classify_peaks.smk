@@ -4,8 +4,9 @@ localrules: classify_genic_peaks, classify_intragenic_peaks, classify_antisense_
     classify_convergent_peaks, classify_divergent_peaks, classify_intergenic_peaks,
     classify_genic_diffexp_peaks, classify_intragenic_diffexp_peaks, classify_antisense_diffexp_peaks,
     classify_convergent_diffexp_peaks, classify_divergent_diffexp_peaks, classify_intergenic_diffexp_peaks,
+    plot_peak_stats
 
-peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_strand\tpeak_enrichment\tpeak_logpval\tpeak_logqval\tpeak_summit\t"
+peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_strand\tpeak_enrichment\tpeak_logpval\tpeak_logqval\tpeak_summit"
 
 rule classify_genic_peaks:
     input:
@@ -17,7 +18,7 @@ rule classify_genic_peaks:
         bed = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic-summits.bed",
     log : "logs/classify_peaks/classify_genic_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | cut --complement -f17 | cat <(echo -e "{peak_fields}genic_chrom\tgenic_start\tgenic_end\tgenic_name\tgenic_score\tgenic_strand") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | cut --complement -f17 | cat <(echo -e "{peak_fields}\tgenic_chrom\tgenic_start\tgenic_end\tgenic_name\tgenic_score\tgenic_strand") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.annotation} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -32,7 +33,7 @@ rule classify_intragenic_peaks:
         bed = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic-summits.bed",
     log : "logs/classify_peaks/classify_intragenic_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}' | cat <(echo -e "{peak_fields}orf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}' | cat <(echo -e "{peak_fields}\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -46,7 +47,7 @@ rule classify_antisense_peaks:
         bed = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense-summits.bed",
     log : "logs/classify_peaks/classify_antisense_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}transcript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -wo -S | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -u -S | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -61,7 +62,7 @@ rule classify_convergent_peaks:
         bed = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent-summits.bed",
     log : "logs/classify_peaks/classify_convergent_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}transcript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -76,7 +77,7 @@ rule classify_divergent_peaks:
         bed = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent-summits.bed",
     log : "logs/classify_peaks/classify_divergent_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}' | cat <(echo -e "{peak_fields}transcript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}' | cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.div_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
@@ -93,23 +94,24 @@ rule classify_intergenic_peaks:
         bed = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic-summits.bed",
     log : "logs/classify_peaks/classify_intergenic_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | cat <(echo -e {peak_fields}) - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | cat <(echo -e "{peak_fields}") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
-rule peakstats:
+rule plot_peak_stats:
     input:
-        expand("peakcalling/{group}/{group}-exp-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        genic = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.tsv",
+        intragenic = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic.tsv",
+        antisense = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense.tsv",
+        convergent = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.tsv",
+        divergent = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.tsv",
+        intergenic = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.tsv",
     output:
-        table = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaknumbers.tsv",
-        size = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-histogram.svg",
-        violin_area = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-violin-equalarea.svg",
-        violin_count = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peaksizes-violin-countscaled.svg",
-        dist = "peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg"
-    params:
-        groups = lambda wc: [g for sublist in zip(controlgroups, conditiongroups) for g in sublist] if wc.condition=="all" else [wc.control, wc.condition]
+        table = "peakcalling/{group}/{group}-experimental-peak-stats.tsv",
+        sizes = "peakcalling/{group}/{group}-experimental-peak-sizes.svg",
+        distances = "peakcalling/{group}/{group}-experimental-peak-distances.svg",
     script:
-        "scripts/peakstats.R"
+        "../scripts/peak_stats.R"
 
 rule classify_genic_diffexp_peaks:
     input:

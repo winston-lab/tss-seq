@@ -58,7 +58,8 @@ rule all:
         expand("peakcalling/{group}/{group}_spikein-idrpeaks.narrowPeak", group=validgroups_si),
         #classify peaks into categories
         expand("peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
-        #expand("peakcalling/peakstats/{condition}-v-{control}/{condition}-v-{control}-peakdistances.svg", zip, condition=conditiongroups + ["all"], control=controlgroups + ["all"]),
+        #some peak statistics (size, distance from sense TSS, ATG)
+        expand("peakcalling/{group}/{group}-experimental-peak-stats.tsv", group=validgroups),
         #combine called peaks for conditions vs control
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}_experimental-peaks.bed", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/{condition}-v-{control}_spikein-peaks.bed", zip, condition=conditiongroups_si, control=controlgroups_si),
@@ -121,7 +122,6 @@ def cluster_samples(status, norm, cluster_groups, cluster_strands):
             ll.append([sample + "-" + "antisense" for sample in sublist])
     return(list(itertools.chain(*ll)))
 
-#make 'stranded' genome for datavis purposes
 rule make_stranded_genome:
     input:
         exp = config["genome"]["chrsizes"],
