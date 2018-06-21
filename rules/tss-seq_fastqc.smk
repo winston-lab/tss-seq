@@ -99,12 +99,11 @@ rule fastqc_aggregate:
         adapter_content = 'qual_ctrl/fastqc/tss-seq-adapter_content.tsv',
     run:
         shell("""rm -f {output}""")
-        for fastqc_metric in output.keys():
+        for fastqc_metric, out_path in output.items():
             title = fastqc_dict[fastqc_metric]["title"]
             fields = fastqc_dict[fastqc_metric]["fields"]
-            out_path = output[fastqc_metric]
-            for read_status in input.keys():
-                for sample_id, fastqc_data in zip(SAMPLES.keys(), input[read_status]):
+            for read_status, read_status_data in input.items():
+                for sample_id, fastqc_data in zip(SAMPLES.keys(), read_status_data):
                     shell("""awk 'BEGIN{{FS=OFS="\t"}} /{title}/{{flag=1;next}}/>>END_MODULE/{{flag=0}} flag {{print $0, "{sample_id}", "{read_status}"}}' {fastqc_data} | tail -n +2 >> {out_path}""")
             shell("""sed -i "1i {fields}" {out_path}""")
 
