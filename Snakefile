@@ -10,9 +10,9 @@ subworkflow build_annotations:
     workdir: config["genome"]["annotation_workflow"]
 
 SAMPLES = config["samples"]
-sisamples = {k:v for k,v in SAMPLES.items() if v["spikein"]=="y"}
-PASSING = {k:v for k,v in SAMPLES.items() if v["pass-qc"]=="pass"}
-sipassing = {k:v for k,v in PASSING.items() if v["spikein"]=="y"}
+SISAMPLES = {k:v for k,v in SAMPLES.items() if v["spikein"]}
+PASSING = {k:v for k,v in SAMPLES.items() if v["pass-qc"]}
+SIPASSING = {k:v for k,v in PASSING.items() if v["spikein"]}
 
 #groups which have at least two passing samples, so that they are valid for peakcalling and diff exp
 validgroups = set([z for z in [PASSING[x]['group'] for x in PASSING] if [PASSING[x]['group'] for x in PASSING].count(z)>=2])
@@ -52,7 +52,7 @@ rule all:
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
         #peakcalling on all samples
         expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
-        expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=sisamples),
+        expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=SISAMPLES),
         #IDR for all groups which have at least two passing samples
         expand("peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak", group=validgroups),
         expand("peakcalling/{group}/{group}_spikein-idrpeaks.narrowPeak", group=validgroups_si),
@@ -103,16 +103,22 @@ rule all:
 def getsamples(ctrl, cond):
     return [k for k,v in PASSING.items() if v["group"] in [ctrl, cond]]
 
+status_norm_sample_dict = {
+    "all":
+        {   "libsizenorm" : SAMPLES,
+            "spikenorm" : SISAMPLES
+        },
+    "passing":
+        {   "libsizenorm" : PASSING,
+            "spikenorm" : SIPASSING
+        }
+    }
+
 def get_condition_control_samples(wc):
-    if wc.condition=="all":
-        if wc.norm=="libsizenorm": #condition==all,norm==lib
-            return list(SAMPLES.keys())
-        else: #condition==all,norm==spike
-            return list(sisamples.keys())
-    elif wc.norm=="libsizenorm": #condition!=all;norm==lib
-        return [k for k,v in PASSING.items() if v["group"] in [wc.condition, wc.control]]
-    else: #condition!=all;norm==spike
-        return [k for k,v in sipassing.items() if v["group"] in [wc.control, wc.condition]]
+    if wc.condition=="all" and wc.control=="all":
+        return(list(status_norm_sample_dict[wc.status][wc.norm].keys()))
+    else:
+        return([k for k,v in status_norm_sample_dict[wc.status][wc.norm].items() if v["group"] in (wc.condition, wc.control)])
 
 def cluster_samples(status, norm, cluster_groups, cluster_strands):
     ll = []

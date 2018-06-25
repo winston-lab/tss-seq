@@ -33,19 +33,19 @@ rule plot_read_processing:
 
 rule build_spikein_counts_table:
     input:
-        bams = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=sisamples),
-        bais = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam.bai", sample=sisamples),
+        bams = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SISAMPLES),
+        bais = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam.bai", sample=SISAMPLES),
         chrsizes = config["combinedgenome"]["chrsizes"]
     output:
         "qual_ctrl/spikein/tss-seq_spikein-counts.tsv"
     params:
-        groups = [v["group"] for k,v in sisamples.items()],
+        groups = [v["group"] for k,v in SISAMPLES.items()],
         exp_prefix = config["combinedgenome"]["experimental_prefix"],
         spikein_prefix = config["combinedgenome"]["spikein_prefix"],
     log: "logs/build_spikein_counts_table.log"
     run:
         shell("""(echo -e "sample\tgroup\ttotal_counts\texperimental_counts\tspikein_counts" > {output}) &> {log} """)
-        for sample, group, bam in zip(sisamples.keys(), params.groups, input.bams):
+        for sample, group, bam in zip(SISAMPLES.keys(), params.groups, input.bams):
             shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
 
 rule plot_spikein_pct:
@@ -55,7 +55,7 @@ rule plot_spikein_pct:
         plot = "qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg",
         stats = "qual_ctrl/spikein/tss-seq_spikein-stats-{status}.tsv"
     params:
-        samplelist = lambda wc : list(sisamples.keys()) if wc.status=="all" else list(sipassing.keys()),
+        samplelist = lambda wc : list(SISAMPLES.keys()) if wc.status=="all" else list(SIPASSING.keys()),
         conditions = conditiongroups_si,
         controls = controlgroups_si,
     script: "../scripts/plot_si_pct.R"
