@@ -27,6 +27,6 @@ rule remove_molecular_barcode:
     # threads: config["threads"]
     log: "logs/remove_molecular_barcode/remove_molecular_barcode-{sample}.log"
     shell: """
-        (python scripts/extractMolecularBarcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}
+        (python scripts/extract_molecular_barcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}
         """
 
