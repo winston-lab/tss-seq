@@ -7,8 +7,10 @@ library(gridExtra)
 library(ggrepel)
 
 get_countdata = function(path, samples){
-    df = read_tsv(path, col_names=TRUE) %>% select(c("name", samples)) %>%
-        column_to_rownames(var="name") %>% as.data.frame()
+    df = read_tsv(path, col_names=TRUE) %>%
+        select(c("name", samples)) %>%
+        column_to_rownames(var="name") %>%
+        as.data.frame()
     df = df[rowSums(df)>1,]
     return(df)
 }

@@ -1,29 +1,29 @@
 #!/usr/bin/env python
 
-localrules: map_counts_to_peaks,
+localrules:
+    map_counts_to_peaks,
     combine_peak_counts,
-
 
 rule map_counts_to_peaks:
     input:
-        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{type}-peaks.bed",
-        bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.type=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
+        bed = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{species}-peaks.bed",
+        bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
     output:
-        temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{type}-peakcounts.tsv")
-    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{type}.log"
+        temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{species}-peakcounts.tsv")
+    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{species}.log"
     shell: """
         (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
         """
 
 rule combine_peak_counts:
     input:
-        lambda wc : ["diff_exp/{condition}-v-{control}/".format(**wc) + x + "_tss-seq-{type}-peakcounts.tsv".format(**wc) for x in getsamples(wc.control, wc.condition)]
+        lambda wc : ["diff_exp/{condition}-v-{control}/".format(**wc) + x + "_tss-seq-{species}-peakcounts.tsv".format(**wc) for x in get_samples("passing", "libsizenorm", [wc.control, wc.condition])]
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{type}-peak-counts.tsv"
+        "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{species}-peak-counts.tsv"
     params:
-        n = lambda wc: 2*len(getsamples(wc.control, wc.condition)),
-        names = lambda wc: "\t".join(getsamples(wc.control, wc.condition))
-    log: "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{type}.log"
+        n = lambda wc: 2*len(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
+        names = lambda wc: "\t".join(get_samples("passing", "libsizenorm", [wc.control, wc.condition]))
+    log: "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{species}.log"
     shell: """
         (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
         """
@@ -41,8 +41,8 @@ rule differential_expression:
         rldcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-rlogtransformed.tsv",
         qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-qc-plots.svg"
     params:
-        samples = lambda wc : getsamples(wc.control, wc.condition),
-        groups = lambda wc : [PASSING[x]["group"] for x in getsamples(wc.control, wc.condition)],
+        samples = lambda wc : get_samples("passing", wc.norm, [wc.control, wc.condition]),
+        groups = lambda wc : [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     script:
@@ -50,8 +50,8 @@ rule differential_expression:
 
 rule diffexp_results_to_narrowpeak:
     input:
-        condition_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=getsamples(wc.condition, wc.condition), norm=wc.norm),
-        control_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=getsamples(wc.control, wc.control), norm=wc.norm),
+        condition_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=get_samples("passing", wc.norm, wc.condition), norm=wc.norm),
+        control_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=get_samples("passing", wc.norm, wc.control), norm=wc.norm),
         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",

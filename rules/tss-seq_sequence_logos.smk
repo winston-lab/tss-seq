@@ -4,7 +4,7 @@ localrules: plot_seqlogos
 
 rule get_seqlogo_data:
     input:
-        bam = lambda wc: expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=getsamples(wc.group, wc.group)),
+        bam = lambda wc: expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=get_samples("passing", "libsizenorm", wc.group)),
         bed = lambda wc: "peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.narrowpeak".format(**wc) if wc.category != "all" else [],
         chrsizes = config["genome"]["chrsizes"],
         fasta = config["genome"]["fasta"]
