@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os
 import re
 import subprocess
@@ -6,6 +7,7 @@ import itertools
 from math import log2, log10
 
 configfile: "config.yaml"
+
 subworkflow build_annotations:
     workdir: config["genome"]["annotation_workflow"]
 
@@ -29,13 +31,54 @@ FIGURES = config["figures"]
 #get all motif names from motif databases, cleaning nasty characters in some motif names
 MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split())
 
+status_norm_sample_dict = {
+    "all":
+        {   "libsizenorm" : SAMPLES,
+            "spikenorm" : SISAMPLES
+        },
+    "passing":
+        {   "libsizenorm" : PASSING,
+            "spikenorm" : SIPASSING
+        }
+    }
+
+def get_samples(status, norm, groups):
+    if "all" in groups:
+        return(list(status_norm_sample_dict[status][norm].keys()))
+    else:
+        return([k for k,v in status_norm_sample_dict[status][norm].items() if v["group"] in groups])
+
+def cluster_samples(status, norm, cluster_groups, cluster_strands):
+    ll = []
+    for group, strand in zip(cluster_groups, cluster_strands):
+        sublist = [k for k,v in status_norm_sample_dict[status][norm].items() if v["group"] in cluster_groups]
+        if strand in ["sense", "both"]:
+            ll.append([f"{sample}-sense" for sample in sublist])
+        if strand in ["antisense", "both"]:
+            ll.append([f"{sample}-antisense" for sample in sublist])
+    return(list(itertools.chain(*ll)))
+
+include: "rules/tss-seq_clean_reads.smk"
+include: "rules/tss-seq_alignment.smk"
+include: "rules/tss-seq_fastqc.smk"
+include: "rules/tss-seq_library-processing-summary.smk"
+include: "rules/tss-seq_sample_similarity.smk"
+include: "rules/tss-seq_genome_coverage.smk"
+include: "rules/tss-seq_datavis.smk"
+include: "rules/tss-seq_peakcalling.smk"
+include: "rules/tss-seq_differential_expression.smk"
+include: "rules/tss-seq_classify_peaks.smk"
+include: "rules/tss-seq_gene_ontology.smk"
+include: "rules/tss-seq_motifs.smk"
+include: "rules/tss-seq_sequence_logos.smk"
+
+onsuccess:
+    shell("(./mogrify.sh) > mogrify.log")
+
 localrules:
     all,
     make_stranded_genome,
     genic_v_class,
-
-onsuccess:
-    shell("(./mogrify.sh) > mogrify.log")
 
 rule all:
     input:
@@ -100,33 +143,6 @@ rule all:
         #sequence logos
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
 
-status_norm_sample_dict = {
-    "all":
-        {   "libsizenorm" : SAMPLES,
-            "spikenorm" : SISAMPLES
-        },
-    "passing":
-        {   "libsizenorm" : PASSING,
-            "spikenorm" : SIPASSING
-        }
-    }
-
-def get_samples(status, norm, groups):
-    if "all" in groups:
-        return(list(status_norm_sample_dict[status][norm].keys()))
-    else:
-        return([k for k,v in status_norm_sample_dict[status][norm].items() if v["group"] in groups])
-
-def cluster_samples(status, norm, cluster_groups, cluster_strands):
-    ll = []
-    for group, strand in zip(cluster_groups, cluster_strands):
-        sublist = [k for k,v in status_norm_sample_dict[status][norm].items() if v["group"] in cluster_groups]
-        if strand in ["sense", "both"]:
-            ll.append([f"{sample}-sense" for sample in sublist])
-        if strand in ["antisense", "both"]:
-            ll.append([f"{sample}-antisense" for sample in sublist])
-    return(list(itertools.chain(*ll)))
-
 rule make_stranded_genome:
     input:
         exp = config["genome"]["chrsizes"],
@@ -180,18 +196,4 @@ rule genic_v_class:
         lfc_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-lfc-v-expr.svg",
         expr_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-expr-v-expr.svg",
     script: "scripts/tss_class_v_genic.R"
-
-include: "rules/tss-seq_clean_reads.smk"
-include: "rules/tss-seq_alignment.smk"
-include: "rules/tss-seq_fastqc.smk"
-include: "rules/tss-seq_library-processing-summary.smk"
-include: "rules/tss-seq_sample_similarity.smk"
-include: "rules/tss-seq_genome_coverage.smk"
-include: "rules/tss-seq_datavis.smk"
-include: "rules/tss-seq_peakcalling.smk"
-include: "rules/tss-seq_differential_expression.smk"
-include: "rules/tss-seq_classify_peaks.smk"
-include: "rules/tss-seq_gene_ontology.smk"
-include: "rules/tss-seq_motifs.smk"
-include: "rules/tss-seq_sequence_logos.smk"
 
