@@ -87,10 +87,13 @@ rule all:
         #alignment
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
         #coverage
-        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", norm=["spikenorm","libsizenorm", "counts", "sicounts"], sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/counts/{sample}_tss-seq-counts-{strand}.bw", sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/sicounts/{sample}_tss-seq-sicounts-{strand}.bw", sample=SISAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/libsizenorm/{sample}_tss-seq-libsizenorm-{strand}.bw", sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/spikenorm/{sample}_tss-seq-spikenorm-{strand}.bw", sample=SISAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
         #quality controls
         "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
-        expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]),
+        expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]) if SISAMPLES else [],
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
         #peakcalling on all samples
