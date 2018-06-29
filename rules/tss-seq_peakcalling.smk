@@ -12,6 +12,7 @@ rule call_tss_peaks:
         name = lambda wc: "{sample}_{type}".format(**wc),
         bandwidth = config["peakcalling"]["bandwidth"],
         window = config["peakcalling"]["local-bg-window"]
+    conda: "../envs/peakcalling.yaml"
     log: "logs/call_tss_peaks/call_tss_peaks-{sample}-{type}.log"
     shell: """
         (python scripts/tss-peakcalling.py -i {input.bw} -n {params.name} -w {params.window} -b {params.bandwidth} -o peakcalling/sample_peaks) &> {log}
@@ -29,10 +30,11 @@ rule tss_peaks_idr:
         summits = "peakcalling/{group}/{group}_{type}-idrpeaks-summits.bed",
     params:
         idr = int(-125*log2(config["peakcalling"]["idr"]))
+    conda: "../envs/peakcalling.yaml"
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{type}.log"
     shell: """
-        idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max
-        (awk '$5>{params.idr} || $9=="inf"' {output.allpeaks} | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &> {log}
+        (idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max) &> {log}
+        (awk '$5>{params.idr} || $9=="inf"' {output.allpeaks} | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &>> {log}
         """
 
 rule combine_tss_peaks:

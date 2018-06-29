@@ -17,18 +17,18 @@ args = parser$parse_args()
 #from ggseqlogo by Omar Wagih
 #https://github.com/omarwagih/ggseqlogo
 get_font = function(font){
-    
+
     GGSEQLOGO_FONT_BASE = getOption('GGSEQLOGO_FONT_BASE')
     if(is.null(GGSEQLOGO_FONT_BASE)){
         GGSEQLOGO_FONT_BASE=system.file("extdata", "", package = "ggseqlogo")
         options(GGSEQLOGO_FONT_BASE=GGSEQLOGO_FONT_BASE)
     }
-    
+
     #all_fonts = c('sf_bold', 'sf_regular', 'ms_bold', 'ms_regular', 'xkcd_regular')
     font = match.arg(tolower(font), list_fonts(F))
     font_filename = paste0(font, '.font')
     font_obj_name = sprintf('.ggseqlogo_font_%s', font)
-    
+
     font_obj = getOption(font_obj_name)
     if(is.null(font_obj)){
         # Not loaded into global env yet - load it into options
@@ -50,24 +50,24 @@ main = function(data_paths, tss_classes, slop, gc_pct, group_name, out_path){
     for (i in 1:length(data_paths)){
         df = read_tsv(data_paths[i],
                       comment="#",
-                      col_names=c('position','A','C','G','T','entropy','low','high','weight')) %>% 
-            mutate(position = position - as.integer(slop+1)) %>% 
-            gather(key=base, value=count, c('A','C','G','T')) %>% 
-            group_by(position) %>% 
-            mutate(height=entropy*count/sum(count)) %>% 
-            arrange(height, .by_group=TRUE) %>% 
+                      col_names=c('position','A','C','G','T','entropy','low','high','weight')) %>%
+            mutate(position = position - as.integer(slop+1)) %>%
+            gather(key=base, value=count, c('A','C','G','T')) %>%
+            group_by(position) %>%
+            mutate(height=entropy*count/sum(count)) %>%
+            arrange(height, .by_group=TRUE) %>%
             mutate(base_low = lag(cumsum(height), default=0),
-                   base_high = base_low+height) %>% 
-            left_join(get_font('roboto_bold'), b=c("base"="letter")) %>% 
-            group_by(position, base) %>% 
+                   base_high = base_low+height) %>%
+            left_join(get_font('roboto_bold'), b=c("base"="letter")) %>%
+            group_by(position, base) %>%
             mutate(x = scales::rescale(x, to=c((1-(first(weight)))/2, 1-(1-first(weight))/2)),
                    x = x+(position-0.5),
                    y = scales::rescale(y, to=c(first(base_low), first(base_high))),
-                   tss_class = tss_classes[i]) %>% 
+                   tss_class = tss_classes[i]) %>%
             bind_rows(df, .)
     }
     df = df %>% mutate(tss_class = fct_inorder(tss_class, ordered=TRUE))
-        
+
     logo = ggplot(data = df, aes(x=x, y=y, group=interaction(position, base), fill=base)) +
         geom_hline(yintercept = max_information, linetype="dashed") +
         geom_polygon() +
@@ -94,7 +94,7 @@ main = function(data_paths, tss_classes, slop, gc_pct, group_name, out_path){
               strip.text = element_text(size=12),
               strip.text.y = element_text(angle=-180, hjust=1),
               strip.placement = "outside")
-    
+
     ggsave(out_path, plot=logo, width=14, height=16, units="cm", dpi=326)
 }
 
@@ -104,3 +104,4 @@ main(data_paths = args$input,
      gc_pct= args$gc_pct,
      group_name = paste(args$group_label, collapse=" "),
      out_path = args$out_path)
+

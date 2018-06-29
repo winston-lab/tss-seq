@@ -17,32 +17,32 @@ args = parser$parse_args()
 melt = function(inmatrix, refpt, group, sample, annotation, binsize, upstream, outpath){
     raw = read_tsv(inmatrix, skip=3, col_names=FALSE)
     names(raw) = seq(ncol(raw))
-    
+
     df = raw %>%
           rownames_to_column(var="index") %>%
           gather(key = variable, value=value, -index, convert=TRUE) %>%
-          filter(!is.na(value)) 
+          filter(!is.na(value))
     if(binsize>1){
         df = df %>%
             transmute(group = group, sample = sample,
-                      annotation = annotation, 
+                      annotation = annotation,
                       index = as.integer(index),
                       position = (as.numeric(variable)*binsize-(upstream+1.5*binsize))/1000,
-                      cpm = as.numeric(value)) 
+                      cpm = as.numeric(value))
     } else if (refpt=="TES"){
         df = df %>%
             transmute(group = group, sample = sample,
-                      annotation = annotation, 
+                      annotation = annotation,
                       index = as.integer(index),
                       position = (as.numeric(variable)-(1+upstream))/1000,
-                      cpm = as.numeric(value)) 
+                      cpm = as.numeric(value))
     } else {
         df = df %>%
             transmute(group = group, sample = sample,
-                      annotation = annotation, 
+                      annotation = annotation,
                       index = as.integer(index),
                       position = (as.numeric(variable)-(2+upstream))/1000,
-                      cpm = as.numeric(value)) 
+                      cpm = as.numeric(value))
     }
     write_tsv(df, path=outpath, col_names=FALSE)
     return(df)
@@ -56,3 +56,4 @@ melt(inmatrix = args$input,
      binsize = args$binsize,
      upstream = args$upstream,
      outpath = args$output)
+

@@ -45,6 +45,7 @@ rule differential_expression:
         groups = lambda wc : [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
+    conda: "../envs/diff_exp.yaml"
     script:
         "../scripts/call_diffexp_peaks.R"
 
@@ -56,6 +57,7 @@ rule diffexp_results_to_narrowpeak:
     output:
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         summit_bed = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}-summits.bed",
+    conda: "../envs/peakcalling.yaml"
     log: "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/diffexp_results_to_narrowpeak.py -i {input.condition_coverage} -j {input.control_coverage} -d {input.diffexp_results} -n {output.narrowpeak} -b {output.summit_bed}) &> {log}
@@ -70,14 +72,15 @@ rule summarise_diffexp_results:
         convergent = "diff_exp/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-convergent-all.tsv",
         divergent = "diff_exp/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-divergent-all.tsv",
         intergenic = "diff_exp/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intergenic-all.tsv",
-    params:
-        lfc = config["deseq"]["fold-change-threshold"],
-        alpha = config["deseq"]["fdr"]
     output:
         summary_table = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-summary.tsv",
         mosaic = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-mosaic.svg",
         maplot = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-maplot.svg",
         volcano = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-volcano.svg",
         volcano_free = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-volcano-freescale.svg",
+    params:
+        lfc = config["deseq"]["fold-change-threshold"],
+        alpha = config["deseq"]["fdr"]
+    conda: "../envs/tidyverse.yaml"
     script: "../scripts/plot_diffexp_summary.R"
 

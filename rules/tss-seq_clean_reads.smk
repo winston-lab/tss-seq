@@ -24,7 +24,7 @@ rule remove_molecular_barcode:
         fq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz",
         barcodes = "qual_ctrl/molec_barcode/barcodes-{sample}.tsv",
         ligation = "qual_ctrl/molec_barcode/ligation-{sample}.tsv"
-    # threads: config["threads"]
+    threads: config["threads"]
     log: "logs/remove_molecular_barcode/remove_molecular_barcode-{sample}.log"
     shell: """
         (python scripts/extract_molecular_barcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}

@@ -5,12 +5,12 @@ library(ggpmisc)
 
 import = function(df, path, alpha, label_col_id, category){
     df = read_tsv(path) %>%
-        distinct(chrom, start, end, peak_name, score, strand, .keep_all = TRUE) %>% 
+        distinct(chrom, start, end, peak_name, score, strand, .keep_all = TRUE) %>%
         select(chrom, start, end, label=label_col_id, score, strand, log2_foldchange, lfc_SE, stat,
-               log10_pval, log10_padj, mean_expr, condition_expr, control_expr) %>% 
+               log10_pval, log10_padj, mean_expr, condition_expr, control_expr) %>%
         mutate(sig = if_else(log10_padj > -log10(alpha), TRUE, FALSE),
                category = category) %>%
-        bind_rows(df, .) %>% 
+        bind_rows(df, .) %>%
         return()
 }
 
@@ -20,12 +20,12 @@ main = function(in_all, in_genic, in_intra, in_anti,
                 out_ma, out_volcano, out_volcano_free, out_mosaic, out_summary_table){
     df = tibble() %>%
         import(in_all, alpha=alpha, label_col_id="peak_name", category="all") %>%
-        import(in_genic, alpha=alpha, label_col_id="genic_name", category="genic") %>% 
+        import(in_genic, alpha=alpha, label_col_id="genic_name", category="genic") %>%
         import(in_intra, alpha=alpha, label_col_id="orf_name", category="intragenic") %>%
         import(in_anti, alpha=alpha, label_col_id="transcript_name", category="antisense") %>%
         import(in_conv, alpha=alpha, label_col_id="transcript_name", category="convergent") %>%
         import(in_div, alpha=alpha, label_col_id="transcript_name", category="divergent") %>%
-        import(in_inter, alpha=alpha, label_col_id="peak_name", category="intergenic") %>% 
+        import(in_inter, alpha=alpha, label_col_id="peak_name", category="intergenic") %>%
         mutate(category = fct_inorder(category, ordered=TRUE))
 
     min_x = quantile(df[["mean_expr"]], .2)
@@ -98,20 +98,20 @@ main = function(in_all, in_genic, in_intra, in_anti,
 
     ggsave(out_volcano, volcano + facet_wrap(~category) , height=16, width=20, units="cm")
     ggsave(out_volcano_free, volcano + facet_wrap(~category, scales="free_y") , height=16, width=20, units="cm")
-    
+
     count_df = df %>%
         filter(category != "all") %>%
-        mutate(change = if_else(sig, if_else(log2_foldchange > 0, "up", "down"), "unchanged")) %>% 
-        count(category, change) %>% 
-        write_tsv(out_summary_table) %>% 
-        filter(! is.na(change)) %>% 
-        mutate(xmax = cumsum(n), xmin=cumsum(n)-n) %>% 
-        group_by(category) %>% 
+        mutate(change = if_else(sig, if_else(log2_foldchange > 0, "up", "down"), "unchanged")) %>%
+        count(category, change) %>%
+        write_tsv(out_summary_table) %>%
+        filter(! is.na(change)) %>%
+        mutate(xmax = cumsum(n), xmin=cumsum(n)-n) %>%
+        group_by(category) %>%
         mutate(ymax=cumsum(n), ymin=cumsum(n)-n,
-               xmax=max(xmax), xmin=min(xmin)) %>% 
-        mutate_at(vars(ymin, ymax), funs(./max(ymax))) %>% 
-        ungroup() %>% 
-        mutate_at(vars(xmin, xmax), funs(./max(xmax))) %>% 
+               xmax=max(xmax), xmin=min(xmin)) %>%
+        mutate_at(vars(ymin, ymax), funs(./max(ymax))) %>%
+        ungroup() %>%
+        mutate_at(vars(xmin, xmax), funs(./max(xmax))) %>%
         mutate(x=(xmin+xmax)/2,
                y=(ymin+ymax)/2)
 
@@ -123,7 +123,7 @@ main = function(in_all, in_genic, in_intra, in_anti,
                   aes(x=x, y=y, label=n),
                   size=12/75*25.4, color="black", fontface="bold") +
         geom_text(data = count_df %>% group_by(category) %>% summarise(x=first(x)),
-                  aes(x=x, label=category), y=1.04, angle=30, hjust=.1, 
+                  aes(x=x, label=category), y=1.04, angle=30, hjust=.1,
                   size=12/75*25.4, fontface="bold") +
         scale_fill_brewer(palette = "Set1",
                           guide=guide_legend(reverse=TRUE)) +

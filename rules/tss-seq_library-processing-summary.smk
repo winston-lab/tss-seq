@@ -29,24 +29,23 @@ rule plot_read_processing:
         surv_abs_out = "qual_ctrl/read_processing/tss-seq_read-processing-survival-absolute.svg",
         surv_rel_out = "qual_ctrl/read_processing/tss-seq_read-processing-survival-relative.svg",
         loss_out  = "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
+    conda: "../envs/tidyverse.yaml"
     script: "../scripts/processing_summary.R"
 
 rule build_spikein_counts_table:
     input:
-        bams = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SISAMPLES),
-        bais = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam.bai", sample=SISAMPLES),
-        chrsizes = config["combinedgenome"]["chrsizes"]
+        total_bam = expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SISAMPLES),
+        exp_bam = expand("alignment/{sample}_tss-seq-noPCRduplicates-experimental.bam", sample=SISAMPLES),
+        si_bam = expand("alignment/{sample}_tss-seq-noPCRduplicates-spikein.bam", sample=SISAMPLES),
     output:
         "qual_ctrl/spikein/tss-seq_spikein-counts.tsv"
     params:
         groups = [v["group"] for k,v in SISAMPLES.items()],
-        exp_prefix = config["combinedgenome"]["experimental_prefix"],
-        spikein_prefix = config["combinedgenome"]["spikein_prefix"],
     log: "logs/build_spikein_counts_table.log"
     run:
         shell("""(echo -e "sample\tgroup\ttotal_counts\texperimental_counts\tspikein_counts" > {output}) &> {log} """)
-        for sample, group, bam in zip(SISAMPLES.keys(), params.groups, input.bams):
-            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {bam}) <(grep -oh "\w*{params.exp_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) <(grep -oh "\w*{params.spikein_prefix}\w*" {input.chrsizes} | xargs samtools view -c {bam}) >> {output}) &>> {log}""")
+        for sample, group, total, exp, si in zip(SISAMPLES.keys(), params.groups, input.total_bam, input.exp_bam, input.si_bam):
+            shell("""(paste <(echo -e "{sample}\t{group}") <(samtools view -c {total}) <(samtools view -c {exp}) <(samtools view -c {si} >> {output}) &>> {log}""")
 
 rule plot_spikein_pct:
     input:
@@ -58,5 +57,6 @@ rule plot_spikein_pct:
         samplelist = lambda wc : list(SISAMPLES.keys()) if wc.status=="all" else list(SIPASSING.keys()),
         conditions = [] if not SISAMPLES else conditiongroups_si,
         controls = [] if not SISAMPLES else controlgroups_si,
+    conda: "../envs/tidyverse.yaml"
     script: "../scripts/plot_si_pct.R"
 

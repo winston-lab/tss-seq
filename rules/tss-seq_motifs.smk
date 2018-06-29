@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-localrules: build_motif_database,
+localrules:
+    build_motif_database,
     get_random_motifs,
 
 rule build_motif_database:
@@ -75,12 +76,13 @@ rule test_motif_enrichment:
     input:
         fimo_pos = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
         fimo_neg = lambda wc: "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-unchanged-allFIMOresults.tsv.gz".format(**wc) if wc.negative=="unchanged" else "motifs/random_sequences-allFIMOresults.tsv.gz",
-    params:
-        fdr = config["motifs"]["enrichment-fdr"],
-        direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     output:
         tsv = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.tsv",
         plot = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.svg",
+    params:
+        fdr = config["motifs"]["enrichment-fdr"],
+        direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
+    conda: "../envs/tidyverse.yaml"
     script: "../scripts/motif_enrichment.R"
 
 #TODO: this all changes with MEME suite 5.0

@@ -1,0 +1,14 @@
+name: peakcalling
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    - pandas=0.23.1
+    - numpy=1.13.3
+    - scipy=1.1.0
+    - statsmodels=0.9.0
+    - pybigwig=0.3.10
+    - gawk=4.2.1
+    - sed=4.4
+    - idr=2.0.3
+

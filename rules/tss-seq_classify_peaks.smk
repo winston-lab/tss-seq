@@ -110,6 +110,7 @@ rule plot_peak_stats:
         table = "peakcalling/{group}/{group}-experimental-peak-stats.tsv",
         sizes = "peakcalling/{group}/{group}-experimental-peak-sizes.svg",
         distances = "peakcalling/{group}/{group}-experimental-peak-distances.svg",
+    conda: "../envs/tidyverse.yaml"
     script:
         "../scripts/peak_stats.R"
 
@@ -209,22 +210,22 @@ rule classify_intergenic_diffexp_peaks:
         (bedtools intersect -a {input.narrowpeak} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | bedtools intersect -a stdin -b {input.intergenic_anno} -u | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
-#TODO: update these rules for all transcript classes
-rule get_de_intragenic_frequency:
-    input:
-        orfs = config["genome"]["orf-annotation"],
-        intrabed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
-    output:
-        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
-    shell: """
-        bedtools intersect -a {input.orfs} -b {input.intrabed} -c -s > {output}
-        """
+##TODO: update these rules for all transcript classes
+#rule get_de_intragenic_frequency:
+#    input:
+#        orfs = config["genome"]["orf-annotation"],
+#        intrabed = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}-results-{norm}-{direction}-intragenic.bed"
+#    output:
+#        "diff_exp/{condition}-v-{control}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
+#    shell: """
+#        bedtools intersect -a {input.orfs} -b {input.intrabed} -c -s > {output}
+#        """
 
-rule plot_de_intragenic_frequency:
-    input:
-        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
-    output:
-        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.svg"
-    log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
-    script: "scripts/intrafreq.R"
+#rule plot_de_intragenic_frequency:
+#    input:
+#        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-results-{norm}-{direction}-intrafreq.tsv"
+#    output:
+#        "diff_exp/{condition}-v-{control}/{norm}/intragenic/intrafreq/{condition}-v-{control}-intragenic-{norm}-{direction}-freqperORF.svg"
+#    log: "logs/plot_intragenic_frequency/plot_intragenic_frequency-{condition}-v-{control}-{norm}-{direction}.log"
+#    script: "scripts/intrafreq.R"
 
