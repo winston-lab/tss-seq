@@ -32,19 +32,10 @@ plot_fastqc_summary:
     n: 1
     mem: 8000
 
-read_processing_numbers:
-    time: 5
-    n: 1
-    mem: 4000
-
 plot_read_processing:
     time: 5
     n: 1
     mem: 4000
-
-bowtie2_build:
-    time : 10
-    mem : 2000
 
 align:
     time : 120

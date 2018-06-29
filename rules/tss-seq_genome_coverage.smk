@@ -2,18 +2,17 @@
 
 rule genome_coverage:
     input:
-        "alignment/{sample}_tss-seq-noPCRduplicates.bam"
+        lambda wc: f"alignment/{wc.sample}_tss-seq-noPCRduplicates-" + ("experimental" if wc.counttype=="counts" else "spikein") + ".bam"
     output:
         "coverage/{counttype}/{sample}_tss-seq-{counttype}-{strand}.bedgraph",
     params:
-        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.counttype=="counts" else config["combinedgenome"]["spikein_prefix"],
-        strand_symbol = lambda wc: "+" if wc.strand=="plus" else "-"
+        strand = lambda wc: {"plus": "+", "minus": "-"}.get(wc.strand)
     wildcard_constraints:
         counttype="counts|sicounts",
         strand="plus|minus"
     log: "logs/genome_coverage/genome_coverage_{sample}-{counttype}-{strand}.log"
     shell: """
-        (bedtools genomecov -bga -5 -strand {params.strand_symbol} -ibam {input} | sed -n 's/{params.prefix}//p' | sort -k1,1 -k2,2n > {output}) &> {log}
+        (bedtools genomecov -bga -5 -strand {params.strand} -ibam {input} > {output}) &> {log}
         """
 
 #NOTE: although we could do this by looking up library size values
@@ -22,20 +21,17 @@ rule genome_coverage:
 rule normalize_genome_coverage:
     input:
         counts = "coverage/counts/{sample}_tss-seq-counts-{strand}.bedgraph",
-        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
-        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
-        chrsizes = config["combinedgenome"]["chrsizes"]
+        bam = lambda wc: f"alignment/{wc.sample}_tss-seq-noPCRduplicates-" + ("experimental" if wc.norm=="spikenorm" else "spikein") + ".bam",
     output:
         normalized = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
     params:
         scale_factor = lambda wc: config["spikein-pct"] if wc.norm=="spikenorm" else 1,
-        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.norm=="libsizenorm" else config["combinedgenome"]["spikein_prefix"],
     wildcard_constraints:
         norm="libsizenorm|spikenorm",
         strand="plus|minus"
     log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}-{strand}.log"
     shell: """
-        (awk -v norm_factor=$(grep -oh "\w*{params.prefix}\w*" {input.chrsizes} | xargs samtools view -c {input.bam} | paste -d "" - <(echo "/({params.scale_factor}*1000000)") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/norm_factor; print $0}}' {input.counts} > {output.normalized}) &> {log}
+        (awk -v norm_factor=$(samtools view -c {input.bam} | paste -d "" - <(echo "/({params.scale_factor}*1000000)") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/norm_factor; print $0}}' {input.counts} > {output.normalized}) &> {log}
         """
 
 rule make_stranded_bedgraph:

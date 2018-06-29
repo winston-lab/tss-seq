@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-localrules: make_stranded_annotations,
+localrules:
+    make_stranded_annotations,
     cat_matrices
 
 rule make_stranded_annotations:
@@ -29,7 +30,7 @@ rule compute_matrix:
         scaled_length = lambda wc: 0 if FIGURES[wc.figure]["parameters"]["type"]=="absolute" else FIGURES[wc.figure]["parameters"]["scaled_length"],
         binsize = lambda wc: FIGURES[wc.figure]["parameters"]["binsize"],
         binstat = lambda wc: FIGURES[wc.figure]["parameters"]["binstat"],
-        nan_afterend = lambda wc: "--nanAfterEnd" if FIGURES[wc.figure]["parameters"]["nan_afterend"] and FIGURES[wc.figure]["parameters"]["type"]=="absolute" else [],
+        nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd",
         anno_label = lambda wc: FIGURES[wc.figure]["annotations"][wc.annotation]["label"]
     threads : config["threads"]
     log: "logs/compute_matrix/compute_matrix-{figure}_{annotation}_{sample}-{norm}-{strand}.log"

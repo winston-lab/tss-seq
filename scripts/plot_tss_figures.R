@@ -466,6 +466,19 @@ main = function(in_paths, samplelist, anno_paths, ptype, upstream, dnstream, sca
         pull(cpm) %>% quantile(probs=pct_cutoff, na.rm=TRUE)
     group_cutoff_both = max(group_cutoff_sense, group_cutoff_antisense, na.rm=TRUE)
 
+    # if the sortmethod isn't length, fill missing data with minimum signal
+    # (only for heatmaps, don't want to influence metagene values)
+    if (sortmethod != "length"){
+        df_sample %<>%
+            group_by(group, sample, annotation, strand, replicate, cluster) %>%
+            complete(new_index, position, fill=list(cpm=min(df_sample[["cpm"]]))) %>%
+            ungroup()
+        df_group %<>%
+            group_by(group, annotation, cluster, strand) %>%
+            complete(new_index, position, fill=list(cpm=min(df_group[["cpm"]]))) %>%
+            ungroup()
+    }
+
     heatmap_sample_both = hmap(df_sample, sample_cutoff_both, strand="both", logtxn=log_transform)
     heatmap_sample_sense = hmap(df_sample %>% filter(strand=="sense"),
                                 sample_cutoff_sense, strand="sense", logtxn=log_transform)

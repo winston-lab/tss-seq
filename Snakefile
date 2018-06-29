@@ -87,10 +87,8 @@ rule all:
         #alignment
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
         #coverage
-        expand("coverage/counts/{sample}_tss-seq-counts-{strand}.bw", sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        expand("coverage/sicounts/{sample}_tss-seq-sicounts-{strand}.bw", sample=SISAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        expand("coverage/libsizenorm/{sample}_tss-seq-libsizenorm-{strand}.bw", sample=SAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
-        expand("coverage/spikenorm/{sample}_tss-seq-spikenorm-{strand}.bw", sample=SISAMPLES, strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", sample=SAMPLES, norm=["counts", "libsizenorm"], strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", sample=SAMPLES, norm=["sicounts", "spikenorm"], strand=["SENSE","ANTISENSE","plus","minus"]),
         #quality controls
         "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
         expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]) if SISAMPLES else [],

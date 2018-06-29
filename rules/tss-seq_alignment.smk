@@ -6,21 +6,21 @@ localrules: bowtie2_build,
 #align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
 rule bowtie2_build:
     input:
-        fasta = config["combinedgenome"]["fasta"]
+        fasta = config["combinedgenome"]["fasta"] if SISAMPLES else config["genome"]["fasta"]
     output:
         expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.{num}.bt2", num=[1,2,3,4]),
-        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2])
+        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.rev.{num}.bt2", num=[1,2])
     params:
         idx_path = config["tophat2"]["index-path"],
-    log: "logs/bowtie2_build-{basename}.log"
+    log: "logs/bowtie2_build_{basename}.log"
     shell: """
         (bowtie2-build {input.fasta} {params.idx_path}/{wildcards.basename}) &> {log}
         """
 
 rule align:
     input:
-        expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".{num}.bt2", num=[1,2,3,4]),
-        expand(config["tophat2"]["index-path"] + "/" + config["combinedgenome"]["name"] + ".rev.{num}.bt2", basename=config["combinedgenome"]["name"], num=[1,2]),
+        expand(config["tophat2"]["index-path"] + "/" + (config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"]) + ".{num}.bt2", num=[1,2,3,4]),
+        expand(config["tophat2"]["index-path"] + "/" + (config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"]) + ".rev.{num}.bt2", num=[1,2]),
         fastq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz"
     output:
         aligned = "alignment/{sample}/accepted_hits.bam",
@@ -28,7 +28,7 @@ rule align:
         summary = "alignment/{sample}/align_summary.txt",
     params:
         idx_path = config["tophat2"]["index-path"],
-        basename = config["combinedgenome"]["name"],
+        basename = config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"],
         read_mismatches = config["tophat2"]["read-mismatches"],
         read_gap_length = config["tophat2"]["read-gap-length"],
         read_edit_dist = config["tophat2"]["read-edit-dist"],
@@ -69,19 +69,36 @@ rule remove_PCR_duplicates:
     input:
         "alignment/{sample}_tss-seq-uniquemappers.bam"
     output:
-        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        "alignment/{sample}_tss-seq-noPCRduplicates.bam",
     log: "logs/remove_PCR_duplicates/remove_PCR_duplicates_{sample}.log"
     shell: """
-        (python scripts/removePCRdupsFromBAM.py {input} {output.bam}) &> {log}
+        (python scripts/removePCRdupsFromBAM.py {input} {output}) &> {log}
         """
 
+#indexing is required for separating species by samtools view
 rule index_bam:
     input:
-        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        "alignment/{sample}_tss-seq-noPCRduplicates.bam",
     output:
-        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
+        "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
     log: "logs/index_bam/index_bam-{sample}.log"
     shell: """
-        (samtools index {input.bam} > {output.bai}) &> {log}
+        (samtools index {input} > {output}) &> {log}
+        """
+
+rule bam_separate_species:
+    input:
+        bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
+        bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
+        chrsizes = config["combinedgenome"]["chrsizes"]
+    output:
+        "alignment/{sample}_tss-seq-noPCRduplicates-{species}.bam"
+    params:
+        filterprefix = lambda wc: config["combinedgenome"]["spikein_prefix"] if wc.species=="experimental" else config["combinedgenome"]["experimental_prefix"],
+        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.species=="experimental" else config["combinedgenome"]["spikein_prefix"]
+    threads: config["threads"]
+    log: "logs/bam_separate_species/bam_separate_species-{sample}-{species}.log"
+    shell: """
+        (samtools view -h {input.bam} $(grep {params.prefix} {input.chrsizes} | awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | grep -v -e 'SN:{params.filterprefix}' | sed 's/{params.prefix}//g' | samtools view -bh -@ {threads} -o {output} -) &> {log}
         """
 

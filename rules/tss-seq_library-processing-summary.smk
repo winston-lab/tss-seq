@@ -56,7 +56,7 @@ rule plot_spikein_pct:
         stats = "qual_ctrl/spikein/tss-seq_spikein-stats-{status}.tsv"
     params:
         samplelist = lambda wc : list(SISAMPLES.keys()) if wc.status=="all" else list(SIPASSING.keys()),
-        conditions = conditiongroups_si,
-        controls = controlgroups_si,
+        conditions = [] if not SISAMPLES else conditiongroups_si,
+        controls = [] if not SISAMPLES else controlgroups_si,
     script: "../scripts/plot_si_pct.R"
 
