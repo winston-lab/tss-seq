@@ -88,12 +88,12 @@ rule all:
         expand("alignment/{sample}_tss-seq-noPCRduplicates.bam", sample=SAMPLES),
         #coverage
         expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", sample=SAMPLES, norm=["counts", "libsizenorm"], strand=["SENSE","ANTISENSE","plus","minus"]),
-        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", sample=SAMPLES, norm=["sicounts", "spikenorm"], strand=["SENSE","ANTISENSE","plus","minus"]),
+        expand("coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw", sample=SISAMPLES, norm=["sicounts", "spikenorm"], strand=["SENSE","ANTISENSE","plus","minus"]),
         #quality controls
         "qual_ctrl/read_processing/tss-seq_read-processing-loss.svg",
         expand("qual_ctrl/spikein/tss-seq_spikein-plots-{status}.svg", status=["all", "passing"]) if SISAMPLES else [],
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
-        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]),
+        expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), status=["all", "passing"], windowsize = config["scatterplot_binsizes"]) if SISAMPLES else [],
         #peakcalling on all samples
         expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
         expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=SISAMPLES),
@@ -128,7 +128,7 @@ rule all:
         #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #datavis
         expand(expand("datavis/{{figure}}/libsizenorm/{condition}-v-{control}/{{status}}/tss-seq_{{figure}}-libsizenorm-{{status}}_{condition}-v-{control}_heatmap-bygroup-sense.svg", zip, condition=conditiongroups+["all"], control=controlgroups+["all"]), figure=FIGURES, status=["all","passing"]) if config["plot_figures"] else [],
-        expand(expand("datavis/{{figure}}/spikenorm/{condition}-v-{control}/{{status}}/tss-seq_{{figure}}-spikenorm-{{status}}_{condition}-v-{control}_heatmap-bygroup-sense.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), figure=FIGURES, status=["all","passing"]) if config["plot_figures"] else [],
+        expand(expand("datavis/{{figure}}/spikenorm/{condition}-v-{control}/{{status}}/tss-seq_{{figure}}-spikenorm-{{status}}_{condition}-v-{control}_heatmap-bygroup-sense.svg", zip, condition=conditiongroups_si+["all"], control=controlgroups_si+["all"]), figure=FIGURES, status=["all","passing"]) if config["plot_figures"] and SISAMPLES else [],
         #correlations of transcript classes with genic TSSs
         expand("diff_exp/{condition}-v-{control}/libsizenorm/class_v_genic/{condition}-v-{control}_tss-seq-libsizenorm-class-v-genic.tsv", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/{condition}-v-{control}/spikenorm/class_v_genic/{condition}-v-{control}_tss-seq-spikenorm-class-v-genic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si),
