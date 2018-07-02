@@ -36,13 +36,19 @@ wildcard_constraints:
     group = "|".join(set([v["group"] for k,v in SAMPLES.items()])),
     control = "|".join(set(controlgroups + controlgroups_si + ["all"])),
     condition = "|".join(set(conditiongroups + conditiongroups_si + ["all"])),
+    species = "experimental|spikein",
+    read_status = "raw|cleaned|aligned_noPCRdup|unaligned",
     category = "|".join(CATEGORIES + ["all"]),
     figure = "|".join(FIGURES),
+    annotation = "|".join(set(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES]))),
     status = "all|passing",
+    counttype= "counts|sicounts",
     norm = "counts|sicounts|libsizenorm|spikenorm",
     strand = "SENSE|ANTISENSE|plus|minus",
     windowsize = "\d+",
     direction = "all|up|unchanged|down",
+    motif = "|".join(MOTIFS),
+    negative = "unchanged|random"
 
 status_norm_sample_dict = {
     "all":
