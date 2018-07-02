@@ -24,4 +24,5 @@ dependencies:
     - r-argparse=1.0.4
     - r-tidyverse=1.1.1
     - r-ggseqlogo=0.1
+    - svg2png
 

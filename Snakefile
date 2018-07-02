@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 import itertools
-from math import log2, log10
+from math import log2
 
 configfile: "config.yaml"
 
@@ -161,7 +161,7 @@ rule intragenic_position_bias:
     input:
         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}.tsv",
         chrom_sizes = config["genome"]["chrsizes"],
-        genic_regions = build_annotations(os.path.dirname(config["genome"]["transcripts"]) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        genic_regions = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
     output:
         atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
         rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",

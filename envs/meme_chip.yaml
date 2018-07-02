@@ -3,7 +3,6 @@ channels:
     - bioconda
     - conda-forge
 dependencies:
-    # - openmpi
-    - python=2
-    - meme
-    - perl-json
+    - python=2.7.15
+    - meme=4.12.0
+    - perl-json=2.90

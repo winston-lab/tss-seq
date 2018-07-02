@@ -1,0 +1,211 @@
+#provide tag and path to FASTA, chromosome sizes file, and annotation for heatmaps
+combinedgenome :
+    name : ScSp
+    fasta : ../genome/ScSp.R64.2-1.ASM294v2.fa
+    gff : ../genome/ScSp.R64.2-1.ASM294v2.gff
+    chrsizes : ../genome/ScSp.R64.2-1.ASM294v2.chrsizes.tsv
+    experimental_prefix : Spom_
+    spikein_prefix : Scer_
+
+genome:
+    fasta : ../genome/S_pombe.ASM294v2.fa
+    chrsizes : ../genome/S_pombe.ASM294v2.chrsizes.tsv
+    sichrsizes : ../genome/S_cerevisiae.R64-2-1.chrsizes.tsv
+    orf-annotation: ../genome/annotations/S_pombe_ORFs.bed
+    transcripts : ../genome/annotations/S_pombe_alltranscripts-adjustedTSS.bed
+    annotation_workflow: ../build-annotations-pombe/
+
+spikein-pct : 0.1 #percent spike-in added, only for the purposes of scaling spike-in normalized coverage files so they are on the same scale as the library size normalized coverage files
+
+samples:
+    non-depleted-1:
+        fastq : fastq/AS1_S17.R1.fastq.gz
+        group : non-depleted
+        pass-qc : True
+        spikein : True
+    non-depleted-2:
+        fastq : fastq/AS3_combined.R1.fastq.gz
+        group : non-depleted
+        pass-qc : False
+        spikein : True
+    non-depleted-3:
+        fastq : fastq/T01_S1_L001_R1_001.fastq.gz
+        group : non-depleted
+        pass-qc : True
+        spikein : True
+    non-depleted-4:
+        fastq : fastq/T02_S2_L001_R1_001.fastq.gz
+        group : non-depleted
+        pass-qc : True
+        spikein : True
+    non-depleted-5:
+        fastq : fastq/T03_S3_L001_R1_001.fastq.gz
+        group : non-depleted
+        pass-qc : True
+        spikein : True
+    depleted-1 :
+        fastq : fastq/AS2_S18.R1.fastq.gz
+        group : depleted
+        pass-qc : True
+        spikein : True
+    depleted-2 :
+        fastq : fastq/AS4_S20.R1.fastq.gz
+        group : depleted
+        pass-qc : True
+        spikein : True
+
+comparisons:
+    libsizenorm:
+        depleted: non-depleted
+    spikenorm:
+        depleted: non-depleted
+
+scatterplot_binsizes:
+  - 1
+  - 10
+
+cutadapt:
+    trim_qual : 25
+    adapter: CTGTAGGCACCATCAAT
+
+tophat2:
+    index-path: ../genome/bowtie2_indexes
+    read-mismatches : 3
+    read-gap-length : 2
+    read-edit-dist : 3
+    min-anchor-length : 8
+    splice-mismatches : 1
+    min-intron-length : 20
+    max-intron-length : 5000
+    max-insertion-length : 3
+    max-deletion-length : 3
+    max-multihits : 100
+    segment-mismatches : 3
+    segment-length : 20
+    min-coverage-intron : 50
+    max-coverage-intron : 10000
+    min-segment-intron : 50
+    max-segment-intron : 500000
+
+threads: 4
+
+peakcalling:
+    bandwidth: 10
+    local-bg-window: 2000
+    idr : 0.1
+
+run_gene_ontology: True
+gene_ontology_mapping_file: ../genome/go_slim_mappings/pombase_go_slim_mapping_filtered_2018_2_7.tsv
+
+plot_figures: True
+figures:
+    allcoding-TSS:
+        annotations:
+            coding-genes:
+                path : ../genome/annotations/S_pombe_codingtranscripts-adjustedTSS.bed
+                label: coding genes
+                n_clusters: 1
+        parameters:
+            type: absolute # absolute | scaled
+            binsize : 20 # int
+            binstat : mean # mean | median | min | max | sum | std
+            refpoint : TSS # TSS | TES | center
+            refpointlabel : TSS # string: label for reference point
+            upstream : 500 # int
+            dnstream : 4000 # int
+            nan_afterend : True # True | False
+            pct_cutoff : .995 # float in [0,1]
+            log_transform : False
+            spread_type: conf_int # OPTIONS: conf_int, quantile
+            trim_pct: 0.01 # float in [0,1]
+            arrange: length  # no | length | cluster
+            # cluster_conditions:
+            # cluster_five:
+            # cluster_three:
+            heatmap_colormap : inferno  # viridis | inferno | magma | plasma
+    allcoding-scaled:
+        annotations:
+            coding-genes:
+                path : ../genome/annotations/S_pombe_codingtranscripts-adjustedTSS.bed
+                label: coding genes
+                n_clusters: 1
+        parameters:
+            type: scaled # absolute | scaled
+            binsize : 20
+            binstat : mean # mean | median | min | max | sum | std
+            scaled_length: 2000 # int
+            refpointlabel : TSS # string: label for 5prime reference point
+            three_prime_label : CPS # string: label for 5prime reference point
+            upstream : 500 # int
+            dnstream : 500 # int
+            nan_afterend: False
+            pct_cutoff : .995 # bin data above this percentile in heatmaps
+            log_transform : False
+            spread_type: conf_int # OPTIONS: conf_int, quantile
+            trim_pct : 0.01
+            arrange: length
+            # cluster_conditions:
+            # cluster_five:
+            # cluster_three:
+            heatmap_colormap : inferno  # viridis | inferno | magma | plasma
+    transcripts_w_conv:
+        annotations:
+            transcripts-w-conv:
+                path : ../genome/annotations/transcripts_w_convergent_sortbyconvdist.bed
+                label : transcripts with convergent spt5 TSSs
+                n_clusters: 1
+        parameters:
+            type: absolute
+            binsize : 10
+            binstat : mean # OPTIONS: mean, median, min, max, sum, std
+            refpoint : TSS # OPTIONS: TSS, TES , center
+            refpointlabel : TSS # label for reference point
+            upstream : 200
+            dnstream : 1100
+            nan_afterend : False
+            pct_cutoff : .995 # bin data above this percentile in heatmaps
+            log_transform : False
+            spread_type: conf_int # OPTIONS: conf_int, quantile
+            trim_pct : 0.01 # for confidence interval, this is the percent to winsorize. for quantile, this is the lower quantile
+            arrange: no
+            # cluster_scale: True
+            # cluster_conditions:
+            #     depleted: antisense
+            # cluster_five: 100
+            # cluster_three: 600
+            heatmap_colormap : inferno  # OPTIONS: viridis, inferno, magma, plasma
+
+deseq:
+    fdr : 0.1
+    fold-change-threshold : 1.5
+
+genic-windowsize: 30 #distance added to EACH side of the annotated TSS to determine genic regions
+max-convergent-dist : 1000 #maximum distance downstream of genic sense TSS for an antisense peak to be considered convergent
+max-divergent-dist : 500 #maximum distance upstream of genic sense TSS for an antisense peak to be considered divergent
+
+max-upstr-atgs: 3 #maximum number of ATGs between intragenic start and ATG of potential intragenic ORF to output that intragenic ORF
+
+motifs:
+    run_motif_analyses: False
+    databases:
+        # - ../genome/motifs/YEASTRACT_20130918.meme
+        # - ../genome/motifs/macisaac_yeast.v1.meme
+        - ../genome/motifs/scpd_matrix.meme
+        # - ../genome/motifs/SwissRegulon_s_cer.meme
+        # - ../genome/motifs/yeast_uniprobe_GR09.meme
+    enrichment-upstream: 200
+    enrichment-downstream: 0
+    fimo-pval: 0.00001 #p-value for calling sites to determine enrichment
+    enrichment-fdr: 0.01
+    meme-chip:
+        run-meme-chip: False
+        upstream: 100
+        downstream: 30
+        peak-ccut: 200
+        meme-mode: zoops #oops|zoops|ans
+        meme-nmotifs : 10 #meme max number of motifs to find
+    #meme-maxsize :
+
+consensus:
+    window: 20 #bases around each side of TSSs to make sequence logo
+
