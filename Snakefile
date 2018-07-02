@@ -31,6 +31,19 @@ FIGURES = config["figures"]
 #get all motif names from motif databases, cleaning nasty characters in some motif names
 MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split())
 
+wildcard_constraints:
+    sample = "|".join(SAMPLES),
+    group = "|".join(set([v["group"] for k,v in SAMPLES.items()])),
+    control = "|".join(set(controlgroups + controlgroups_si + ["all"])),
+    condition = "|".join(set(conditiongroups + conditiongroups_si + ["all"])),
+    category = "|".join(CATEGORIES + ["all"]),
+    figure = "|".join(FIGURES),
+    status = "all|passing",
+    norm = "counts|sicounts|libsizenorm|spikenorm",
+    strand = "SENSE|ANTISENSE|plus|minus",
+    windowsize = "\d+",
+    direction = "all|up|unchanged|down",
+
 status_norm_sample_dict = {
     "all":
         {   "libsizenorm" : SAMPLES,

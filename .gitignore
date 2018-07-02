@@ -1,24 +1,25 @@
 .snakemake/
+logs/*
+logs/cluster/*
+scripts/.snakemake*
+fastq/*
 alignment/
 qual_ctrl/
 coverage/
-fastq/*
-logs/*
-logs/cluster/*
 datavis/
-scripts/.snakemake*
-correlations/
 peakcalling/
-snakemake.err
-snakemake.log
 diff_exp/
 motifs/
+gene_ontology/
+seq_logos/
+
+snakemake.err
+snakemake.log
 rulegraph.svg
 dag.svg
 Rplots.pdf
-gene_ontology/
-seq_logos/
 mogrify.log
+README.html
 
 config.yaml
 
