@@ -14,14 +14,14 @@ rule fastqc_prealignment:
     wildcard_constraints:
         read_status="raw|cleaned"
     threads : config["threads"]
-    log: "logs/fastqc/fastqc_{read_status}-{sample}.log"
+    log: "logs/fastqc/fastqc_{read_status}_{sample}.log"
     shell: """
         (mkdir -p qual_ctrl/fastqc/{wildcards.read_status}) &> {log}
         (fastqc --adapters <(echo -e "adapter\t{params.adapter}") --nogroup --noextract -t {threads} -o qual_ctrl/fastqc/{wildcards.read_status} {input}) &>> {log}
         (unzip -p qual_ctrl/fastqc/{wildcards.read_status}/{params.fname}_fastqc.zip {params.fname}_fastqc/fastqc_data.txt > {output}) &>> {log}
         """
 
-#fastqc for no PCR duplicates and unalignd reads
+#fastqc for no PCR duplicates and unaligned reads
 rule fastqc_postalignment:
     input:
         lambda wc: "alignment/{sample}_tss-seq-noPCRduplicates.bam".format(**wc) if wc.read_status=="aligned_noPCRdup" else "alignment/{sample}/unmapped.bam".format(**wc),
@@ -33,7 +33,7 @@ rule fastqc_postalignment:
     wildcard_constraints:
         read_status="aligned_noPCRdup|unaligned"
     threads : config["threads"]
-    log: "logs/fastqc/fastqc_{read_status}-{sample}.log"
+    log: "logs/fastqc/fastqc_{read_status}_{sample}.log"
     shell: """
         (mkdir -p qual_ctrl/fastqc/{wildcards.read_status}) &> {log}
         (bedtools bamtofastq -fq qual_ctrl/fastqc/{wildcards.read_status}/{params.fname}.fastq -i {input}) &>> {log}
