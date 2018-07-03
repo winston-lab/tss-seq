@@ -12,7 +12,7 @@ rule genome_coverage:
         strand="plus|minus"
     log: "logs/genome_coverage/genome_coverage_{sample}-{counttype}-{strand}.log"
     shell: """
-        (bedtools genomecov -bga -5 -strand {params.strand} -ibam {input} > {output}) &> {log}
+        (bedtools genomecov -bga -5 -strand {params.strand} -ibam {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
         """
 
 #NOTE: although we could do this by looking up library size values

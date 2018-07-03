@@ -6,7 +6,7 @@ rule map_to_windows:
         chrsizes = os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv",
     output:
         temp("qual_ctrl/scatter_plots/tss-seq_{sample}-{norm}-window-{windowsize}.bedgraph")
-    log: "logs/map_to_windows/map_to_windows-{norm}-{sample}-{windowsize}.log"
+    log: "logs/map_to_windows/map_to_windows_{norm}_{sample}-{windowsize}.log"
     shell: """
         (bedtools makewindows -g {input.chrsizes} -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n | bedtools map -a stdin -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
