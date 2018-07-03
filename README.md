@@ -78,7 +78,7 @@ vim config.yaml         # or use your favorite editor
 **1**. Clone this repository.
 
 ```bash
-git clone tss-seq
+git clone https://github.com/winston-lab/tss-seq.git
 ```
 
 **2**. Create and activate the `snakemake_default` virtual environment for the TSS-seq pipeline using conda. The virtual environment creation can take a while. If you've already created the `snakemake_default` environment from another one of my pipelines, this is the same environment, so you can skip creating the environment and just activate it.
