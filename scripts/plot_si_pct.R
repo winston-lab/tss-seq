@@ -88,3 +88,4 @@ main(in_path = snakemake@input[[1]],
      conditions = snakemake@params[["conditions"]],
      plot_out = snakemake@output[["plot"]],
      stats_out = snakemake@output[["stats"]])
+

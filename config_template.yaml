@@ -5,16 +5,14 @@
 # for the combined experimental and spikein genomes
 combinedgenome :
     name : ScSp # [STRING] used only to name the bowtie2 indices
-    fasta : ../genome/ScSp.R64.2-1.ASM294v2.fa # path to fasta file
-    chrsizes : ../genome/ScSp.R64.2-1.ASM294v2.chrsizes.tsv # path to two-column, tab-delimited file of chromosome sizes: {name}\t{size}\n , where the names correspond to the names in the fasta file, and begin with either the following experimental or spikein prefixes
+    fasta : ../genome/ScSp.R64.2-1.ASM294v2.fa # path to combined fasta file
     experimental_prefix : Spom_ # prefix for experimental species
     spikein_prefix : Scer_ # prefix for spikein species
 
-# for the experimental genome only, except for 'sichrsizes'
+# for the experimental genome only, except for 'spikein_fasta'
 genome:
-    fasta : ../genome/S_pombe.ASM294v2.fa # path to fasta file
-    chrsizes : ../genome/S_pombe.ASM294v2.chrsizes.tsv # path to chromosome sizes file for experimental genome
-    sichrsizes : ../genome/S_cerevisiae.R64-2-1.chrsizes.tsv # path to chromosome sizes file for spikein genome
+    fasta : ../genome/S_pombe.ASM294v2.fa # path to experimental fasta file
+    spikein_fasta: ../genome/S_cerevisiae.R64-2-1.fa # path to spikein fasta file
     orf-annotation: ../genome/annotations/S_pombe_ORFs.bed # path to BED6+ file of ORF annotations
     transcripts : ../genome/annotations/S_pombe_alltranscripts-adjustedTSS.bed # path to BED6+ file of transcript annotations
     annotation_workflow: ../build-annotations-pombe/ # path to Snakemake workflow used to build annotations of genic, convergent, divergent, etc. regions using the same fasta and annotation files listed above

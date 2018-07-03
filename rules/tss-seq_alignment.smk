@@ -91,7 +91,7 @@ rule bam_separate_species:
     input:
         bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
         bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
-        chrsizes = config["combinedgenome"]["chrsizes"]
+        fasta = config["combinedgenome"]["fasta"]
     output:
         "alignment/{sample}_tss-seq-noPCRduplicates-{species}.bam"
     params:
@@ -100,6 +100,6 @@ rule bam_separate_species:
     threads: config["threads"]
     log: "logs/bam_separate_species/bam_separate_species-{sample}-{species}.log"
     shell: """
-        (samtools view -h {input.bam} $(grep {params.prefix} {input.chrsizes} | awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | grep -v -e 'SN:{params.filterprefix}' | sed 's/{params.prefix}//g' | samtools view -bh -@ {threads} -o {output} -) &> {log}
+        (samtools view -h {input.bam} $(faidx {input.fasta} -i chromsizes | grep {params.prefix} | awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | grep -v -e 'SN:{params.filterprefix}' | sed 's/{params.prefix}//g' | samtools view -bh -@ {threads} -o {output} -) &> {log}
         """
 

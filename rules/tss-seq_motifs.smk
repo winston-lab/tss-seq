@@ -46,7 +46,7 @@ rule cat_fimo_motifs:
 rule get_overlapping_motifs:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
-        chrsizes = config["genome"]["chrsizes"],
+        fasta = config["genome"]["fasta"],
         motifs = "motifs/allmotifs.bed"
     output:
         "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
@@ -55,12 +55,12 @@ rule get_overlapping_motifs:
         dnstr = config["motifs"]["enrichment-downstream"]
     log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
-        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6,7,8,9 -o collapse,max,first,max,max,max -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | cut -f18 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
+        (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g <(faidx {input.fasta} -i chromsizes) | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6,7,8,9 -o collapse,max,first,max,max,max -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | cut -f18 --complement | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
 rule get_random_motifs:
     input:
-        chrsizes = config["genome"]["chrsizes"],
+        fasta = config["genome"]["fasta"],
         motifs = "motifs/allmotifs.bed",
     output:
         "motifs/random_sequences-allFIMOresults.tsv.gz"
@@ -69,7 +69,7 @@ rule get_random_motifs:
         n = 6000
     log: "logs/get_random_motifs.log"
     shell: """
-        (bedtools random -l {params.window} -n {params.n} -g {input.chrsizes} | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6 -o collapse,first,first -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, 0, 0, 0, $7, $8, $9, $10, $11, $12, $13, $14}}' | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
+        (bedtools random -l {params.window} -n {params.n} -g <(faidx {input.fasta} -i chromsizes) | sort -k1,1 -k2,2n | bedtools merge -s -d -1 -c 4,5,6 -o collapse,first,first -i stdin | sort -k1,1 -k2,2n | bedtools intersect -a stdin -b {input.motifs} -sorted -F 1 -wao | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, 0, 0, 0, $7, $8, $9, $10, $11, $12, $13, $14}}' | cat <(echo -e "chrom\tregion_start\tregion_end\tpeak_id\tpeak_score\tpeak_strand\tpeak_lfc\tpeak_logpval\tpeak_logqval\tmotif_chrom\tmotif_start\tmotif_end\tmotif_id\tmotif_logpval\tmotif_strand\tmotif_alt_id\tmatch_sequence") - | pigz -f > {output}) &> {log}
         """
 
 rule test_motif_enrichment:

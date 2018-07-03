@@ -16,3 +16,7 @@ dependencies:
     - r-gtable=0.2.0
     - r-gridextra=2.2.1
     - r-svglite=1.2.1
+    - r-gdtools=0.1.6
+    - r-stringi=1.1.7
+    - r-hexbin=1.27.2
+

@@ -47,23 +47,16 @@ rule make_stranded_bedgraph:
         (bash scripts/makeStrandedBedgraph.sh {input.minus} {input.plus} > {output.antisense}) &>> {log}
         """
 
-def select_chromsizes(wc):
-    if wc.strand in ["plus", "minus"]:
-        if wc.norm=="sicounts":
-            return config["genome"]["sichrsizes"]
-        return config["genome"]["chrsizes"]
-    if wc.norm=="sicounts":
-        return os.path.splitext(config["genome"]["sichrsizes"])[0] + "-STRANDED.tsv"
-    return os.path.splitext(config["genome"]["chrsizes"])[0] + "-STRANDED.tsv"
-
 rule bedgraph_to_bigwig:
     input:
         bedgraph = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
-        chrsizes = select_chromsizes
+        fasta = lambda wc: config["genome"]["spikein_fasta"] if wc.norm=="sicounts" else config["genome"]["fasta"]
     output:
         "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw",
+    params:
+        stranded = lambda wc: [] if wc.strand in ["plus", "minus"] else """| awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2; print $1"-minus", $2}}' | LC_COLLATE=C sort -k1,1"""
     log : "logs/bedgraph_to_bigwig/bedgraph_to_bigwig-{sample}-{norm}-{strand}.log"
     shell: """
-        (bedGraphToBigWig {input.bedgraph} {input.chrsizes} {output}) &> {log}
+        (bedGraphToBigWig {input.bedgraph} <(faidx {input.fasta} -i chromsizes {params.stranded}) {output}) &> {log}
         """
 
