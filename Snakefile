@@ -32,22 +32,22 @@ FIGURES = config["figures"]
 MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split())
 
 wildcard_constraints:
-    sample = "|".join(SAMPLES),
-    group = "|".join(set([v["group"] for k,v in SAMPLES.items()])),
-    control = "|".join(set(controlgroups + controlgroups_si + ["all"])),
-    condition = "|".join(set(conditiongroups + conditiongroups_si + ["all"])),
+    sample = "|".join(re.escape(x) for x in list(SAMPLES.keys())),
+    group = "|".join(set(re.escape(v["group"]) for k,v in SAMPLES.items())),
+    control = "|".join(set(re.escape(x) for x in controlgroups + controlgroups_si + ["all"])),
+    condition = "|".join(set(re.escape(x) for x in conditiongroups + conditiongroups_si + ["all"])),
     species = "experimental|spikein",
     read_status = "raw|cleaned|aligned_noPCRdup|unaligned",
     category = "|".join(CATEGORIES + ["all"]),
-    figure = "|".join(FIGURES),
-    annotation = "|".join(set(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES]))),
+    figure = "|".join(re.escape(x) for x in list(FIGURES.keys())),
+    annotation = "|".join(re.escape(x) for x in set(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES]))),
+    motif = "|".join(re.escape(x) for x in MOTIFS),
     status = "all|passing",
     counttype= "counts|sicounts",
     norm = "counts|sicounts|libsizenorm|spikenorm",
     strand = "SENSE|ANTISENSE|plus|minus",
     windowsize = "\d+",
     direction = "all|up|unchanged|down",
-    motif = "|".join(MOTIFS),
     negative = "unchanged|random"
 
 status_norm_sample_dict = {

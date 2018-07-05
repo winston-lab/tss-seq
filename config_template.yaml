@@ -11,6 +11,7 @@ combinedgenome :
 
 # for the experimental genome only, except for 'spikein_fasta'
 genome:
+    name : Sc # [STRING] used only to name the bowtie2 indices if no spikeins
     fasta : ../genome/S_pombe.ASM294v2.fa # path to experimental fasta file
     spikein_fasta: ../genome/S_cerevisiae.R64-2-1.fa # path to spikein fasta file
     orf-annotation: ../genome/annotations/S_pombe_ORFs.bed # path to BED6+ file of ORF annotations
@@ -64,7 +65,7 @@ comparisons:
     spikenorm:
         depleted: non-depleted # It's okay to have no comparisons if no spikein normalized comparisons are to be made
 
-# binsizes for scatterplots
+# [INT] binsizes for scatterplots
 scatterplot_binsizes:
   - 1
   - 10
@@ -156,13 +157,13 @@ figures:
             log_transform : False # [True|False] Log transform data?
             spread_type: conf_int # [conf_int|quantile] Plot 95% confidence interval of the mean, or quantiles of the data.
             trim_pct: 0.01 # [FLOAT in (0,1)] For confidence intervals, this is the percent to winsorize before taking the mean. For quantiles, this is the lower quantile.
-            arrange: length  # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
+            arrange: length # [no|length|cluster] No: keep annotations in order of annotation file. Length: sort annotations in order of length before plotting. Cluster: try to plot annotations with similar data close to one another, using optimal leaf ordering of hierarchical clustering
             # cluster_conditions:
             #   depleted: sense # CONDITION: STRAND. If arrange: cluster, the condition and strand to be used for arranging. Strand can be "sense", "antisense", or "both".
             #   non-depleted: both
             # cluster_five: -500 # [INT] 5' boundary of the data to be used for clustering, relative to the reference point.
             # cluster_three: 500 # [INT] 3' boundary of the data to be used for clustering, relative to the reference point
-            heatmap_colormap : inferno  # [viridis|inferno|magma|plasma] colormap for heatmaps
+            heatmap_colormap : inferno # [viridis|inferno|magma|plasma] colormap for heatmaps
     allcoding-scaled:
         annotations:
             coding-genes:
@@ -188,7 +189,7 @@ figures:
             #   non-depleted: both
             # cluster_five: -500 # [INT] 5' boundary of the data to be used for clustering, relative to the 5' end of the annotation.
             # cluster_three: 500 # [INT] 3' boundary of the data to be used for clustering, relative to the 3' end of the annotation.
-            heatmap_colormap : inferno  # [viridis|inferno|magma|plasma] colormap for heatmaps
+            heatmap_colormap : inferno # [viridis|inferno|magma|plasma] colormap for heatmaps
 
 # maximum number of threads to use if running locally
 threads: 4 #[INT]
