@@ -145,7 +145,7 @@ figures:
                 label: coding genes # [STRING] label for region
                 n_clusters: 1 # [INT] number of clusters to separate region into. Leave 1 for no clustering. Basic k-means clustering is used.
         parameters:
-          type: absolute # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
+            type: absolute # [absolute|scaled] Plot absolute distances, or scale all annotations to the same length. See below for example parameters for a scaled plot.
             binsize : 20 # [INT] binsize to summarise data
             binstat : mean # [mean|median|min|max|sum|std] operation used to summarise data
             refpoint : TSS # [TSS|TES|center] reference point in region. TSS and TES correspond to the 5' and 3' ends, respectively.
