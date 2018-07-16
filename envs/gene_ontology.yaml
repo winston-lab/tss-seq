@@ -2,6 +2,11 @@ name: gene_ontology
 channels:
     - conda-forge
     - bioconda
+    - https://repo.anaconda.com/pkgs/free/linux-64
+    - https://repo.anaconda.com/pkgs/free/noarch
+    - https://repo.anaconda.com/pkgs/pro/linux-64
+    - https://repo.anaconda.com/pkgs/pro/noarch
+    - nodefaults
 dependencies:
     - r-tidyverse=1.1.1
     - bioconductor-goseq=1.30.0
