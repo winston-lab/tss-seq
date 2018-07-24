@@ -165,6 +165,7 @@ rule all:
         expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-gene-ontology-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] and comparisons_si else [],
         #sequence logos
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
+        expand("seq_logos/{group}/{group}-{category}-seqlogo.meme", group=set([PASSING[x]['group'] for x in PASSING]), category=CATEGORIES+["all"]),
 
 # rule intragenic_position_bias:
 #     input:
