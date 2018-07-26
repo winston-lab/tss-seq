@@ -104,6 +104,8 @@ localrules:
 
 rule all:
     input:
+        #require config file so that it gets archived
+        "config.yaml",
         #FastQC
         'qual_ctrl/fastqc/tss-seq-per_base_sequence_content.svg',
         #alignment
