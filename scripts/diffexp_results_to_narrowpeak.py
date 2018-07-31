@@ -59,10 +59,10 @@ def main(condition_paths, control_paths, diffexp_path, narrowpeak_out, bed_out):
                 'stat':str, 'log10_pval':str, 'log10_padj':str,
                 'mean_expr':str, 'condition_expr':str, 'control_expr':str})
 
-    diffexp_df['summit'] = diffexp_df.apply(get_summit, coverage=coverage, axis=1)
-    diffexp_df = diffexp_df.assign(summit_start = diffexp_df['start'] + diffexp_df['summit'])
-    diffexp_df = diffexp_df.assign(summit_end = diffexp_df['summit_start'] + 1)
-
+    if diffexp_df.shape[0] > 0:
+        diffexp_df['summit'] = diffexp_df.apply(get_summit, coverage=coverage, axis=1)
+        diffexp_df = diffexp_df.assign(summit_start = diffexp_df['start'] + diffexp_df['summit'])
+        diffexp_df = diffexp_df.assign(summit_end = diffexp_df['summit_start'] + 1)
 
     #NOTE: we convert NAs (found in pvalue and score columns) to zero for narrowpeak compatibility
     diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'peak_name', 'score', 'strand', 'log2_foldchange', 'log10_pval', 'log10_padj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
