@@ -143,10 +143,10 @@ rule all:
         expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups, control=controlgroups), plot = ["mosaic", "maplot", "volcano"]),
         expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-diffexp-{{plot}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), plot = ["mosaic", "maplot", "volcano"]) if comparisons_si else [],
         #random distributions for differentially expressed peaks
-        # expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-libsizenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/spikenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-spikenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/antisense/position_bias/{condition}-v-{control}_tss-seq-libsizenorm-antisense-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down"], reference=["TSS", "RELATIVE", "CPS"]),
-        # expand(expand("diff_exp/{condition}-v-{control}/spikenorm/antisense/position_bias/{condition}-v-{control}_tss-seq-spikenorm-antisense-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["TSS", "RELATIVE", "CPS"]),
+        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-libsizenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/intragenic/position_bias/{condition}-v-{control}_tss-seq-spikenorm-intragenic-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["ATG", "RELATIVE", "STOP"]),
+        expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/antisense/position_bias/{condition}-v-{control}_tss-seq-libsizenorm-antisense-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down"], reference=["TSS", "RELATIVE", "CPS"]),
+        expand(expand("diff_exp/{condition}-v-{control}/spikenorm/antisense/position_bias/{condition}-v-{control}_tss-seq-spikenorm-antisense-{{direction}}-{{reference}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down"], reference=["TSS", "RELATIVE", "CPS"]),
         ##distances of differentially expressed peaks
         #expand(expand("diff_exp/{condition}-v-{control}/libsizenorm/{{ttype}}/{condition}-v-{control}-relative-distances-libsizenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], ttype=["intragenic", "antisense"]),
         #expand(expand("diff_exp/{condition}-v-{control}/spikenorm/{{ttype}}/{condition}-v-{control}-relative-distances-spikenorm-{{direction}}-{{ttype}}.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], ttype=["intragenic", "antisense"]),
@@ -169,34 +169,34 @@ rule all:
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
         expand("seq_logos/{group}/{group}-{category}-seqlogo.meme", group=set([PASSING[x]['group'] for x in PASSING]), category=CATEGORIES+["all"]),
 
-# rule intragenic_position_bias:
-#     input:
-#         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}.tsv",
-#         fasta = config["genome"]["fasta"],
-#         genic_regions = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
-#     output:
-#         atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
-#         rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",
-#         stop = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-STOP.tsv",
-#     conda: "envs/position_bias.yaml"
-#     log: "logs/intragenic_position_bias/intragenic_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
-#     shell: """
-#         (python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c <(faidx {input.fasta} -i chromsizes) -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}) &> {log}
-#         """
+rule intragenic_position_bias:
+    input:
+        diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}.tsv",
+        fasta = config["genome"]["fasta"],
+        genic_regions = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+    output:
+        atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
+        rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",
+        stop = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-STOP.tsv",
+    conda: "envs/position_bias.yaml"
+    log: "logs/intragenic_position_bias/intragenic_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
+    shell: """
+        (python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c $(faidx {input.fasta} -i chromsizes) -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}) &> {log}
+        """
 
-# rule antisense_position_bias:
-#     input:
-#         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-{direction}.tsv",
-#         fasta = config["genome"]["fasta"],
-#     output:
-#         tss = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-TSS.tsv",
-#         rel = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-RELATIVE.tsv",
-#         cps = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-CPS.tsv",
-#     conda: "envs/position_bias.yaml"
-#     log: "logs/antisense_position_bias/antisense_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
-#     shell: """
-#         (python scripts/antisense_tss_position_bias.py -d {input.diffexp_results} -c <(faidx {input.fasta} -i chromsizes) -a {output.tss} -r {output.rel} -s {output.cps}) &> {log}
-#         """
+rule antisense_position_bias:
+    input:
+        diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-antisense-{direction}.tsv",
+        fasta = config["genome"]["fasta"],
+    output:
+        tss = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-TSS.tsv",
+        rel = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-RELATIVE.tsv",
+        cps = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-CPS.tsv",
+    conda: "envs/position_bias.yaml"
+    log: "logs/antisense_position_bias/antisense_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
+    shell: """
+        (python scripts/antisense_tss_position_bias.py -d {input.diffexp_results} -c $(faidx {input.fasta} -i chromsizes) -a {output.tss} -r {output.rel} -s {output.cps}) &> {log}
+        """
 
 rule genic_v_class:
     input:
