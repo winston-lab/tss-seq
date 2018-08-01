@@ -7,7 +7,7 @@ from collections import Counter
 
 parser = argparse.ArgumentParser(description='Define possible positions for antisense TSSs to occur.')
 parser.add_argument('-d', dest = 'diffexp_path', type=str)
-parser.add_argument('-c', dest = 'chrom_sizes', type=str)
+parser.add_argument('-c', dest = 'chrom_sizes', type=str, nargs="+")
 parser.add_argument('-a', dest = 'tss_path', type=str)
 parser.add_argument('-r', dest = 'rel_path', type=str)
 parser.add_argument('-s', dest = 'cps_path', type=str)
@@ -15,6 +15,7 @@ args = parser.parse_args()
 
 def main():
     diffexp_results = pd.read_csv(args.diffexp_path, sep="\t")
+    chrom_sizes = {args.chrom_sizes[i]:(0, int(args.chrom_sizes[i+1])) for i in range(0, len(args.chrom_sizes), 2)}
 
     tss_values = Counter()
     cps_values = Counter()
@@ -27,7 +28,7 @@ def main():
     for index, row in diffexp_results.iterrows():
         peak_length = row['end']-row['start']
 
-        bed = pybt.BedTool("\t".join([row['transcript_chrom'], str(row['transcript_start']), str(row['transcript_end']), row['transcript_name'], str(row['transcript_score']), row['strand']]), from_string=True).slop(b=(peak_length-1), g=args.chrom_sizes).shift(p=row['peak_summit'], m=-row['peak_summit'], g=args.chrom_sizes)
+        bed = pybt.BedTool("\t".join([row['transcript_chrom'], str(row['transcript_start']), str(row['transcript_end']), row['transcript_name'], str(row['transcript_score']), row['strand']]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
 
         for interval in bed:
             if interval.strand=="+":

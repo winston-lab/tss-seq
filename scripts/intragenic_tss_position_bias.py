@@ -7,7 +7,7 @@ from collections import Counter
 
 parser = argparse.ArgumentParser(description='Define possible positions for intragenic TSSs to occur.')
 parser.add_argument('-d', dest = 'diffexp_path', type=str)
-parser.add_argument('-c', dest = 'chrom_sizes', type=str)
+parser.add_argument('-c', dest = 'chrom_sizes', type=str, nargs="+")
 parser.add_argument('-g', dest = 'genic_region_path', type=str)
 parser.add_argument('-a', dest = 'atg_path', type=str)
 parser.add_argument('-r', dest = 'rel_path', type=str)
@@ -17,6 +17,7 @@ args = parser.parse_args()
 def main():
     diffexp_results = pd.read_csv(args.diffexp_path, sep="\t")
     genic_regions = pybt.BedTool(args.genic_region_path)
+    chrom_sizes = {args.chrom_sizes[i]:(0, int(args.chrom_sizes[i+1])) for i in range(0, len(args.chrom_sizes), 2)}
 
     atg_values = Counter()
     stop_values = Counter()
@@ -30,7 +31,7 @@ def main():
     for index, row in diffexp_results.iterrows():
         peak_length = row['end']-row['start']
 
-        bed = pybt.BedTool("\t".join([row['orf_chrom'], str(row['orf_start']), str(row['orf_end']), row['orf_name'], str(row['orf_score']), row['orf_strand']]), from_string=True).slop(b=(peak_length-1), g=args.chrom_sizes).subtract(genic_regions, s=True).shift(p=row['peak_summit'], m=-row['peak_summit'], g=args.chrom_sizes)
+        bed = pybt.BedTool("\t".join([row['orf_chrom'], str(row['orf_start']), str(row['orf_end']), row['orf_name'], str(row['orf_score']), row['orf_strand']]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).subtract(genic_regions, s=True).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
 
         for interval in bed:
             if interval.strand=="+":
