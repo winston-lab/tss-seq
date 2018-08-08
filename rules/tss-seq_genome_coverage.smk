@@ -21,7 +21,7 @@ rule genome_coverage:
 rule normalize_genome_coverage:
     input:
         counts = "coverage/counts/{sample}_tss-seq-counts-{strand}.bedgraph",
-        bam = lambda wc: f"alignment/{wc.sample}_tss-seq-noPCRduplicates-" + ("experimental" if wc.norm=="spikenorm" else "spikein") + ".bam",
+        bam = lambda wc: f"alignment/{wc.sample}_tss-seq-noPCRduplicates-" + ("spikein" if wc.norm=="spikenorm" else "experimental") + ".bam",
     output:
         normalized = "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
     params:
