@@ -34,7 +34,7 @@ An analysis pipeline for TSS-seq data with the following major steps:
 
 ### required files
 
-- FASTQ files of TSS-seq libraries prepared as described in [our preprint](https://www.biorxiv.org/content/early/2018/06/15/347575). The pipeline has only been tested using Illumina sequencing data. FASTQ files should be demultiplexed but not otherwise modified.
+- FASTQ files of TSS-seq libraries prepared as described in [our publication](https://doi.org/10.1016/j.molcel.2018.09.005). The pipeline has only been tested using Illumina sequencing data. FASTQ files should be demultiplexed but not otherwise modified.
 
 - FASTA files:
     - the 'experimental' genome
