@@ -51,8 +51,13 @@ rule classify_antisense_peaks:
         (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -u -S | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
+# 0.) exclude genic peaks
+# 1.) intersect with convergent region annotation
+# 2.) join to original transcript annotation
+# 3.) add distance information
 rule classify_convergent_peaks:
     input:
+        transcript_anno = config["genome"]["transcripts"],
         conv_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"),
         genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
@@ -62,7 +67,7 @@ rule classify_convergent_peaks:
         bed = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent-summits.bed",
     log : "logs/classify_peaks/classify_convergent_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
+        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -wo -s | sort -k14,14 | join -1 14 -2 4 -t $'\t' -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,2.1,2.2,2.3,2.4,2.5,2.6 - <(sort -k4,4 {input.transcript_anno}) | sort -k1,1 -k2,2n | awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | bedtools intersect -a stdin -b {input.conv_anno} -u -s | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
         """
 
