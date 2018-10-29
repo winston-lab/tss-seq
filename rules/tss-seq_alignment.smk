@@ -115,11 +115,7 @@ rule bam_separate_species:
     input:
         bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
         bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
-        fasta = "{directory}/{exp_name}_{exp_fasta}_{si_name}_{si_fasta}".format(directory = os.path.split(config["genome"]["fasta"])[0],
-                                                                                exp_name = config["genome"]["name"],
-                                                                                exp_fasta = os.path.splitext(os.path.basename(config["genome"]["fasta"]))[0],
-                                                                                si_name = config["spike_in"]["name"],
-                                                                                si_fasta = os.path.basename(config["spike_in"]["fasta"]))
+        fasta = "{directory}/{bn}.fa".format(directory = os.path.split(config["genome"]["fasta"])[0], bn=basename) if SISAMPLES else config["genome"]["fasta"],
     output:
         "alignment/{sample}_tss-seq-noPCRduplicates-{species}.bam"
     params:
