@@ -37,7 +37,7 @@ rule bowtie2_build:
     conda: "../envs/tophat2.yaml"
     log: "logs/bowtie2_build_{basename}.log"
     shell: """
-        (bowtie2-build {input.fasta} {params.idx_path}/{wildcards.basename}) &> {log}
+        (bowtie2-build {input} {params.idx_path}/{wildcards.basename}) &> {log}
         """
 
 rule align:
