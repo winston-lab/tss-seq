@@ -1,16 +1,37 @@
 #!/usr/bin/env python
 
 localrules:
+    build_combined_genome,
     bowtie2_build,
     index_bam
+
+basename = "{exp_name}_{exp_fasta}_{si_name}_{si_fasta}".format(exp_name = config["genome"]["name"],
+                                                                exp_fasta = os.path.splitext(os.path.basename(config["genome"]["fasta"]))[0],
+                                                                si_name = config["spike_in"]["name"],
+                                                                si_fasta = os.path.splitext(os.path.basename(config["spike_in"]["fasta"]))[0]) if SISAMPLES else os.path.splitext(os.path.basename(config["genome"]["fasta"]))[0]
+
+rule build_combined_genome:
+    input:
+        experimental = config["genome"]["fasta"],
+        spikein = config["spike_in"]["fasta"]
+    output:
+        "{directory}/{bn}.fa".format(directory = os.path.split(config["genome"]["fasta"])[0], bn=basename),
+    params:
+        exp_name = config["genome"]["name"],
+        si_name = config["spike_in"]["name"]
+    log: "logs/build_combined_genome.log"
+    shell: """
+        (sed 's/>/>{params.exp_name}_/g' {input.experimental} | \
+        cat - <(sed 's/>/>{params.si_name}_/g' {input.spikein}) > {output}) &> {log}
+        """
 
 #align to combined genome with Tophat2, WITHOUT reference transcriptome (i.e., the -G gff)
 rule bowtie2_build:
     input:
-        fasta = config["combinedgenome"]["fasta"] if SISAMPLES else config["genome"]["fasta"]
+        "{directory}/{bn}.fa".format(directory = os.path.split(config["genome"]["fasta"])[0], bn=basename) if SISAMPLES else config["genome"]["fasta"],
     output:
-        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.{num}.bt2", num=[1,2,3,4]),
-        expand(config["tophat2"]["index-path"] + "/" + "{{basename}}.rev.{num}.bt2", num=[1,2])
+        expand(config["tophat2"]["index-path"] + "/{{basename}}.{num}.bt2", num=[1,2,3,4]),
+        expand(config["tophat2"]["index-path"] + "/{{basename}}.rev.{num}.bt2", num=[1,2])
     params:
         idx_path = config["tophat2"]["index-path"],
     conda: "../envs/tophat2.yaml"
@@ -21,8 +42,12 @@ rule bowtie2_build:
 
 rule align:
     input:
-        expand(config["tophat2"]["index-path"] + "/" + (config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"]) + ".{num}.bt2", num=[1,2,3,4]),
-        expand(config["tophat2"]["index-path"] + "/" + (config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"]) + ".rev.{num}.bt2", num=[1,2]),
+        expand("{directory}/{bn}.{num}.bt2", directory = config["tophat2"]["index-path"],
+                                             bn = basename,
+                                             num = [1,2,3,4]),
+        expand("{directory}/{bn}.rev.{num}.bt2", directory = config["tophat2"]["index-path"],
+                                             bn = basename,
+                                             num = [1,2]),
         fastq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz"
     output:
         aligned = "alignment/{sample}/accepted_hits.bam",
@@ -30,7 +55,6 @@ rule align:
         summary = "alignment/{sample}/align_summary.txt",
     params:
         idx_path = config["tophat2"]["index-path"],
-        basename = config["combinedgenome"]["name"] if SISAMPLES else config["genome"]["name"],
         read_mismatches = config["tophat2"]["read-mismatches"],
         read_gap_length = config["tophat2"]["read-gap-length"],
         read_edit_dist = config["tophat2"]["read-edit-dist"],
@@ -52,7 +76,7 @@ rule align:
     log: "logs/align/align_{sample}.log"
     shell:
         """
-        (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive {params.idx_path}/{params.basename} {input.fastq}) &> {log}
+        (tophat2 --read-mismatches {params.read_mismatches} --read-gap-length {params.read_gap_length} --read-edit-dist {params.read_edit_dist} -o alignment/{wildcards.sample} --min-anchor-length {params.min_anchor_length} --splice-mismatches {params.splice_mismatches} --min-intron-length {params.min_intron_length} --max-intron-length {params.max_intron_length} --max-insertion-length {params.max_insertion_length} --max-deletion-length {params.max_deletion_length} --num-threads {threads} --max-multihits {params.max_multihits} --library-type fr-firststrand --segment-mismatches {params.segment_mismatches} --no-coverage-search --segment-length {params.segment_length} --min-coverage-intron {params.min_coverage_intron} --max-coverage-intron {params.max_coverage_intron} --min-segment-intron {params.min_segment_intron} --max-segment-intron {params.max_segment_intron} --b2-sensitive {params.idx_path}/{basename} {input.fastq}) &> {log}
         """
 
 rule select_unique_mappers:
@@ -91,15 +115,19 @@ rule bam_separate_species:
     input:
         bam = "alignment/{sample}_tss-seq-noPCRduplicates.bam",
         bai = "alignment/{sample}_tss-seq-noPCRduplicates.bam.bai",
-        fasta = config["combinedgenome"]["fasta"]
+        fasta = "{directory}/{exp_name}_{exp_fasta}_{si_name}_{si_fasta}".format(directory = os.path.split(config["genome"]["fasta"])[0],
+                                                                                exp_name = config["genome"]["name"],
+                                                                                exp_fasta = os.path.splitext(os.path.basename(config["genome"]["fasta"]))[0],
+                                                                                si_name = config["spike_in"]["name"],
+                                                                                si_fasta = os.path.basename(config["spike_in"]["fasta"]))
     output:
         "alignment/{sample}_tss-seq-noPCRduplicates-{species}.bam"
     params:
-        filterprefix = lambda wc: config["combinedgenome"]["spikein_prefix"] if wc.species=="experimental" else config["combinedgenome"]["experimental_prefix"],
-        prefix = lambda wc: config["combinedgenome"]["experimental_prefix"] if wc.species=="experimental" else config["combinedgenome"]["spikein_prefix"]
+        filterprefix = lambda wc: config["spike_in"]["name"] if wc.species=="experimental" else config["genome"]["name"],
+        prefix = lambda wc: config["genome"]["name"] if wc.species=="experimental" else config["spike_in"]["name"]
     threads: config["threads"]
     log: "logs/bam_separate_species/bam_separate_species-{sample}-{species}.log"
     shell: """
-        (samtools view -h {input.bam} $(faidx {input.fasta} -i chromsizes | grep {params.prefix} | awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | grep -v -e 'SN:{params.filterprefix}' | sed 's/{params.prefix}//g' | samtools view -bh -@ {threads} -o {output} -) &> {log}
+        (samtools view -h {input.bam} $(faidx {input.fasta} -i chromsizes | grep {params.prefix}_ | awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | grep -v -e 'SN:{params.filterprefix}_' | sed 's/{params.prefix}_//g' | samtools view -bh -@ {threads} -o {output} -) &> {log}
         """
 

@@ -1,43 +1,43 @@
 #!/usr/bin/env python
 
 localrules:
-    build_motif_database,
+    # build_motif_database,
     get_random_motifs,
 
-rule build_motif_database:
-    input:
-        fasta = config["genome"]["fasta"],
-        motif_db = config["motifs"]["databases"]
-    output:
-        "motifs/allmotifs.meme"
-    log: "logs/build_motif_database.log"
-    shell: """
-        (meme2meme -bg <(fasta-get-markov {input.fasta}) {input.motif_db} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' > {output}) &> {log}
-        """
+#rule build_motif_database:
+#    input:
+#        fasta = config["genome"]["fasta"],
+#        motif_db = config["motifs"]["databases"]
+#    output:
+#        "motifs/allmotifs.meme"
+#    log: "logs/build_motif_database.log"
+#    shell: """
+#        (meme2meme -bg <(fasta-get-markov {input.fasta}) {input.motif_db} | sed -e 's/\//_/g; s/&/_/g; s/{{/[/g; s/}}/]/g' > {output}) &> {log}
+#        """
 
-#run fimo in parallel for each motif
-rule fimo:
-    input:
-        fasta = config["genome"]["fasta"],
-        motif_db = "motifs/allmotifs.meme"
-    output:
-        bed = temp("motifs/.{motif}.bed") # a BED6+2 format
-    params:
-        alpha = config["motifs"]["fimo-pval"]
-    log: "logs/fimo/fimo_{motif}.log"
-    shell: """
-        (fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}) &> {log}
-        """
+##run fimo in parallel for each motif
+#rule fimo:
+#    input:
+#        fasta = config["genome"]["fasta"],
+#        motif_db = "motifs/allmotifs.meme"
+#    output:
+#        bed = temp("motifs/.{motif}.bed") # a BED6+2 format
+#    params:
+#        alpha = config["motifs"]["fimo_pval"]
+#    log: "logs/fimo/fimo_{motif}.log"
+#    shell: """
+#        (fimo --motif {wildcards.motif} --bgfile <(fasta-get-markov {input.fasta}) --thresh {params.alpha} --text {input.motif_db} {input.fasta} | awk 'BEGIN{{FS=OFS="\t"}} NR>1 {{print $3, $4-1, $5, $1, -log($8)/log(10), $6, $2, $10}}' > {output.bed}) &> {log}
+#        """
 
-rule cat_fimo_motifs:
-    input:
-        bed = expand("motifs/.{motif}.bed", motif=MOTIFS)
-    output:
-        bed = "motifs/allmotifs.bed",
-    threads: config["threads"]
-    shell: """
-        cat {input.bed} | sort -k1,1 -k2,2n --parallel={threads} > {output.bed}
-        """
+#rule cat_fimo_motifs:
+#    input:
+#        bed = expand("motifs/.{motif}.bed", motif=MOTIFS)
+#    output:
+#        bed = "motifs/allmotifs.bed",
+#    threads: config["threads"]
+#    shell: """
+#        cat {input.bed} | sort -k1,1 -k2,2n --parallel={threads} > {output.bed}
+#        """
 
 #bedtools intersect peaks with fimo motifs
 #0. with the summit of the peak as reference, extend annotation to upstream and 'downstream' distances
@@ -47,7 +47,7 @@ rule get_overlapping_motifs:
     input:
         peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
         fasta = config["genome"]["fasta"],
-        motifs = "motifs/allmotifs.bed"
+        motifs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.bed")
     output:
         "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
     params:
@@ -86,21 +86,21 @@ rule test_motif_enrichment:
     script: "../scripts/motif_enrichment.R"
 
 #TODO: this all changes with MEME suite 5.0
-##0. extend peak summit annotation to upstream and downstream distances ##1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
-#rule get_meme_sequences:
-#    input:
-#        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-summits.bed",
-#        chrsizes = config["genome"]["chrsizes"],
-#        fasta = config["genome"]["fasta"]
-#    output:
-#        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
-#    params:
-#        upstr = config["motifs"]["meme-chip"]["upstream"],
-#        dnstr = config["motifs"]["meme-chip"]["downstream"]
-#    log: "logs/get_meme_sequences/get_meme_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
-#    shell: """
-#        (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g {input.chrsizes} | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 7 -c 5 -o max -full -i stdin | sort -k5,5nr | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
-#        """
+#0. extend peak summit annotation to upstream and downstream distances
+#1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
+rule get_meme_sequences:
+    input:
+        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-summits.bed",
+        fasta = config["genome"]["fasta"]
+    output:
+        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
+    params:
+        upstr = config["motifs"]["meme-chip"]["upstream"],
+        dnstr = config["motifs"]["meme-chip"]["downstream"]
+    log: "logs/get_meme_sequences/get_meme_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
+    shell: """
+        (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g <(faidx {input.fasta} -i chromsizes) | bedtools cluster -s -d 0 -i stdin | bedtools groupby -g 7 -c 5 -o max -full -i stdin | sort -k4,4V | bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        """
 
 #rule meme_chip:
 #    input:

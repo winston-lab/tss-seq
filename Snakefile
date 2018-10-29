@@ -11,6 +11,8 @@ configfile: "config.yaml"
 subworkflow build_annotations:
     workdir: config["genome"]["annotation_workflow"]
 
+configfile: build_annotations("config.yaml")
+
 SAMPLES = config["samples"]
 SISAMPLES = {k:v for k,v in SAMPLES.items() if v["spikein"]}
 PASSING = {k:v for k,v in SAMPLES.items() if v["pass-qc"]}
@@ -168,12 +170,13 @@ rule all:
         #sequence logos
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
         expand("seq_logos/{group}/{group}-{category}-seqlogo.meme", group=set([PASSING[x]['group'] for x in PASSING]), category=CATEGORIES+["all"]),
+        expand(expand("motifs/{condition}-v-{control}/{{norm}}/{{category}}/{condition}-v-{control}_tss-seq-{{norm}}-diffexp-results-{{category}}-{{direction}}.fa", zip, condition=conditiongroups_si, control=controlgroups_si), norm="spikenorm", category="intragenic", direction="up" )
 
 rule intragenic_position_bias:
     input:
         diffexp_results = "diff_exp/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-intragenic-{direction}.tsv",
         fasta = config["genome"]["fasta"],
-        genic_regions = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        genic_regions = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
     output:
         atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
         rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",

@@ -2,7 +2,7 @@
 
 rule gene_ontology:
     input:
-        universe = lambda wc: config["genome"]["orf-annotation"] if wc.category=="intragenic" else config["genome"]["transcripts"],
+        universe = lambda wc: config["genome"]["orf_annotation"] if wc.category=="intragenic" else config["genome"]["transcript_annotation"],
         diffexp_path = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.tsv",
         go_anno_path = config["gene_ontology_mapping_file"]
     output:

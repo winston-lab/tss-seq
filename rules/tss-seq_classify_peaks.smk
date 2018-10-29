@@ -10,7 +10,7 @@ peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_str
 
 rule classify_genic_peaks:
     input:
-        annotation = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        annotation = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.tsv",
@@ -24,8 +24,8 @@ rule classify_genic_peaks:
 
 rule classify_intragenic_peaks:
     input:
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
-        orf_anno = config["genome"]["orf-annotation"],
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
+        orf_anno = config["genome"]["orf_annotation"],
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic.tsv",
@@ -39,7 +39,7 @@ rule classify_intragenic_peaks:
 
 rule classify_antisense_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
+        transcript_anno = config["genome"]["transcript_annotation"],
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense.tsv",
@@ -57,9 +57,9 @@ rule classify_antisense_peaks:
 # 3.) add distance information
 rule classify_convergent_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
-        conv_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"),
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        conv_anno = build_annotations("annotations/" + config["genome"]["name"] + "_convergent-regions.bed"),
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.tsv",
@@ -77,9 +77,9 @@ rule classify_convergent_peaks:
 # 3.) add distance information
 rule classify_divergent_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
-        div_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"),
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        div_anno = build_annotations("annotations/" + config["genome"]["name"] + "_divergent-regions.bed"),
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.tsv",
@@ -93,10 +93,10 @@ rule classify_divergent_peaks:
 
 rule classify_intergenic_peaks:
     input:
-        intergenic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"),
-        transcript_anno = config["genome"]["transcripts"],
-        orf_anno = config["genome"]["orf-annotation"],
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        intergenic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_intergenic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        orf_anno = config["genome"]["orf_annotation"],
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
     output:
         table = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.tsv",
@@ -126,7 +126,7 @@ rule plot_peak_stats:
 
 rule classify_genic_diffexp_peaks:
     input:
-        annotation = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        annotation = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -141,8 +141,8 @@ rule classify_genic_diffexp_peaks:
 
 rule classify_intragenic_diffexp_peaks:
     input:
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
-        orf_anno = config["genome"]["orf-annotation"],
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
+        orf_anno = config["genome"]["orf_annotation"],
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -157,7 +157,7 @@ rule classify_intragenic_diffexp_peaks:
 
 rule classify_antisense_diffexp_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
+        transcript_anno = config["genome"]["transcript_annotation"],
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -176,9 +176,9 @@ rule classify_antisense_diffexp_peaks:
 # 3.) add distance information
 rule classify_convergent_diffexp_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
-        conv_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "convergent-regions.bed"),
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        conv_anno = build_annotations("annotations/" + config["genome"]["name"] + "_convergent-regions.bed"),
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -193,9 +193,9 @@ rule classify_convergent_diffexp_peaks:
 
 rule classify_divergent_diffexp_peaks:
     input:
-        transcript_anno = config["genome"]["transcripts"],
-        div_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "divergent-regions.bed"),
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        div_anno = build_annotations("annotations/" + config["genome"]["name"] + "_divergent-regions.bed"),
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
@@ -210,10 +210,10 @@ rule classify_divergent_diffexp_peaks:
 
 rule classify_intergenic_diffexp_peaks:
     input:
-        intergenic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "intergenic-regions.bed"),
-        transcript_anno = config["genome"]["transcripts"],
-        orf_anno = config["genome"]["orf-annotation"],
-        genic_anno = build_annotations(os.path.dirname(os.path.abspath(config["genome"]["transcripts"])) + "/" + config["combinedgenome"]["experimental_prefix"] + "genic-regions.bed"),
+        intergenic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_intergenic-regions.bed"),
+        transcript_anno = config["genome"]["transcript_annotation"],
+        orf_anno = config["genome"]["orf_annotation"],
+        genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         results = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.tsv",
     output:
