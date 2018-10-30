@@ -6,7 +6,7 @@ rule get_seqlogo_data:
     input:
         bam = lambda wc: expand("alignment/{sample}_tss-seq-noPCRduplicates-experimental.bam", sample=get_samples("passing", "libsizenorm", wc.group)),
         bed = lambda wc: "peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.narrowpeak".format(**wc) if wc.category != "all" else [],
-        fasta = config["genome"]["fasta"]
+        fasta = os.path.abspath(build_annotations(config["genome"]["fasta"]))
     output:
         seqlogo_data = "seq_logos/{group}/{group}-{category}-seqlogo.tsv",
     params:
@@ -22,7 +22,7 @@ rule get_seqlogo_data:
 rule plot_seqlogos:
     input:
         seqlogo_data = expand("seq_logos/{{group}}/{{group}}-{category}-seqlogo.tsv", category = ["all"] + CATEGORIES),
-        fasta = config["genome"]["fasta"]
+        fasta = os.path.abspath(build_annotations(config["genome"]["fasta"]))
     params:
         tss_classes = ["all"] + CATEGORIES,
         slop = int(config["consensus"]["window"]),
@@ -36,7 +36,7 @@ rule plot_seqlogos:
 rule seqlogo_to_meme:
     input:
         data = "seq_logos/{group}/{group}-{category}-seqlogo.tsv",
-        fasta = config["genome"]["fasta"]
+        fasta = os.path.abspath(build_annotations(config["genome"]["fasta"]))
     output:
         "seq_logos/{group}/{group}-{category}-seqlogo.meme",
     log: "logs/seqlogo_to_meme/seqlogo_to_meme-{group}-{category}.log"
