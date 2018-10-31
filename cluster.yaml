@@ -8,55 +8,55 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_prealignment:
-    time : 15
+    time : 4
     n : 2
     mem : 3000
 
 clean_reads:
-    time : 45
+    time : 10
     n: 4
     mem : 2000
 
-remove_molecular_barcode:
-    time : 120
+extract_molecular_barcode:
+    time : 12
     n : 1
     mem : 2000
 
 fastqc_postalignment:
-    time : 15
+    time : 3
     n : 2
     mem : 3000
 
 plot_fastqc_summary:
-    time: 10
+    time: 4
     n: 1
     mem: 8000
 
 plot_read_processing:
-    time: 5
+    time: 1
     n: 1
     mem: 4000
 
 align:
-    time : 120
+    time : 15
     n : 4
     mem : 8000
 
 select_unique_mappers:
-    time : 15
+    time : 10
     n : 1
     mem : 6000
 
 remove_PCR_duplicates:
-    time : 15
+    time : 10
     mem : 4000
 
 genome_coverage:
-    time : 5
+    time : 2
     mem : 2000
 
 normalize_genome_coverage:
-    time : 3
+    time : 2
     mem : 2000
 
 make_stranded_bedgraph:
@@ -64,7 +64,7 @@ make_stranded_bedgraph:
     mem: 1000
 
 bedgraph_to_bigwig:
-    time: 2
+    time: 1
     mem: 1000
 
 compute_matrix:
@@ -76,15 +76,15 @@ plot_figures:
     mem : 16000
 
 map_to_windows:
-    time: 20
+    time: 4
     mem: 4000
 
 join_window_counts:
-    time: 45
+    time: 5
     mem: 4000
 
 plot_scatter_plots:
-    time : 45
+    time : 30
     mem : 12000
 
 call_tss_peaks:
@@ -96,11 +96,11 @@ tss_peaks_idr:
     mem: 6000
 
 differential_expression:
-    time: 20
+    time: 3
     mem: 10000
 
 diffexp_results_to_narrowpeak:
-  time: 5
+  time: 1
   mem: 4000
 
 summarise_diffexp_results:
@@ -128,36 +128,32 @@ test_motif_enrichment:
     time: 10
     mem: 2000
 
-get_motif_coverage:
-    time: 1
-    mem: 2000
+# get_motif_coverage:
+#     time: 1
+#     mem: 2000
 
-motif_matrix:
-    time: 1
-    mem: 2000
+# motif_matrix:
+#     time: 1
+#     mem: 2000
 
-melt_motif_matrix:
-    time: 1
-    mem: 2000
+# melt_motif_matrix:
+#     time: 1
+#     mem: 2000
 
-cat_motif_matrices:
-    time: 5
-    mem: 4000
+# cat_motif_matrices:
+#     time: 5
+#     mem: 4000
 
-plot_motif_freq:
-    time: 20
-    mem: 10000
+# plot_motif_freq:
+#     time: 20
+#     mem: 10000
 
 peak_positioning:
     time: 10
     mem: 8000
 
-get_gc_percentage:
-    time: 15
-    mem: 4000
-
 gene_ontology:
-    time: 20
+    time: 2
     mem: 10000
 
 meme_chip:

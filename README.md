@@ -38,8 +38,7 @@ An analysis pipeline for TSS-seq data with the following major steps:
 
 - FASTA files:
     - the 'experimental' genome
-    - the spikein genome
-    - a concatenation of the experimental and spikein FASTAs, in which the chromosome names have a prefix indicating their species, e.g. 'Scer_chrI' and 'Spom_chrI'.
+    - the spikein genome, if any samples have spikeins
 
 - [BED6](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) format annotation files:
     - ORF annotation
@@ -58,7 +57,7 @@ An analysis pipeline for TSS-seq data with the following major steps:
     - motif databases in [MEME](http://meme-suite.org/doc/meme-format.html) format
 
 ## instructions
-**0**. If you haven't already done so, clone the separate ['build-annotations' pipeline](https://github.com/winston-lab/build-annotations), make a copy of the `config_template.yaml` file called `config.yaml`, and edit `config.yaml` as needed so that it points to the experimental genome FASTA file, ORF annotation BED file, and transcript annotation BED file to be used for the TSS-seq pipeline. The 'build-annotations' pipeline will be used to create annotation files needed for classifying TSS-seq peaks into different genomic categories.
+**0**. If you haven't already done so, clone the separate ['build-annotations' pipeline](https://github.com/winston-lab/build-annotations), make a copy of the `config_template.yaml` file called `config.yaml`, and edit `config.yaml` as needed so that it points to the experimental genome FASTA file, ORF annotation BED file, transcript annotation BED file, and motif databases to be used for the TSS-seq pipeline. The 'build-annotations' pipeline will be used to create annotation files needed for classifying TSS-seq peaks into different genomic categories.
 
 ```bash
 
