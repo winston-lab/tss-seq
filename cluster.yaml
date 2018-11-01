@@ -38,7 +38,7 @@ plot_read_processing:
     mem: 4000
 
 align:
-    time : 15
+    time : 25
     n : 4
     mem : 8000
 
@@ -56,7 +56,7 @@ genome_coverage:
     mem : 2000
 
 normalize_genome_coverage:
-    time : 2
+    time : 3
     mem : 2000
 
 make_stranded_bedgraph:
@@ -76,7 +76,7 @@ plot_figures:
     mem : 16000
 
 map_to_windows:
-    time: 4
+    time: 6
     mem: 4000
 
 join_window_counts:
@@ -100,7 +100,7 @@ differential_expression:
     mem: 10000
 
 diffexp_results_to_narrowpeak:
-  time: 1
+  time: 2
   mem: 4000
 
 summarise_diffexp_results:
