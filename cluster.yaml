@@ -8,17 +8,17 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_prealignment:
-    time : 4
+    time : 6
     n : 2
     mem : 3000
 
 clean_reads:
-    time : 10
+    time : 15
     n: 4
     mem : 2000
 
 extract_molecular_barcode:
-    time : 12
+    time : 18
     n : 1
     mem : 2000
 
