@@ -18,7 +18,7 @@ clean_reads:
     mem : 2000
 
 extract_molecular_barcode:
-    time : 18
+    time : 25
     n : 1
     mem : 2000
 
