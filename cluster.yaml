@@ -18,7 +18,7 @@ clean_reads:
     mem : 2000
 
 extract_molecular_barcode:
-    time : 35
+    time : 45
     n : 1
     mem : 2000
 
@@ -38,9 +38,9 @@ plot_read_processing:
     mem: 4000
 
 align:
-    time : 35
+    time : 45
     n : 4
-    mem : 8000
+    mem : 1000
 
 select_unique_mappers:
     time : 10
