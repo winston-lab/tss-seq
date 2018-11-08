@@ -39,8 +39,8 @@ plot_read_processing:
 
 align:
     time : 75
-    n : 4
-    mem : 1000
+    n : 8
+    mem : 500
 
 select_unique_mappers:
     time : 10
@@ -50,6 +50,10 @@ select_unique_mappers:
 remove_PCR_duplicates:
     time : 10
     mem : 1000
+
+bam_separate_species:
+    time : 1
+    mem : 1
 
 genome_coverage:
     time : 2
@@ -69,7 +73,7 @@ bedgraph_to_bigwig:
 
 compute_matrix:
     time : 10
-    mem : 200
+    mem : 400
 
 plot_figures:
     time : 90
