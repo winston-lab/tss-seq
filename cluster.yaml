@@ -80,7 +80,7 @@ plot_figures:
     mem : 16000
 
 map_to_windows:
-    time: 8
+    time: 12
     mem: 100
 
 join_window_counts:
