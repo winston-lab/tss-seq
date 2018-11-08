@@ -53,31 +53,31 @@ remove_PCR_duplicates:
 
 genome_coverage:
     time : 2
-    mem : 1000
+    mem : 1
 
 normalize_genome_coverage:
     time : 3
-    mem : 1000
+    mem : 1
 
 make_stranded_bedgraph:
     time: 3
-    mem: 1000
+    mem: 1
 
 bedgraph_to_bigwig:
     time: 1
-    mem: 1000
+    mem: 1
 
 compute_matrix:
     time : 10
-    mem : 2000
+    mem : 200
 
 plot_figures:
     time : 90
     mem : 16000
 
 map_to_windows:
-    time: 6
-    mem: 4000
+    time: 8
+    mem: 100
 
 join_window_counts:
     time: 5
@@ -89,11 +89,11 @@ plot_scatter_plots:
 
 call_tss_peaks:
     time: 10
-    mem: 4000
+    mem: 400
 
 tss_peaks_idr:
     time: 10
-    mem: 6000
+    mem: 200
 
 differential_expression:
     time: 3
@@ -163,7 +163,7 @@ meme_chip:
 
 get_seqlogo_data:
     time: 60
-    mem: 12000
+    mem: 200
     n : 1
 
 intragenic_position_bias:
