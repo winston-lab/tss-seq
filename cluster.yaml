@@ -38,7 +38,7 @@ plot_read_processing:
     mem: 4000
 
 align:
-    time : 60
+    time : 75
     n : 4
     mem : 1000
 
