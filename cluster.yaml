@@ -53,11 +53,11 @@ remove_PCR_duplicates:
 
 bam_separate_species:
     time : 1
-    mem : 1
+    mem : 50
 
 genome_coverage:
     time : 2
-    mem : 1
+    mem : 50
 
 normalize_genome_coverage:
     time : 3
@@ -108,8 +108,8 @@ diffexp_results_to_narrowpeak:
     mem: 1
 
 summarise_diffexp_results:
-    time: 15
-    mem: 4000
+    time: 2
+    mem: 10
 
 fimo:
     time: 3
