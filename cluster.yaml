@@ -148,11 +148,11 @@ get_seqlogo_data:
 
 intragenic_position_bias:
     time: 2
-    mem: 10
+    mem: 100
     n: 1
 
 antisense_position_bias:
     time: 2
-    mem: 10
+    mem: 100
     n: 1
 
