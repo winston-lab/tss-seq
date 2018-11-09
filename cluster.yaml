@@ -108,7 +108,7 @@ diffexp_results_to_narrowpeak:
     mem: 1
 
 summarise_diffexp_results:
-    time: 3
+    time: 4
     mem: 700
 
 fimo:
@@ -143,16 +143,16 @@ gene_ontology:
 
 get_seqlogo_data:
     time: 60
-    mem: 10000
+    mem: 14000
     n : 1
 
 intragenic_position_bias:
-    time: 5
+    time: 10
     mem: 200
     n: 1
 
 antisense_position_bias:
-    time: 5
+    time: 10
     mem: 200
     n: 1
 
