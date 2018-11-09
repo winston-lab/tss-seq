@@ -77,7 +77,7 @@ compute_matrix:
 
 plot_figures:
     time : 30
-    mem : 6000
+    mem : 10000
 
 map_to_windows:
     time: 20
@@ -89,7 +89,7 @@ join_window_counts:
 
 plot_scatter_plots:
     time : 15
-    mem : 2000
+    mem : 10000
 
 call_tss_peaks:
     time: 15
@@ -97,7 +97,7 @@ call_tss_peaks:
 
 tss_peaks_idr:
     time: 5
-    mem: 200
+    mem: 400
 
 differential_expression:
     time: 3
@@ -143,16 +143,16 @@ gene_ontology:
 
 get_seqlogo_data:
     time: 60
-    mem: 3000
+    mem: 5000
     n : 1
 
 intragenic_position_bias:
     time: 2
-    mem: 10
+    mem: 100
     n: 1
 
 antisense_position_bias:
     time: 2
-    mem: 10
+    mem: 100
     n: 1
 
