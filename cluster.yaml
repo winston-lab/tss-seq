@@ -1,8 +1,8 @@
 __default__:
     queue : "short"
-    time : 60
+    time : 10
     n : 1
-    mem : 2000
+    mem : 100
     name : "{rule}.{wildcards}"
     log : "logs/cluster/{rule}.{wildcards}.log"
     err : "logs/cluster/{rule}.{wildcards}.err"
@@ -23,29 +23,29 @@ extract_molecular_barcode:
     mem : 100
 
 fastqc_postalignment:
-    time : 3
+    time : 4
     n : 2
     mem : 200
 
 plot_fastqc_summary:
     time: 4
     n: 1
-    mem: 8000
+    mem: 400
 
 plot_read_processing:
     time: 1
     n: 1
-    mem: 4000
+    mem: 10
 
 align:
-    time : 75
+    time : 90
     n : 8
     mem : 500
 
 select_unique_mappers:
-    time : 10
+    time : 6
     n : 1
-    mem : 2000
+    mem : 1000
 
 remove_PCR_duplicates:
     time : 10
@@ -76,44 +76,40 @@ compute_matrix:
     mem : 400
 
 plot_figures:
-    time : 90
-    mem : 16000
+    time : 30
+    mem : 6000
 
 map_to_windows:
     time: 12
-    mem: 100
+    mem: 300
 
 join_window_counts:
     time: 5
-    mem: 4000
+    mem: 100
 
 plot_scatter_plots:
-    time : 30
-    mem : 12000
+    time : 15
+    mem : 2000
 
 call_tss_peaks:
-    time: 10
+    time: 15
     mem: 400
 
 tss_peaks_idr:
-    time: 10
+    time: 5
     mem: 200
 
 differential_expression:
     time: 3
-    mem: 10000
+    mem: 600
 
 diffexp_results_to_narrowpeak:
-  time: 2
-  mem: 4000
+    time: 2
+    mem: 1
 
 summarise_diffexp_results:
     time: 15
     mem: 4000
-
-# get_intra_orfs:
-#     time : 719
-#     mem : 20000
 
 fimo:
     time: 3
@@ -125,32 +121,12 @@ cat_fimo_motifs:
     mem: 2000
 
 get_overlapping_motifs:
-    time: 4
-    mem: 400M
+    time: 2
+    mem: 1
 
 test_motif_enrichment:
-    time: 10
-    mem: 2000
-
-# get_motif_coverage:
-#     time: 1
-#     mem: 2000
-
-# motif_matrix:
-#     time: 1
-#     mem: 2000
-
-# melt_motif_matrix:
-#     time: 1
-#     mem: 2000
-
-# cat_motif_matrices:
-#     time: 5
-#     mem: 4000
-
-# plot_motif_freq:
-#     time: 20
-#     mem: 10000
+    time: 2
+    mem: 250
 
 peak_positioning:
     time: 10
@@ -158,36 +134,25 @@ peak_positioning:
 
 gene_ontology:
     time: 2
-    mem: 10000
+    mem: 600
 
-meme_chip:
-    time : 719
-    mem : 10000
-    n : 1 #bioconda meme isn't compiled with multicore
+# meme_chip:
+#     time : 719
+#     mem : 10000
+#     n : 1 #bioconda meme isn't compiled with multicore
 
 get_seqlogo_data:
     time: 60
-    mem: 200
+    mem: 2000
     n : 1
 
 intragenic_position_bias:
-    time: 30
-    mem: 4000
+    time: 2
+    mem: 10
     n: 1
 
 antisense_position_bias:
-    time: 30
-    mem: 4000
+    time: 2
+    mem: 10
     n: 1
 
-# class_v_genic:
-#     time : 360
-#     mem : 10000
-
-
-
-
-# get_de_intragenic_frequency
-# plot_de_intragenic_frequency
-# get_peak_sequences
-# class_v_genic
