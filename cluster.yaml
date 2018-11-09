@@ -35,7 +35,7 @@ plot_fastqc_summary:
 plot_read_processing:
     time: 1
     n: 1
-    mem: 10
+    mem: 300
 
 align:
     time : 90
@@ -108,7 +108,7 @@ diffexp_results_to_narrowpeak:
     mem: 1
 
 summarise_diffexp_results:
-    time: 2
+    time: 3
     mem: 500
 
 fimo:
@@ -143,16 +143,16 @@ gene_ontology:
 
 get_seqlogo_data:
     time: 60
-    mem: 5000
+    mem: 8000
     n : 1
 
 intragenic_position_bias:
-    time: 3
+    time: 4
     mem: 200
     n: 1
 
 antisense_position_bias:
-    time: 3
+    time: 4
     mem: 200
     n: 1
 
