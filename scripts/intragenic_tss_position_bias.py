@@ -31,7 +31,7 @@ def main():
     for index, row in diffexp_results.iterrows():
         peak_length = row['end']-row['start']
 
-        bed = pybt.BedTool("\t".join([row['orf_chrom'], str(row['orf_start']), str(row['orf_end']), row['orf_name'], str(row['orf_score']), row['orf_strand']]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).subtract(genic_regions, s=True).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
+        bed = pybt.BedTool("\t".join([str(row['orf_chrom']), str(row['orf_start']), str(row['orf_end']), str(row['orf_name']), str(row['orf_score']), str(row['orf_strand'])]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).subtract(genic_regions, s=True).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
 
         for interval in bed:
             if interval.strand=="+":

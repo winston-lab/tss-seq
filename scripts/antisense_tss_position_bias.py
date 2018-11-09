@@ -28,7 +28,7 @@ def main():
     for index, row in diffexp_results.iterrows():
         peak_length = row['end']-row['start']
 
-        bed = pybt.BedTool("\t".join([row['transcript_chrom'], str(row['transcript_start']), str(row['transcript_end']), row['transcript_name'], str(row['transcript_score']), row['strand']]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
+        bed = pybt.BedTool("\t".join([str(row['transcript_chrom']), str(row['transcript_start']), str(row['transcript_end']), str(row['transcript_name']), str(row['transcript_score']), str(row['strand'])]), from_string=True).slop(b=(peak_length-1), g=chrom_sizes).shift(p=row['peak_summit'], m=-row['peak_summit'], g=chrom_sizes)
 
         for interval in bed:
             if interval.strand=="+":
