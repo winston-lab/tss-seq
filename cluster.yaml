@@ -84,7 +84,7 @@ map_to_windows:
     mem: 300
 
 join_window_counts:
-    time: 15
+    time: 25
     mem: 100
 
 plot_scatter_plots:
@@ -109,7 +109,7 @@ diffexp_results_to_narrowpeak:
 
 summarise_diffexp_results:
     time: 2
-    mem: 10
+    mem: 500
 
 fimo:
     time: 3
@@ -147,12 +147,12 @@ get_seqlogo_data:
     n : 1
 
 intragenic_position_bias:
-    time: 2
-    mem: 100
+    time: 3
+    mem: 200
     n: 1
 
 antisense_position_bias:
-    time: 2
-    mem: 100
+    time: 3
+    mem: 200
     n: 1
 
