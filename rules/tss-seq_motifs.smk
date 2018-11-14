@@ -91,7 +91,7 @@ rule meme_chip:
         genome_fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
         dbs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.meme") if config["motifs"]["databases"] else []
     output:
-        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-meme_chip/combined.meme"
+        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-meme_chip/summary.tsv"
     params:
         db_command = "-db" if config["motifs"]["databases"] else [],
         meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
