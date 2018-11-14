@@ -84,7 +84,7 @@ map_to_windows:
     mem: 300
 
 join_window_counts:
-    time: 35
+    time: 45
     mem: 100
 
 plot_scatter_plots:
