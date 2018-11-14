@@ -64,7 +64,6 @@ rule test_motif_enrichment:
     conda: "../envs/tidyverse.yaml"
     script: "../scripts/motif_enrichment.R"
 
-#TODO: this all changes with MEME suite 5.0
 #0. extend peak summit annotation to upstream and downstream distances
 #1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
 rule get_meme_sequences:
@@ -85,22 +84,22 @@ rule get_meme_sequences:
         bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
 
-#rule meme_chip:
-#    input:
-#        seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
-#        genome_fasta = config["genome"]["fasta"],
-#        dbs = "motifs/allmotifs.meme"
-#    output:
-#        "motifs/{condition}-v-{control}/{norm}/{category}/{background}/meme_chip/meme-chip.html"
-#    params:
-#        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
-#        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
-#        meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
-#        meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
-#    conda: "envs/meme_chip.yaml"
-#    shell: """
-#        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
-#        """
+rule meme_chip:
+    input:
+        seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
+        genome_fasta = config["genome"]["fasta"],
+        dbs = build_annotations("motifs/" + config["genome"]["name"] + " _allmotifs.meme")
+    output:
+        "motifs/{condition}-v-{control}/{norm}/{category}/{background}/meme_chip/meme-chip.html"
+    params:
+        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
+        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
+        meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
+        meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
+    conda: "envs/meme_chip.yaml"
+    shell: """
+        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
+        """
 
 ##NOTE: below are rules for visualizing motif occurrences, but need to have a way to do this efficiently/in an interpretable way for thousands of motifs
 ## rule get_motif_coverage:

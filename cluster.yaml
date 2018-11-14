@@ -142,7 +142,7 @@ gene_ontology:
 #     n : 1 #bioconda meme isn't compiled with multicore
 
 get_seqlogo_data:
-    time: 60
+    time: 30
     mem: 14000
     n : 1
 
