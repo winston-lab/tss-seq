@@ -89,7 +89,7 @@ join_window_counts:
 
 plot_scatter_plots:
     time : 20
-    mem : 16000
+    mem : 20000
 
 call_tss_peaks:
     time: 15
