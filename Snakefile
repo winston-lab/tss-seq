@@ -170,8 +170,8 @@ rule all:
         #sequence logos
         expand("seq_logos/{group}/{group}-seqlogos.svg", group=set([PASSING[x]['group'] for x in PASSING])),
         expand("seq_logos/{group}/{group}-{category}-seqlogo.meme", group=set([PASSING[x]['group'] for x in PASSING]), category=CATEGORIES+["all"]),
-        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/summary.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
-        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/summary.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"]) if config["motifs"]["meme-chip"]["run-meme-chip"] and comparisons_si else [],
+        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/combined.meme", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down"]) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
+        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/combined.meme", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down"]) if config["motifs"]["meme-chip"]["run-meme-chip"] and comparisons_si else [],
 
 rule intragenic_position_bias:
     input:
