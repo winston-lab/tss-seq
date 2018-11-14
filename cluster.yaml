@@ -153,6 +153,6 @@ antisense_position_bias:
 
 meme_chip:
     time : 150
-    mem : 160
+    mem : 400
     n : 1
 
