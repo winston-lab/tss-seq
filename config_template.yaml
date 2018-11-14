@@ -112,13 +112,12 @@ motifs:
     enrichment-upstream: 200  # [INT] basepairs upstream of TSS-seq peak summits to search for motif enrichment
     enrichment-downstream: 0  # [INT] basepairs downstream of TSS-seq peak summits to search for motif enrichment
     enrichment-fdr: 0.01  # [FLOAT in (0,1)] false discovery rate for testing motif enrichment (Fisher's exact test, 2-tailed)
-    # meme-chip:  # MEME-ChIP settings (currently not run, waiting to update this until MEME Suite 5 is on bioconda)
-    #     run-meme-chip: False
-    #     upstream: 100
-    #     downstream: 30
-    #     peak-ccut: 200
-    #     meme-mode: zoops  #oops|zoops|ans
-    #     meme-nmotifs : 10  #meme max number of motifs to find
+    meme-chip:  # MEME-ChIP settings
+        run-meme-chip: False # [True|False] Run de novo motif discovery?
+        upstream: 100 # [INT] basepairs upstream of TSS-seq peak summits to search for de novo motifs
+        downstream: 30 # [INT] basepairs downstream of TSS-seq peaks summits to search for de novo motifs
+        meme-mode: zoops  # [oops|zoops|anr]
+        meme-nmotifs : 10  # [INT] maximum number of motifs to find with MEME
 
 # data visualization settings
 plot_figures: True  # [True|False] plot heatmaps and metagenes?
