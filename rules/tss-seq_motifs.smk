@@ -86,82 +86,17 @@ rule get_meme_sequences:
 
 rule meme_chip:
     input:
-        seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
-        genome_fasta = config["genome"]["fasta"],
-        dbs = build_annotations("motifs/" + config["genome"]["name"] + " _allmotifs.meme")
+        seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa",
+        genome_fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
+        dbs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.meme") if config["motifs"]["databases"] else []
     output:
-        "motifs/{condition}-v-{control}/{norm}/{category}/{background}/meme_chip/meme-chip.html"
+        "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-meme_chip/summary.tsv"
     params:
-        nmeme = lambda wc: int(1e5//(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"])) if wc.region=="upstream" else int(1e5//config["motifs"]["meme-chip"]["peak-ccut"]),
-        ccut = lambda wc: int(config["motifs"]["meme-chip"]["upstream"] + config["motifs"]["meme-chip"]["downstream"]) if wc.region=="upstream" else config["motifs"]["meme-chip"]["peak-ccut"],
+        db_command = "-db" if config["motifs"]["databases"] else [],
         meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
         meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
-    conda: "envs/meme_chip.yaml"
+    log: "logs/meme_chip/meme_chip_{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
-        meme-chip -oc motifs/meme/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.region}/{wildcards.condition}-v-{wildcards.control}-results-{wildcards.norm}-{wildcards.direction}-{wildcards.category}-{wildcards.region}-meme_chip -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -nmeme {params.nmeme} -norand -ccut {params.ccut} -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -centrimo-local {params.dbs} {input.seq}
+        (meme-chip -oc motifs/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}_tss-seq-{wildcards.norm}-diffexp-results-{wildcards.category}-{wildcards.direction}-meme_chip {params.db_command} {input.dbs} -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -order 1 -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -meme-p 1 -meme-norand -centrimo-local {input.seq}) &> {log}
         """
-
-##NOTE: below are rules for visualizing motif occurrences, but need to have a way to do this efficiently/in an interpretable way for thousands of motifs
-## rule get_motif_coverage:
-##     input:
-##         bed = "motifs/.{motif}.bed", #this is sorted when created
-##         chrsizes = config["genome"]["chrsizes"]
-##     output:
-##         bg = "motifs/coverage/{motif}.bedgraph",
-##         bw = "motifs/coverage/{motif}.bw",
-##     shell: """
-##         cut -f1-6 {input.bed} | bedtools genomecov -bga -i stdin -g {input.chrsizes} | sort -k1,1 -k2,2n > {output.bg}
-##         bedGraphToBigWig {output.bg} {input.chrsizes} {output.bw}
-##         """
-
-## rule motif_matrix:
-##     input:
-##         annotation = "diff_exp/{condition}-v-{control}/{category}/{condition}-v-{control}-results-{norm}-{direction}-{category}.bed",
-##         bw = "motifs/coverage/{motif}.bw"
-##     output:
-##         dtfile = temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.mat"),
-##         matrix = temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv"),
-##         matrix_gz = "motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz",
-##     params:
-##         refpoint = "TSS",
-##         upstream = config["motifs"]["upstream"] + config["motifs"]["binsize"],
-##         dnstream = config["motifs"]["freq-downstream"] + config["motifs"]["binsize"],
-##         binsize = config["motifs"]["binsize"],
-##         sort = "keep",
-##         binstat = "sum"
-##     threads : config["threads"]
-##     log: "logs/deeptools/computeMatrix-{motif}-{condition}-{control}-{norm}-{direction}-{category}.log"
-##     shell: """
-##         (computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} --binSize {params.binsize} --sortRegions {params.sort} --averageTypeBins {params.binstat} -p {threads}) &> {log}
-##         pigz -fk {output.matrix}
-##         """
-
-## rule melt_motif_matrix:
-##     input:
-##         matrix = "motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}.tsv.gz",
-##     output:
-##         temp("motifs/datavis/{motif}_{condition}-v-{control}_{norm}-{direction}-peaks-{category}-melted.tsv.gz"),
-##     params:
-##         refpoint = "TSS",
-##         binsize = config["motifs"]["binsize"],
-##         upstream = config["motifs"]["upstream"],
-##     script:
-##         "scripts/melt_motif_matrix.R"
-
-## rule cat_motif_matrices:
-##     input:
-##         expand("motifs/datavis/{motif}_{{condition}}-v-{{control}}_{{norm}}-{direction}-peaks-{category}-melted.tsv.gz", category=CATEGORIES, motif=MOTIFS, direction=["up","down","unchanged"]),
-##     output:
-##         "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.tsv.gz"
-##     log: "logs/cat_matrices/cat_matrices-{condition}-{control}-{norm}.log"
-##     shell: """
-##         (cat {input} > {output}) &> {log}
-##         """
-
-#rule plot_motif_freq:
-#    input:
-#        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.tsv.gz"
-#    output:
-#        "motifs/datavis/allmotifs-{condition}-v-{control}-{norm}.svg"
-#    script: "scripts/motif_metagenes.R"
 
