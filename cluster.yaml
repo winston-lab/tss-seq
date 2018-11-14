@@ -88,7 +88,7 @@ join_window_counts:
     mem: 100
 
 plot_scatter_plots:
-    time : 20
+    time : 30
     mem : 20000
 
 call_tss_peaks:
@@ -152,7 +152,7 @@ antisense_position_bias:
     n: 1
 
 meme_chip:
-    time : 30
-    mem : 300
-    n : 1
+    time : 90
+    mem : 160
+    n : 4
 

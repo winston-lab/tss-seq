@@ -97,7 +97,8 @@ rule meme_chip:
         meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
         meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
     log: "logs/meme_chip/meme_chip_{condition}-v-{control}-{norm}-{category}-{direction}.log"
+    threads: 4
     shell: """
-        (meme-chip -oc motifs/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}_tss-seq-{wildcards.norm}-diffexp-results-{wildcards.category}-{wildcards.direction}-meme_chip {params.db_command} {input.dbs} -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -order 1 -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -meme-p 1 -meme-norand -centrimo-local {input.seq}) &> {log}
+        (meme-chip -oc motifs/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}_tss-seq-{wildcards.norm}-diffexp-results-{wildcards.category}-{wildcards.direction}-meme_chip {params.db_command} {input.dbs} -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -order 1 -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -meme-p {threads} -meme-norand -centrimo-local {input.seq}) &> {log}
         """
 
