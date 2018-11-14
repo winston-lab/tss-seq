@@ -2,6 +2,7 @@
 
 localrules:
     get_random_motifs,
+    get_meme_sequences
 
 #bedtools intersect peaks with fimo motifs
 #0. with the summit of the peak as reference, extend annotation to upstream and 'downstream' distances
