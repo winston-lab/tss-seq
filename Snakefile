@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 import itertools
-from math import log2
+from math import log2, log10
 
 configfile: "config.yaml"
 

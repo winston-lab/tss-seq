@@ -60,7 +60,7 @@ rule test_motif_enrichment:
         tsv = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.tsv",
         plot = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.svg",
     params:
-        fdr = config["motifs"]["enrichment-fdr"],
+        fdr = -log10(config["motifs"]["enrichment-fdr"]),
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     conda: "../envs/tidyverse.yaml"
     script: "../scripts/motif_enrichment.R"
