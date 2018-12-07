@@ -13,7 +13,7 @@ basename = "{exp_name}_{exp_fasta}_{si_name}_{si_fasta}".format(exp_name = confi
 rule build_combined_genome:
     input:
         experimental = os.path.abspath(build_annotations(config["genome"]["fasta"])),
-        spikein = config["spike_in"]["fasta"] if SISAMPLES else []
+        spikein = os.path.abspath(config["spike_in"]["fasta"]) if SISAMPLES else []
     output:
         "{directory}/{bn}.fa".format(directory = os.path.split(os.path.abspath(build_annotations(config["genome"]["fasta"])))[0], bn=basename),
     params:
