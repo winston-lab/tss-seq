@@ -12,7 +12,10 @@ rule clean_reads:
     params:
         adapter = config["cutadapt"]["adapter"],
         trim_qual = config["cutadapt"]["trim_qual"]
-    threads: config["threads"]
+    conda:
+        "../envs/cutadapt.yaml"
+    threads:
+        config["threads"]
     shell: """
         cutadapt --adapter={params.adapter} --error-rate=0.1 --minimum-length=18 --cores={threads} {input} 2> {output.adapter} | cutadapt --cut=-6 --nextseq-trim={params.trim_qual} --minimum-length=12 --output={output.fq} --cores={threads} - &> {output.qual_trim}
         """
