@@ -82,7 +82,7 @@ rule get_meme_sequences:
         bedtools cluster -s -d 0 -i stdin | \
         bedtools groupby -g 7 -c 5 -o max -full -i stdin | \
         sort -k4,4V | \
-        bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        bedtools getfasta -name+ -fi {input.fasta} -bed stdin > {output}) &> {log}
         """
 
 rule meme_chip:
