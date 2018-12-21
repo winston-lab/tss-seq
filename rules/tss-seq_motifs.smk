@@ -60,7 +60,7 @@ rule test_motif_enrichment:
         tsv = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.tsv",
         plot = "motifs/{condition}-v-{control}/{norm}/{category}/{negative}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-v-{negative}-motif_enrichment.svg",
     params:
-        fdr = config["motifs"]["enrichment-fdr"],
+        fdr = -log10(config["motifs"]["enrichment-fdr"]),
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
     conda: "../envs/tidyverse.yaml"
     script: "../scripts/motif_enrichment.R"
@@ -82,7 +82,9 @@ rule get_meme_sequences:
         bedtools cluster -s -d 0 -i stdin | \
         bedtools groupby -g 7 -c 5 -o max -full -i stdin | \
         sort -k4,4V | \
-        bedtools getfasta -name+ -s -fi {input.fasta} -bed stdin > {output}) &> {log}
+        bedtools getfasta -name+ -fi {input.fasta} -bed stdin | \
+        awk 'BEGIN{{FS=":|-"}} {{if ($1 ~ />/) {{print $1"::"$3":"$4+1"-"$5+1}} else {{print $0}}}}' \
+        > {output}) &> {log}
         """
 
 rule meme_chip:

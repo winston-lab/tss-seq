@@ -117,12 +117,12 @@ main = function(fdr_cutoff, direction, txn_category,
                                     .$control_withmotif, .$control_nomotif), nrow=2, ncol=2, byrow=TRUE),
                            alternative="two.sided") %>% tidy()) %>%
             ungroup() %>%
-            mutate(fdr = p.adjust(p.value, method="BH"),
+            mutate(log10_fdr = p.adjust(p.value, method="BH"),
                    condition_fraction = condition_withmotif/(condition_withmotif+condition_nomotif),
                    control_fraction = control_withmotif/(control_withmotif+control_nomotif)) %>%
             mutate_at(vars(estimate, conf.low, conf.high), funs(log2(.))) %>%
-            arrange(fdr, p.value, desc(estimate), desc(condition_withmotif)) %>%
-            select(motif_id, motif_alt_id, fdr, log2_odds_ratio=estimate,
+            arrange(desc(log10_fdr), p.value, desc(estimate), desc(condition_withmotif)) %>%
+            select(motif_id, motif_alt_id, log10_fdr, log2_odds_ratio=estimate,
                    conf_low=conf.low, conf_high=conf.high,
                    condition_withmotif, condition_nomotif, condition_fraction,
                    control_withmotif, control_nomotif, control_fraction) %>%
@@ -132,7 +132,7 @@ main = function(fdr_cutoff, direction, txn_category,
     } else {
         fisher_df = tibble(motif_id = character(),
                            motif_alt_id = character(),
-                           fdr = double(),
+                           log10_fdr = double(),
                            log2_odds_ratio = double(),
                            conf_log = double(),
                            conf_high = double(),
@@ -148,19 +148,21 @@ main = function(fdr_cutoff, direction, txn_category,
 
     plot = ggplot() +
         geom_vline(xintercept=0, color="grey65") +
-        geom_hline(yintercept=-log10(fdr_cutoff), linetype="dashed") +
-        geom_point(data=fisher_df %>% filter(fdr>=fdr_cutoff),
-                   aes(x=log2_odds_ratio, y=-log10(fdr)),
+        geom_hline(yintercept = fdr_cutoff, linetype="dashed") +
+        geom_point(data=fisher_df %>%
+                        filter(log10_fdr <= fdr_cutoff),
+                   aes(x=log2_odds_ratio, y=log10_fdr),
                    shape=16, size=1, alpha=0.4, stroke=0) +
-        geom_label_repel(data=fisher_df %>% filter(fdr<fdr_cutoff),
-                         aes(x=log2_odds_ratio, y=-log10(fdr), label=label,
+        geom_label_repel(data=fisher_df %>%
+                            filter(log10_fdr > fdr_cutoff),
+                         aes(x=log2_odds_ratio, y = log10_fdr, label=label,
                              fill=if_else(log2_odds_ratio<0, "depleted", "enriched")),
                              size=8/72*25.4,
                              box.padding=unit(0, "pt"),
                              label.r=unit(0.5, "pt"),
                              label.size=NA,
                              label.padding = unit(0.8, "pt"),
-                             ylim = c(-log10(fdr_cutoff), NA),
+                             ylim = c(fdr_cutoff, NA),
                              force = 0.5,
                              segment.size=0.2,
                              segment.alpha=0.5) +

@@ -33,7 +33,7 @@ plot_fastqc_summary:
     mem: 400
 
 plot_read_processing:
-    time: 1
+    time: 2
     n: 1
     mem: 300
 
@@ -52,7 +52,7 @@ remove_PCR_duplicates:
     mem : 1000
 
 bam_separate_species:
-    time : 1
+    time : 2
     mem : 50
 
 genome_coverage:
@@ -61,7 +61,7 @@ genome_coverage:
 
 normalize_genome_coverage:
     time : 3
-    mem : 1
+    mem : 2
 
 make_stranded_bedgraph:
     time: 3

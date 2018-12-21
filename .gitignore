@@ -22,6 +22,7 @@ mogrify.log
 README.html
 
 config.yaml
+*.*.swp
 
 !fastq/.gitkeep
 !logs/.gitkeep

@@ -34,7 +34,7 @@ rule tss_peaks_idr:
     log: "logs/tss_peaks_idr/tss_peaks_idr-{group}-{species}.log"
     shell: """
         (idr -s {input} --input-file-type narrowPeak --rank q.value -o {output.allpeaks} -l {log} --plot --peak-merge-method max) &> {log}
-        (awk '$5>{params.idr} || $9=="inf"' {output.allpeaks} | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &>> {log}
+        (awk '$5>{params.idr} || $9=="inf"' {output.allpeaks} | LC_COLLATE=C sort -k1,1 -k2,2n | tee {output.filtered} | awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | sed "s/-minus//g;s/-plus//g" | sort -k1,1 -k2,2n | tee {output.narrowpeak} | awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &>> {log}
         """
 
 rule combine_tss_peaks:
