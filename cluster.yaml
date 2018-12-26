@@ -69,7 +69,7 @@ make_stranded_bedgraph:
 
 bedgraph_to_bigwig:
     time: 1
-    mem: 1
+    mem: 2
 
 compute_matrix:
     time : 10
