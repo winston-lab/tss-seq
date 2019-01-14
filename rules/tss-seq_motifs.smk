@@ -18,7 +18,8 @@ rule get_overlapping_motifs:
     params:
         upstr = config["motifs"]["enrichment-upstream"],
         dnstr = config["motifs"]["enrichment-downstream"]
-    log: "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
+    log:
+        "logs/get_upstream_motifs/get_upstream_motifs-{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
         (awk 'BEGIN{{FS=OFS="\t"}}{{$2=$2+$10; $3=$2+1; print $0}}' {input.peaks} | \
         bedtools slop -l {params.upstr} -r {params.dnstr} -s -i stdin -g <(faidx {input.fasta} -i chromsizes) | \
@@ -40,7 +41,8 @@ rule get_random_motifs:
     params:
         window = config["motifs"]["enrichment-upstream"] + config["motifs"]["enrichment-downstream"] + 1,
         n = 6000
-    log: "logs/get_random_motifs.log"
+    log:
+        "logs/get_random_motifs.log"
     shell: """
         (bedtools random -l {params.window} -n {params.n} -g <(faidx {input.fasta} -i chromsizes) | \
         sort -k1,1 -k2,2n | \
@@ -62,8 +64,10 @@ rule test_motif_enrichment:
     params:
         fdr = -log10(config["motifs"]["enrichment-fdr"]),
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated"
-    conda: "../envs/tidyverse.yaml"
-    script: "../scripts/motif_enrichment.R"
+    conda:
+        "../envs/tidyverse.yaml"
+    script:
+        "../scripts/motif_enrichment.R"
 
 #0. extend peak summit annotation to upstream and downstream distances
 #1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
@@ -76,7 +80,8 @@ rule get_meme_sequences:
     params:
         upstr = config["motifs"]["meme-chip"]["upstream"],
         dnstr = config["motifs"]["meme-chip"]["downstream"]
-    log: "logs/get_meme_sequences/get_meme_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
+    log:
+        "logs/get_meme_sequences/get_meme_sequences_{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
         (bedtools slop -l {params.upstr} -r {params.dnstr} -s -i {input.peaks} -g <(faidx {input.fasta} -i chromsizes) | \
         bedtools cluster -s -d 0 -i stdin | \
@@ -98,8 +103,8 @@ rule meme_chip:
         db_command = "-db" if config["motifs"]["databases"] else [],
         meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
         meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
-    log: "logs/meme_chip/meme_chip_{condition}-v-{control}-{norm}-{category}-{direction}.log"
-    # threads: 4
+    log:
+        "logs/meme_chip/meme_chip_{condition}-v-{control}-{norm}-{category}-{direction}.log"
     shell: """
         (meme-chip -oc motifs/{wildcards.condition}-v-{wildcards.control}/{wildcards.norm}/{wildcards.category}/{wildcards.condition}-v-{wildcards.control}_tss-seq-{wildcards.norm}-diffexp-results-{wildcards.category}-{wildcards.direction}-meme_chip {params.db_command} {input.dbs} -bfile <(fasta-get-markov {input.genome_fasta} -m 1) -order 1 -meme-mod {params.meme_mode} -meme-nmotifs {params.meme_nmotifs} -meme-p 1 -meme-norand -centrimo-local {input.seq}) &> {log}
         """

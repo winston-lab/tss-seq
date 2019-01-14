@@ -17,7 +17,8 @@ rule clean_reads:
     threads:
         config["threads"]
     shell: """
-        cutadapt --adapter={params.adapter} --error-rate=0.1 --minimum-length=18 --cores={threads} {input} 2> {output.adapter} | cutadapt --cut=-6 --nextseq-trim={params.trim_qual} --minimum-length=12 --output={output.fq} --cores={threads} - &> {output.qual_trim}
+        cutadapt --adapter={params.adapter} --error-rate=0.1 --minimum-length=18 --cores={threads} {input} 2> {output.adapter} | \
+        cutadapt --cut=-6 --nextseq-trim={params.trim_qual} --minimum-length=12 --output={output.fq} --cores={threads} - &> {output.qual_trim}
         """
 
 rule extract_molecular_barcode:
@@ -27,8 +28,10 @@ rule extract_molecular_barcode:
         fq = "fastq/cleaned/{sample}_tss-seq-clean.fastq.gz",
         barcodes = "qual_ctrl/molec_barcode/barcodes-{sample}.tsv",
         ligation = "qual_ctrl/molec_barcode/ligation-{sample}.tsv"
-    threads: config["threads"]
-    log: "logs/extract_molecular_barcode/extract_molecular_barcode-{sample}.log"
+    threads:
+        config["threads"]
+    log:
+        "logs/extract_molecular_barcode/extract_molecular_barcode-{sample}.log"
     shell: """
         (python scripts/extract_molecular_barcode.py {input} {output.fq} {output.barcodes} {output.ligation}) &> {log}
         """

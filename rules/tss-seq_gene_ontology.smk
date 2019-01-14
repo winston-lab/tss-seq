@@ -13,7 +13,8 @@ rule gene_ontology:
         depleted_facet = "gene_ontology/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-gene-ontology-depleted-facetted.svg",
     params:
         direction = lambda wc: "upregulated" if wc.direction=="up" else "downregulated" if wc.direction=="down" else wc.direction
-    conda: "../envs/gene_ontology.yaml"
+    conda:
+        "../envs/gene_ontology.yaml"
     script:
         "../scripts/gene_ontology.R"
 

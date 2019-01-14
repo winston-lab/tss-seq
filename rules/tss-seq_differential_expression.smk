@@ -10,9 +10,11 @@ rule map_counts_to_peaks:
         bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
     output:
         temp("diff_exp/{condition}-v-{control}/{sample}_tss-seq-{species}-peakcounts.tsv")
-    log: "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{species}.log"
+    log:
+        "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{species}.log"
     shell: """
-        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
+        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | \
+         awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
         """
 
 rule combine_peak_counts:
@@ -23,9 +25,12 @@ rule combine_peak_counts:
     params:
         n = lambda wc: 2*len(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
         names = lambda wc: "\t".join(get_samples("passing", "libsizenorm", [wc.control, wc.condition]))
-    log: "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{species}.log"
+    log:
+        "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{species}.log"
     shell: """
-        (paste {input} | cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
+        (paste {input} | \
+         cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | \
+         cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
         """
 
 rule differential_expression:
@@ -45,7 +50,8 @@ rule differential_expression:
         groups = lambda wc : [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
-    conda: "../envs/diff_exp.yaml"
+    conda:
+        "../envs/diff_exp.yaml"
     script:
         "../scripts/call_diffexp_peaks.R"
 
@@ -57,8 +63,10 @@ rule diffexp_results_to_narrowpeak:
     output:
         narrowpeak = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}.narrowpeak",
         summit_bed = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{direction}-summits.bed",
-    conda: "../envs/peakcalling.yaml"
-    log: "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{condition}-v-{control}_{norm}-{direction}.log"
+    conda:
+        "../envs/peakcalling.yaml"
+    log:
+        "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/diffexp_results_to_narrowpeak.py -i {input.condition_coverage} -j {input.control_coverage} -d {input.diffexp_results} -n {output.narrowpeak} -b {output.summit_bed}) &> {log}
         """

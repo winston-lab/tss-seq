@@ -42,7 +42,7 @@ rule tss_peaks_idr:
          LC_COLLATE=C sort -k1,1 -k2,2n | \
          tee {output.filtered} | \
          awk 'BEGIN{{FS=OFS="\t"}}{{print $1, $2, $3, $4, $5, $6, $7, $11, $12, $10}}' | \
-         sed "s!\(.*\)\(-minus\|-plus\)\(.*\)!\1\3!" |
+         sed "s!\(.*\)\(-minus$\|-plus$\)\(.*\)!\1\3!" |
          sort -k1,1 -k2,2n | \
          tee {output.narrowpeak} | \
          awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.summits}) &>> {log}

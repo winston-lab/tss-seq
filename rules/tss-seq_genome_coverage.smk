@@ -10,9 +10,11 @@ rule genome_coverage:
     wildcard_constraints:
         counttype="counts|sicounts",
         strand="plus|minus"
-    log: "logs/genome_coverage/genome_coverage_{sample}-{counttype}-{strand}.log"
+    log:
+        "logs/genome_coverage/genome_coverage_{sample}-{counttype}-{strand}.log"
     shell: """
-        (bedtools genomecov -bga -5 -strand {params.strand} -ibam {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
+        (bedtools genomecov -bga -5 -strand {params.strand} -ibam {input} | \
+         LC_COLLATE=C sort -k1,1 -k2,2n > {output}) &> {log}
         """
 
 #NOTE: although we could do this by looking up library size values
@@ -29,7 +31,8 @@ rule normalize_genome_coverage:
     wildcard_constraints:
         norm="libsizenorm|spikenorm",
         strand="plus|minus"
-    log: "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}-{strand}.log"
+    log:
+        "logs/normalize_genome_coverage/normalize_genome_coverage-{sample}-{norm}-{strand}.log"
     shell: """
         (awk -v norm_factor=$(samtools view -c {input.bam} | paste -d "" - <(echo "/({params.scale_factor}*1000000)") | bc -l) 'BEGIN{{FS=OFS="\t"}}{{$4=$4/norm_factor; print $0}}' {input.counts} > {output.normalized}) &> {log}
         """
@@ -42,7 +45,8 @@ rule make_stranded_bedgraph:
         "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bedgraph",
     wildcard_constraints:
         strand="SENSE|ANTISENSE"
-    log : "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}-{strand}.log"
+    log:
+        "logs/make_stranded_bedgraph/make_stranded_bedgraph-{sample}-{norm}-{strand}.log"
     shell: """
         (bash scripts/makeStrandedBedgraph.sh {input.plus} {input.minus} > {output}) &> {log}
         """
@@ -55,7 +59,8 @@ rule bedgraph_to_bigwig:
         "coverage/{norm}/{sample}_tss-seq-{norm}-{strand}.bw",
     params:
         stranded = lambda wc: [] if wc.strand in ["plus", "minus"] else """| awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2; print $1"-minus", $2}}' | LC_COLLATE=C sort -k1,1"""
-    log : "logs/bedgraph_to_bigwig/bedgraph_to_bigwig-{sample}-{norm}-{strand}.log"
+    log:
+        "logs/bedgraph_to_bigwig/bedgraph_to_bigwig-{sample}-{norm}-{strand}.log"
     shell: """
         (bedGraphToBigWig {input.bedgraph} <(faidx {input.fasta} -i chromsizes {params.stranded}) {output}) &> {log}
         """

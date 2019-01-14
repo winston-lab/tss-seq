@@ -9,7 +9,8 @@ rule make_stranded_annotations:
         lambda wc : FIGURES[wc.figure]["annotations"][wc.annotation]["path"]
     output:
         "datavis/{figure}/{annotation}.bed"
-    log : "logs/make_stranded_annotations/make_stranded_annotations-{figure}-{annotation}.log"
+    log:
+        "logs/make_stranded_annotations/make_stranded_annotations-{figure}-{annotation}.log"
     shell: """
         (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
         """
@@ -32,8 +33,10 @@ rule compute_matrix:
         binstat = lambda wc: FIGURES[wc.figure]["parameters"]["binstat"],
         nan_afterend = lambda wc: [] if FIGURES[wc.figure]["parameters"]["type"]=="scaled" or not FIGURES[wc.figure]["parameters"]["nan_afterend"] else "--nanAfterEnd",
         anno_label = lambda wc: FIGURES[wc.figure]["annotations"][wc.annotation]["label"]
-    threads : config["threads"]
-    log: "logs/compute_matrix/compute_matrix-{figure}_{annotation}_{sample}-{norm}-{strand}.log"
+    threads:
+        config["threads"]
+    log:
+        "logs/compute_matrix/compute_matrix-{figure}_{annotation}_{sample}-{norm}-{strand}.log"
     run:
         if FIGURES[wildcards.figure]["parameters"]["type"]=="absolute":
             shell("""(computeMatrix reference-point -R {input.annotation} -S {input.bw} --referencePoint {params.refpoint} -out {output.dtfile} --outFileNameMatrix {output.matrix} -b {params.upstream} -a {params.dnstream} {params.nan_afterend} --binSize {params.binsize} --averageTypeBins {params.binstat} -p {threads}) &> {log}""")
@@ -47,7 +50,8 @@ rule cat_matrices:
         lambda wc: expand("datavis/{figure}/{norm}/{annotation}_{sample}-{norm}-{strand}-melted.tsv.gz", annotation=list(FIGURES[wc.figure]["annotations"].keys()), sample=SAMPLES, figure=wc.figure, norm=wc.norm, strand=wc.strand)
     output:
         "datavis/{figure}/{norm}/{figure}-allsamples-allannotations-tss-seq-{norm}-{strand}.tsv.gz"
-    log: "logs/cat_matrices/cat_matrices-{figure}_{norm}-{strand}.log"
+    log:
+        "logs/cat_matrices/cat_matrices-{figure}_{norm}-{strand}.log"
     shell: """
         (cat {input} > {output}) &> {log}
         """
@@ -101,7 +105,8 @@ rule plot_figures:
         cluster_five = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_five"],
         cluster_three = lambda wc: [] if FIGURES[wc.figure]["parameters"]["arrange"] != "cluster" else FIGURES[wc.figure]["parameters"]["cluster_three"],
         k = lambda wc: [v["n_clusters"] for k,v in FIGURES[wc.figure]["annotations"].items()],
-    conda: "../envs/tidyverse.yaml"
+    conda:
+        "../envs/tidyverse.yaml"
     script:
         "../scripts/plot_tss_figures.R"
 
