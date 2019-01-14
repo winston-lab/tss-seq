@@ -186,8 +186,10 @@ rule intragenic_position_bias:
         atg = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-ATG.tsv",
         rel = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-RELATIVE.tsv",
         stop = "diff_exp/{condition}-v-{control}/{norm}/intragenic/position_bias/{condition}-v-{control}_tss-seq-{norm}-intragenic-{direction}-STOP.tsv",
-    conda: "envs/position_bias.yaml"
-    log: "logs/intragenic_position_bias/intragenic_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
+    conda:
+        "envs/position_bias.yaml"
+    log:
+        "logs/intragenic_position_bias/intragenic_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/intragenic_tss_position_bias.py -d {input.diffexp_results} -c $(faidx {input.fasta} -i chromsizes) -g {input.genic_regions} -a {output.atg} -r {output.rel} -s {output.stop}) &> {log}
         """
@@ -200,8 +202,10 @@ rule antisense_position_bias:
         tss = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-TSS.tsv",
         rel = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-RELATIVE.tsv",
         cps = "diff_exp/{condition}-v-{control}/{norm}/antisense/position_bias/{condition}-v-{control}_tss-seq-{norm}-antisense-{direction}-CPS.tsv",
-    conda: "envs/position_bias.yaml"
-    log: "logs/antisense_position_bias/antisense_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
+    conda:
+        "envs/position_bias.yaml"
+    log:
+        "logs/antisense_position_bias/antisense_position_bias-{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/antisense_tss_position_bias.py -d {input.diffexp_results} -c $(faidx {input.fasta} -i chromsizes) -a {output.tss} -r {output.rel} -s {output.cps}) &> {log}
         """
@@ -218,6 +222,8 @@ rule genic_v_class:
         lfc_v_lfc = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-lfc-v-lfc.svg",
         lfc_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-lfc-v-expr.svg",
         expr_v_expr = "diff_exp/{condition}-v-{control}/{norm}/class_v_genic/{condition}-v-{control}_tss-seq-{norm}-class-v-genic-expr-v-expr.svg",
-    conda: "envs/tidyverse.yaml"
-    script: "scripts/tss_class_v_genic.R"
+    conda:
+        "envs/tidyverse.yaml"
+    script:
+        "scripts/tss_class_v_genic.R"
 

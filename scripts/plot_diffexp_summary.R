@@ -1,5 +1,4 @@
 library(tidyverse)
-library(forcats)
 library(ggrepel)
 library(ggpmisc)
 

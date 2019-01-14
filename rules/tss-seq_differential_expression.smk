@@ -81,6 +81,8 @@ rule summarise_diffexp_results:
     params:
         lfc = config["deseq"]["fold-change-threshold"],
         alpha = config["deseq"]["fdr"]
-    conda: "../envs/tidyverse.yaml"
-    script: "../scripts/plot_diffexp_summary.R"
+    conda:
+        "../envs/tidyverse.yaml"
+    script:
+        "../scripts/plot_diffexp_summary.R"
 
