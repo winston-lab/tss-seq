@@ -13,8 +13,7 @@ rule map_counts_to_peaks:
     log:
         "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{species}.log"
     shell: """
-        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-"$2"-"$3, $4}}' &> {output}) &> {log}
+        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
 
 rule combine_peak_counts:
@@ -23,14 +22,14 @@ rule combine_peak_counts:
     output:
         "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{species}-peak-counts.tsv"
     params:
-        n = lambda wc: 2*len(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
+        n = lambda wc: 7*len(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
         names = lambda wc: "\t".join(get_samples("passing", "libsizenorm", [wc.control, wc.condition]))
     log:
         "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{species}.log"
     shell: """
         (paste {input} | \
-         cut -f$(paste -d, <(echo "1") <(seq -s, 2 2 {params.n})) | \
-         cat <(echo -e "name\t" "{params.names}" ) - > {output}) &> {log}
+         cut -f$(paste -d, <(echo "1-6") <(seq -s, 7 7 {params.n})) | \
+         cat <(echo -e "chrom\tstart\tend\tname\tscore\tstrand\t{params.names}" ) - > {output}) &> {log}
         """
 
 rule differential_expression:
