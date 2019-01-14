@@ -9,7 +9,9 @@ rule map_to_windows:
     log:
         "logs/map_to_windows/map_to_windows_{norm}_{sample}-{windowsize}.log"
     shell: """
-        (bedtools makewindows -g <(faidx {input.fasta} -i chromsizes | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2; print $1"-minus", $2}}' | LC_COLLATE=C sort -k1,1) -w {wildcards.windowsize} | LC_COLLATE=C sort -k1,1 -k2,2n | bedtools map -a stdin -b {input.bg} -c 4 -o sum > {output}) &> {log}
+        (bedtools makewindows -g <(faidx {input.fasta} -i chromsizes | awk 'BEGIN{{FS=OFS="\t"}}{{print $1"-plus", $2; print $1"-minus", $2}}' | LC_COLLATE=C sort -k1,1) -w {wildcards.windowsize} | \
+         LC_COLLATE=C sort -k1,1 -k2,2n | \
+         bedtools map -a stdin -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
 
 rule join_window_counts:

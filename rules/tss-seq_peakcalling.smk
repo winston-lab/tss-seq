@@ -61,6 +61,7 @@ rule combine_tss_peaks:
          bedtools multiinter -i stdin <(sort -k1,1 -k2,2n {input.ctrl}) -cluster | \
          cut -f1-3 | \
          LC_COLLATE=C sort -k1,1 -k2,2n | \
-         uniq > {output}) &> {log}
+         uniq | \
+         awk 'BEGIN{{FS=OFS="\t"}}{{$1 ~ /-plus$/ ? strand="+" : strand="-"; print $1, $2, $3, ".", 0, strand}}' > {output}) &> {log}
         """
 
