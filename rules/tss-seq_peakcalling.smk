@@ -53,7 +53,7 @@ rule combine_tss_peaks:
         cond = "peakcalling/{condition}/{condition}_{species}-idrpeaks-filtered.tsv",
         ctrl = "peakcalling/{control}/{control}_{species}-idrpeaks-filtered.tsv",
     output:
-        "diff_exp/{condition}-v-{control}/{condition}-v-{control}_{species}-peaks.bed"
+        "diff_exp/peaks/{condition}-v-{control}/{condition}-v-{control}_{species}-peaks.bed"
     log:
         "logs/combine_tss_peaks/combine_tss_peaks_{condition}-v-{control}-{species}.log"
     shell: """

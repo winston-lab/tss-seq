@@ -10,7 +10,7 @@ localrules:
 #2. intersect with motif file
 rule get_overlapping_motifs:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.narrowpeak",
+        peaks = "diff_exp/peaks/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{category}-{direction}.narrowpeak",
         fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
         motifs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.bed")
     output:
@@ -73,7 +73,7 @@ rule test_motif_enrichment:
 #1. if multiple annotations overlap on same strand, keep the one that is the most significant (avoid multiple-counting poorly called peaks erroneously split into multiple peaks)
 rule get_meme_sequences:
     input:
-        peaks = "diff_exp/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-summits.bed",
+        peaks = "diff_exp/peaks/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{category}-{direction}-summits.bed",
         fasta = os.path.abspath(build_annotations(config["genome"]["fasta"]))
     output:
         "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa"
