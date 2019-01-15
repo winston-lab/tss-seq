@@ -34,16 +34,16 @@ rule combine_peak_counts:
 
 rule differential_expression:
     input:
-        expcounts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv",
-        sicounts = lambda wc: [] if wc.norm=="libsizenorm" else "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv".format(**wc)
+        exp_counts = "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-experimental-peak-counts.tsv",
+        spike_counts = lambda wc: [] if wc.norm=="libsizenorm" else "diff_exp/{condition}-v-{control}/{condition}-v-{control}_tss-seq-spikein-peak-counts.tsv".format(**wc)
     output:
         results_all = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-all.tsv",
         results_up = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-up.tsv",
         results_down = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-down.tsv",
-        results_unch = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-unchanged.tsv",
-        normcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-sizefactornorm.tsv",
-        rldcounts = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-rlogtransformed.tsv",
-        qcplots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-qc-plots.svg"
+        results_unchanged = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-unchanged.tsv",
+        counts_norm = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-sizefactornorm.tsv",
+        counts_rlog = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-counts-rlogtransformed.tsv",
+        qc_plots = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-qc-plots.svg"
     params:
         samples = lambda wc : get_samples("passing", wc.norm, [wc.control, wc.condition]),
         groups = lambda wc : [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
@@ -52,7 +52,8 @@ rule differential_expression:
     conda:
         "../envs/diff_exp.yaml"
     script:
-        "../scripts/call_diffexp_peaks.R"
+        "../scripts/differential_expression.R"
+
 
 rule diffexp_results_to_narrowpeak:
     input:
