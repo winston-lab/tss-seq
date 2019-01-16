@@ -105,8 +105,8 @@ get_mean_counts = function(counts_table,
         # rownames_to_column(var = "index") %>%
         gather(sample, value, -index) %>%
         mutate(group = if_else(sample %in% samples[groups==condition_id],
-                               "condition_occupancy",
-                               "control_occupancy")) %>%
+                               "condition_expr",
+                               "control_expr")) %>%
         group_by(index, group) %>%
         summarise(mean = mean(value)) %>%
         spread(group, mean) %>%
@@ -137,8 +137,8 @@ extract_deseq_results = function(dds,
         mutate_if(is.double, round, 3) %>%
         select(index, chrom, start, end, name, score, strand,
                log2_foldchange=log2FoldChange, lfc_SE=lfcSE,
-               stat, log10_pval=pvalue, log10_padj=padj, mean_occupancy=baseMean,
-               condition_occupancy, control_occupancy) %>%
+               stat, log10_pval=pvalue, log10_padj=padj, mean_expr=baseMean,
+               condition_expr, control_expr) %>%
         return()
 }
 
@@ -158,7 +158,7 @@ write_counts_table = function(results_df,
 
 plot_ma = function(df_sig = results_df_filtered_significant,
                    df_nonsig = results_df_filtered_nonsignificant,
-                   xvar = mean_occupancy,
+                   xvar = mean_expr,
                    yvar = log2_foldchange,
                    lfc,
                    condition,
@@ -307,7 +307,7 @@ main = function(exp_table,
 
     maplot = plot_ma(df_sig = results_df_significant,
                      df_nonsig = results_df_nonsignificant,
-                     xvar = mean_occupancy,
+                     xvar = mean_expr,
                      yvar = log2_foldchange,
                      lfc = lfc,
                      condition = condition,

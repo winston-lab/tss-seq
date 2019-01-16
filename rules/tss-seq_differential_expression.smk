@@ -78,7 +78,7 @@ rule diffexp_results_to_narrowpeak:
         diffexp_results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
     output:
         narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        summit_bed = "diff_exp/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}-summits.bed",
+        summit_bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}-summits.bed",
     conda:
         "../envs/peakcalling.yaml"
     log:

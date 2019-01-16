@@ -101,7 +101,7 @@ tss_peaks_idr:
 
 differential_expression:
     time: 3
-    mem: 600
+    mem: 800
 
 diffexp_results_to_narrowpeak:
     time: 2
