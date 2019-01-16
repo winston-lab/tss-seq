@@ -40,12 +40,13 @@ rule combine_annotation_counts:
         "diff_exp/{annotation}/{condition}-v-{control}/{condition}-v-{control}_tss-seq-{species}-counts-{annotation}.tsv"
     params:
         n = lambda wc: 7*len(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
-        names = lambda wc: "\t".join(get_samples("passing", "libsizenorm", [wc.control, wc.condition]))
+        names = lambda wc: "\t".join(get_samples("passing", "libsizenorm", [wc.control, wc.condition])),
+        filter_command = lambda wc: """awk 'BEGIN{{FS=OFS="\t"}} {sum=0; for(i=7; i<=NF; i++) sum+=$i; if(sum>0) {{print $0}}}' |""" if wc.annotation=="genic-nucleotides" else []
     log:
-        "logs/get_peak_counts/get_peak_counts_{condition}-v-{control}_{species}-{annotation}.log"
+        "logs/combine_annotation_counts/combine_annotation_counts_{condition}-v-{control}_{species}-{annotation}.log"
     shell: """
         (paste {input} | \
-         cut -f$(paste -d, <(echo "1-6") <(seq -s, 7 7 {params.n})) | \
+         cut -f$(paste -d, <(echo "1-6") <(seq -s, 7 7 {params.n})) | {params.filter_command} \
          cat <(echo -e "chrom\tstart\tend\tname\tscore\tstrand\t{params.names}" ) - > {output}) &> {log}
         """
 
