@@ -3,6 +3,7 @@
 localrules:
     map_counts_to_annotation,
     combine_annotation_counts,
+    aggregate_genic_tss
 
 rule aggregate_genic_tss:
     input:
@@ -15,9 +16,9 @@ rule aggregate_genic_tss:
         sort -k7,7 | \
         bedtools groupby -g 7 -c 1,2,3,6 -o first,min,max,first | \
         awk 'BEGIN{{FS=OFS="\t"}}{{$5=="+" ? strand="-plus" : strand="-minus"; print $2strand, $3, $4, $1, 0, $5}}' | \
-        LC_COLLATE=C sort -k1,1 -k2,2n | \
         bedtools makewindows -b stdin -w 1 -i src | \
-        awk 'BEGIN{{FS=OFS="\t"}}{{$1 ~ /-plus$/ ? strand="+" : strand="-"; print $1, $2, $3, $4, 0, strand}}'> {output}
+        LC_COLLATE=C sort -k1,1 -k2,2n | \
+        awk 'BEGIN{{FS=OFS="\t"}}{{$1 ~ /-plus$/ ? strand="+" : strand="-"; print $1, $2, $3, $4, 0, strand}}' > {output}
         """
 
 rule map_counts_to_annotation:
@@ -27,7 +28,7 @@ rule map_counts_to_annotation:
     output:
         temp("diff_exp/{annotation}/{condition}-v-{control}/{sample}_tss-seq-{species}-counts-{annotation}.tsv")
     log:
-        "logs/map_counts_to_peaks/map_counts_to_peaks-{condition}-v-{control}_{sample}-{species}-{annotation}.log"
+        "logs/map_counts_to_annotation/map_counts_to_annotation-{condition}-v-{control}_{sample}-{species}-{annotation}.log"
     shell: """
         (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
