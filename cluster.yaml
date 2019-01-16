@@ -134,7 +134,7 @@ peak_positioning:
 
 gene_ontology:
     time: 2
-    mem: 600
+    mem: 1G
 
 get_seqlogo_data:
     time: 30
