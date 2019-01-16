@@ -4,7 +4,7 @@ library(ggpmisc)
 
 import = function(df, path, alpha, label_col_id, category){
     df = read_tsv(path) %>%
-        distinct(chrom, start, end, peak_name, score, strand, .keep_all = TRUE) %>%
+        distinct(chrom, start, end, name, score, strand, .keep_all = TRUE) %>%
         select(chrom, start, end, label=label_col_id, score, strand, log2_foldchange, lfc_SE, stat,
                log10_pval, log10_padj, mean_expr, condition_expr, control_expr) %>%
         mutate(sig = if_else(log10_padj > -log10(alpha), TRUE, FALSE),
@@ -18,13 +18,13 @@ main = function(in_all, in_genic, in_intra, in_anti,
                 condition, control, lfc, alpha,
                 out_ma, out_volcano, out_volcano_free, out_mosaic, out_summary_table){
     df = tibble() %>%
-        import(in_all, alpha=alpha, label_col_id="peak_name", category="all") %>%
+        import(in_all, alpha=alpha, label_col_id="name", category="all") %>%
         import(in_genic, alpha=alpha, label_col_id="genic_name", category="genic") %>%
         import(in_intra, alpha=alpha, label_col_id="orf_name", category="intragenic") %>%
         import(in_anti, alpha=alpha, label_col_id="transcript_name", category="antisense") %>%
         import(in_conv, alpha=alpha, label_col_id="transcript_name", category="convergent") %>%
         import(in_div, alpha=alpha, label_col_id="transcript_name", category="divergent") %>%
-        import(in_inter, alpha=alpha, label_col_id="peak_name", category="intergenic") %>%
+        import(in_inter, alpha=alpha, label_col_id="name", category="intergenic") %>%
         mutate(category = fct_inorder(category, ordered=TRUE))
 
     min_x = quantile(df[["mean_expr"]], .2)

@@ -6,24 +6,24 @@ main = function(condition, control,
                 genic_path, intra_path, anti_path, conv_path, div_path,
                 tsv_out, lfc_v_lfc_out, lfc_v_expr_out, expr_v_expr_out){
     df = read_tsv(intra_path) %>%
-        select(peak_name, mean_expr, log2_foldchange, log10_padj,
+        select(name, mean_expr, log2_foldchange, log10_padj,
                condition_expr, control_expr, feat_name=orf_name,
                dist=atg_to_peak_dist) %>%
         mutate(tclass = "intragenic") %>%
         bind_rows(read_tsv(anti_path) %>%
-                      select(peak_name, mean_expr, log2_foldchange, log10_padj,
+                      select(name, mean_expr, log2_foldchange, log10_padj,
                              condition_expr, control_expr,
                              feat_name=transcript_name,
                              dist=sense_tss_to_peak_dist) %>%
                       mutate(tclass = "antisense")) %>%
         bind_rows(read_tsv(conv_path) %>%
-                      select(peak_name, mean_expr, log2_foldchange, log10_padj,
+                      select(name, mean_expr, log2_foldchange, log10_padj,
                              condition_expr, control_expr,
                              feat_name=transcript_name,
                              dist=sense_tss_to_peak_dist) %>%
                       mutate(tclass = "convergent")) %>%
         bind_rows(read_tsv(div_path) %>%
-                      select(peak_name, mean_expr, log2_foldchange, log10_padj,
+                      select(name, mean_expr, log2_foldchange, log10_padj,
                              condition_expr, control_expr,
                              feat_name=transcript_name,
                              dist=sense_tss_to_peak_dist) %>%
