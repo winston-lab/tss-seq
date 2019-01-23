@@ -5,15 +5,6 @@ import numpy as np
 import pandas as pd
 import pyBigWig as pybw
 
-parser = argparse.ArgumentParser(description='Add back summit information to TSS-seq differential expression results.')
-parser.add_argument('-i', dest = 'condition_paths', type=str, nargs='+', help='BigWigs for all condition samples used in differential expression')
-parser.add_argument('-j', dest = 'control_paths', type=str, nargs='+', help='BigWigs for all control samples used in differential expression')
-parser.add_argument('-d', dest = 'diffexp_path', type=str, help='differential expression results file')
-parser.add_argument('-n', dest = 'narrowpeak_out', type=str, help='output path for narrowPeak file')
-parser.add_argument('-b', dest = 'bed_out', type=str, help='output path for BED file of summit positions')
-args = parser.parse_args()
-
-
 #given paths to bigwig files representing replicates,
 #return a dictionary where keys are chromosome names and
 #values are the average coverage across replicates
@@ -54,7 +45,7 @@ def main(condition_paths, control_paths, diffexp_path, narrowpeak_out, bed_out):
     #we only need to perform operations using start and end as integers,
     #so everything else can be treated as an object to avoid reformatting
     diffexp_df = pd.read_csv(diffexp_path, sep="\t",
-            dtype={'chrom':str, 'start':np.uint32, 'end':np.uint32, 'peak_name':str,
+            dtype={'chrom':str, 'start':np.uint32, 'end':np.uint32, 'name':str,
                 'score':str, 'strand':str, 'log2_foldchange':str, 'lfc_SE':str,
                 'stat':str, 'log10_pval':str, 'log10_padj':str,
                 'mean_expr':str, 'condition_expr':str, 'control_expr':str})
@@ -65,9 +56,16 @@ def main(condition_paths, control_paths, diffexp_path, narrowpeak_out, bed_out):
         diffexp_df = diffexp_df.assign(summit_end = diffexp_df['summit_start'] + 1)
 
     #NOTE: we convert NAs (found in pvalue and score columns) to zero for narrowpeak compatibility
-    diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'peak_name', 'score', 'strand', 'log2_foldchange', 'log10_pval', 'log10_padj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
-    diffexp_df.to_csv(bed_out, sep="\t", columns=['chrom', 'summit_start', 'summit_end', 'peak_name', 'score', 'strand'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
+    diffexp_df.to_csv(narrowpeak_out, sep="\t", columns=['chrom', 'start', 'end', 'name', 'score', 'strand', 'log2_foldchange', 'log10_pval', 'log10_padj', 'summit'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
+    diffexp_df.to_csv(bed_out, sep="\t", columns=['chrom', 'summit_start', 'summit_end', 'name', 'score', 'strand'], header=False, index=False, float_format="%.3f", encoding='utf-8', na_rep="0")
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Add back summit information to TSS-seq differential expression results.')
+    parser.add_argument('-i', dest = 'condition_paths', type=str, nargs='+', help='BigWigs for all condition samples used in differential expression')
+    parser.add_argument('-j', dest = 'control_paths', type=str, nargs='+', help='BigWigs for all control samples used in differential expression')
+    parser.add_argument('-d', dest = 'diffexp_path', type=str, help='differential expression results file')
+    parser.add_argument('-n', dest = 'narrowpeak_out', type=str, help='output path for narrowPeak file')
+    parser.add_argument('-b', dest = 'bed_out', type=str, help='output path for BED file of summit positions')
+    args = parser.parse_args()
     main(args.condition_paths, args.control_paths, args.diffexp_path, args.narrowpeak_out, args.bed_out)
 
