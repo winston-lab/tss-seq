@@ -6,11 +6,11 @@ rule call_tss_peaks:
     input:
         bw = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bw".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bw".format(**wc)
     output:
-        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{species}}-tss-seq-smoothed-bandwidth{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{species}}-tss-seq-smoothed-bandwidth{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = float(config["peakcalling"]["bandwidth"])),
         peaks = "peakcalling/sample_peaks/{sample}_{species}-tss-seq-allpeaks.narrowPeak"
     params:
         name = lambda wc: "{sample}_{species}".format(**wc),
-        bandwidth = config["peakcalling"]["bandwidth"],
+        bandwidth = float(config["peakcalling"]["bandwidth"]),
         window = config["peakcalling"]["local_background_window"]
     conda:
         "../envs/peakcalling.yaml"
