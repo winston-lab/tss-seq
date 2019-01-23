@@ -6,30 +6,30 @@ rule call_tss_peaks:
     input:
         bw = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bw".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bw".format(**wc)
     output:
-        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{species}}-smoothed-bw{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
-        peaks = "peakcalling/sample_peaks/{sample}_{species}-allpeaks.narrowPeak"
+        smoothed = expand("peakcalling/sample_peaks/{{sample}}_{{species}}-tss-seq-smoothed-bandwidth{bandwidth}-{strand}.bw", strand=["plus","minus"], bandwidth = config["peakcalling"]["bandwidth"]),
+        peaks = "peakcalling/sample_peaks/{sample}_{species}-tss-seq-allpeaks.narrowPeak"
     params:
         name = lambda wc: "{sample}_{species}".format(**wc),
         bandwidth = config["peakcalling"]["bandwidth"],
-        window = config["peakcalling"]["local-bg-window"]
+        window = config["peakcalling"]["local_background_window"]
     conda:
         "../envs/peakcalling.yaml"
     log:
         "logs/call_tss_peaks/call_tss_peaks-{sample}-{species}.log"
     shell: """
-        (python scripts/tss-peakcalling.py -i {input.bw} -n {params.name} -w {params.window} -b {params.bandwidth} -o peakcalling/sample_peaks) &> {log}
+        (python scripts/tss_peakcalling.py -i {input.bw} -n {params.name} -o peakcalling/sample_peaks -b {params.bandwidth} -w {params.window}) &> {log}
         """
 
 rule tss_peaks_idr:
     input:
         #NOTE: for now we take the first two samples since the IDR script only takes two
         #change this if we find a better way to aggregate results
-        lambda wc: ["peakcalling/sample_peaks/" + x + "_{species}-allpeaks.narrowPeak".format(**wc) for x in PASSING if PASSING[x]['group']==wc.group][0:2]
+        lambda wc: ["peakcalling/sample_peaks/" + x + "_{species}-tss-seq-allpeaks.narrowPeak".format(**wc) for x in PASSING if PASSING[x]['group']==wc.group][0:2]
     output:
-        allpeaks = "peakcalling/{group}/{group}_{species}-idrpeaks-all.tsv",
-        filtered = "peakcalling/{group}/{group}_{species}-idrpeaks-filtered.tsv",
-        narrowpeak = "peakcalling/{group}/{group}_{species}-idrpeaks.narrowPeak",
-        summits = "peakcalling/{group}/{group}_{species}-idrpeaks-summits.bed",
+        allpeaks = "peakcalling/{group}/{group}_{species}-tss-seq-idrpeaks-all.tsv",
+        filtered = "peakcalling/{group}/{group}_{species}-tss-seq-idrpeaks-filtered.tsv",
+        narrowpeak = "peakcalling/{group}/{group}_{species}-tss-seq-idrpeaks.narrowPeak",
+        summits = "peakcalling/{group}/{group}_{species}-tss-seq-idrpeaks-summits.bed",
     params:
         idr = int(-125*log2(config["peakcalling"]["idr"]))
     conda:
@@ -50,8 +50,8 @@ rule tss_peaks_idr:
 
 rule combine_tss_peaks:
     input:
-        cond = "peakcalling/{condition}/{condition}_{species}-idrpeaks-filtered.tsv",
-        ctrl = "peakcalling/{control}/{control}_{species}-idrpeaks-filtered.tsv",
+        cond = "peakcalling/{condition}/{condition}_{species}-tss-seq-idrpeaks-filtered.tsv",
+        ctrl = "peakcalling/{control}/{control}_{species}-tss-seq-idrpeaks-filtered.tsv",
     output:
         "diff_exp/peaks/{condition}-v-{control}/{condition}-v-{control}_{species}-peaks.bed"
     log:

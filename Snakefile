@@ -127,15 +127,15 @@ rule all:
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-libsizenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditioncheck(conditiongroups), control=conditioncheck(controlgroups)), status=statuscheck(SAMPLES, PASSING), windowsize = config["scatterplot_binsizes"]),
         expand(expand("qual_ctrl/scatter_plots/{condition}-v-{control}/{{status}}/{condition}-v-{control}_tss-seq-spikenorm-scatterplots-{{status}}-window-{{windowsize}}.svg", zip, condition=conditioncheck(conditiongroups_si), control=conditioncheck(controlgroups_si)), status=statuscheck(SISAMPLES, SIPASSING), windowsize = config["scatterplot_binsizes"]) if SISAMPLES and comparisons_si else [],
         #peakcalling on all samples
-        expand("peakcalling/sample_peaks/{sample}_experimental-allpeaks.narrowPeak", sample=SAMPLES),
-        expand("peakcalling/sample_peaks/{sample}_spikein-allpeaks.narrowPeak", sample=SISAMPLES),
+        expand("peakcalling/sample_peaks/{sample}_experimental-tss-seq-allpeaks.narrowPeak", sample=SAMPLES),
+        expand("peakcalling/sample_peaks/{sample}_spikein-tss-seq-allpeaks.narrowPeak", sample=SISAMPLES),
         #IDR for all groups which have at least two passing samples
-        expand("peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak", group=validgroups),
-        expand("peakcalling/{group}/{group}_spikein-idrpeaks.narrowPeak", group=validgroups_si),
+        expand("peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak", group=validgroups),
+        expand("peakcalling/{group}/{group}_spikein-tss-seq-idrpeaks.narrowPeak", group=validgroups_si),
         #classify peaks into categories
-        expand("peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
+        expand("peakcalling/{group}/{category}/{group}-experimental-tss-seq-idrpeaks-{category}.tsv", group=validgroups, category=CATEGORIES),
         #some peak statistics (size, distance from sense TSS, ATG)
-        expand("peakcalling/{group}/{group}-experimental-peak-stats.tsv", group=validgroups),
+        expand("peakcalling/{group}/{group}-experimental-tss-seq-peak-stats.tsv", group=validgroups),
         #differential expression of peaks and genic nucleotides
         expand(expand("diff_exp/peaks/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-peaks-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups), direction=["all", "up", "unchanged", "down"]),
         expand(expand("diff_exp/peaks/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-peaks-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["all", "up", "unchanged", "down"]) if comparisons_si else [],

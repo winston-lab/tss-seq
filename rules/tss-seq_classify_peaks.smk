@@ -11,11 +11,11 @@ peak_fields = "peak_chrom\tpeak_start\tpeak_end\tpeak_name\tpeak_score\tpeak_str
 rule classify_genic_peaks:
     input:
         annotation = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.tsv",
-        narrowpeak = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.narrowpeak",
-        bed = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic-summits.bed",
+        table = "peakcalling/{group}/genic/{group}-experimental-tss-seq-idrpeaks-genic.tsv",
+        narrowpeak = "peakcalling/{group}/genic/{group}-experimental-tss-seq-idrpeaks-genic.narrowpeak",
+        bed = "peakcalling/{group}/genic/{group}-experimental-tss-seq-idrpeaks-genic-summits.bed",
     log:
         "logs/classify_peaks/classify_genic_peaks-{group}.log"
     shell: """
@@ -32,11 +32,11 @@ rule classify_intragenic_peaks:
     input:
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         orf_anno = os.path.abspath(build_annotations(config["genome"]["orf_annotation"])),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic.tsv",
-        narrowpeak = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic.narrowpeak",
-        bed = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic-summits.bed",
+        table = "peakcalling/{group}/intragenic/{group}-experimental-tss-seq-idrpeaks-intragenic.tsv",
+        narrowpeak = "peakcalling/{group}/intragenic/{group}-experimental-tss-seq-idrpeaks-intragenic.narrowpeak",
+        bed = "peakcalling/{group}/intragenic/{group}-experimental-tss-seq-idrpeaks-intragenic-summits.bed",
     log:
         "logs/classify_peaks/classify_intragenic_peaks-{group}.log"
     shell: """
@@ -54,11 +54,11 @@ rule classify_intragenic_peaks:
 rule classify_antisense_peaks:
     input:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense.tsv",
-        narrowpeak = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense.narrowpeak",
-        bed = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense-summits.bed",
+        table = "peakcalling/{group}/antisense/{group}-experimental-tss-seq-idrpeaks-antisense.tsv",
+        narrowpeak = "peakcalling/{group}/antisense/{group}-experimental-tss-seq-idrpeaks-antisense.narrowpeak",
+        bed = "peakcalling/{group}/antisense/{group}-experimental-tss-seq-idrpeaks-antisense-summits.bed",
     log:
         "logs/classify_peaks/classify_antisense_peaks-{group}.log"
     shell: """
@@ -80,11 +80,11 @@ rule classify_convergent_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         conv_anno = build_annotations("annotations/" + config["genome"]["name"] + "_convergent-regions.bed"),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.tsv",
-        narrowpeak = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.narrowpeak",
-        bed = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent-summits.bed",
+        table = "peakcalling/{group}/convergent/{group}-experimental-tss-seq-idrpeaks-convergent.tsv",
+        narrowpeak = "peakcalling/{group}/convergent/{group}-experimental-tss-seq-idrpeaks-convergent.narrowpeak",
+        bed = "peakcalling/{group}/convergent/{group}-experimental-tss-seq-idrpeaks-convergent-summits.bed",
     log:
         "logs/classify_peaks/classify_convergent_peaks-{group}.log"
     shell: """
@@ -111,11 +111,11 @@ rule classify_divergent_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         div_anno = build_annotations("annotations/" + config["genome"]["name"] + "_divergent-regions.bed"),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.tsv",
-        narrowpeak = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.narrowpeak",
-        bed = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent-summits.bed",
+        table = "peakcalling/{group}/divergent/{group}-experimental-tss-seq-idrpeaks-divergent.tsv",
+        narrowpeak = "peakcalling/{group}/divergent/{group}-experimental-tss-seq-idrpeaks-divergent.narrowpeak",
+        bed = "peakcalling/{group}/divergent/{group}-experimental-tss-seq-idrpeaks-divergent-summits.bed",
     log:
         "logs/classify_peaks/classify_divergent_peaks-{group}.log"
     shell: """
@@ -139,11 +139,11 @@ rule classify_intergenic_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         orf_anno = os.path.abspath(build_annotations(config["genome"]["orf_annotation"])),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        peaks = "peakcalling/{group}/{group}_experimental-idrpeaks.narrowPeak",
+        peaks = "peakcalling/{group}/{group}_experimental-tss-seq-idrpeaks.narrowPeak",
     output:
-        table = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.tsv",
-        narrowpeak = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.narrowpeak",
-        bed = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic-summits.bed",
+        table = "peakcalling/{group}/intergenic/{group}-experimental-tss-seq-idrpeaks-intergenic.tsv",
+        narrowpeak = "peakcalling/{group}/intergenic/{group}-experimental-tss-seq-idrpeaks-intergenic.narrowpeak",
+        bed = "peakcalling/{group}/intergenic/{group}-experimental-tss-seq-idrpeaks-intergenic-summits.bed",
     log:
         "logs/classify_peaks/classify_intergenic_peaks-{group}.log"
     shell: """
@@ -159,15 +159,15 @@ rule classify_intergenic_peaks:
 
 rule plot_peak_stats:
     input:
-        genic = "peakcalling/{group}/genic/{group}-experimental-idrpeaks-genic.tsv",
-        intragenic = "peakcalling/{group}/intragenic/{group}-experimental-idrpeaks-intragenic.tsv",
-        antisense = "peakcalling/{group}/antisense/{group}-experimental-idrpeaks-antisense.tsv",
-        convergent = "peakcalling/{group}/convergent/{group}-experimental-idrpeaks-convergent.tsv",
-        divergent = "peakcalling/{group}/divergent/{group}-experimental-idrpeaks-divergent.tsv",
-        intergenic = "peakcalling/{group}/intergenic/{group}-experimental-idrpeaks-intergenic.tsv",
+        genic = "peakcalling/{group}/genic/{group}-experimental-tss-seq-idrpeaks-genic.tsv",
+        intragenic = "peakcalling/{group}/intragenic/{group}-experimental-tss-seq-idrpeaks-intragenic.tsv",
+        antisense = "peakcalling/{group}/antisense/{group}-experimental-tss-seq-idrpeaks-antisense.tsv",
+        convergent = "peakcalling/{group}/convergent/{group}-experimental-tss-seq-idrpeaks-convergent.tsv",
+        divergent = "peakcalling/{group}/divergent/{group}-experimental-tss-seq-idrpeaks-divergent.tsv",
+        intergenic = "peakcalling/{group}/intergenic/{group}-experimental-tss-seq-idrpeaks-intergenic.tsv",
     output:
-        table = "peakcalling/{group}/{group}-experimental-peak-stats.tsv",
-        sizes = "peakcalling/{group}/{group}-experimental-peak-sizes.svg",
+        table = "peakcalling/{group}/{group}-experimental-tss-seq-peak-stats.tsv",
+        sizes = "peakcalling/{group}/{group}-experimental-tss-seq-peak-sizes.svg",
         distances = "peakcalling/{group}/{group}-experimental-peak-distances.svg",
     conda:
         "../envs/tidyverse.yaml"

@@ -90,7 +90,7 @@ tophat2:
 # peakcalling settings
 peakcalling:
     bandwidth: 10  # [INT] bandwidth of Gaussian kernel used in pilot density estimation
-    local-bg-window: 2000  # [INT] size, in nt, of window upstream of peak used for local lambda
+    local_background_window: 2000  # [INT] size, in nt, of window upstream of peak used for local lambda
     idr: 0.1  # [FLOAT in (0,1)] irreproducible discovery rate cutoff
 
 # DESeq2 differential expression settings
