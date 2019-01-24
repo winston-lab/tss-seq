@@ -21,13 +21,15 @@ rule classify_genic_peaks:
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.annotation} -wo -s | \
          cut --complement -f17 | \
-         cat <(echo -e "{peak_fields}\tgenic_chrom\tgenic_start\tgenic_end\tgenic_name\tgenic_score\tgenic_strand") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b {input.annotation} -u -s | \
+         cat <(echo -e "{peak_fields}\tgenic_chrom\tgenic_start\tgenic_end\tgenic_name\tgenic_score\tgenic_strand") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
+# TODO: for classes other than genic and intergenic, the SUMMIT of the peak is required to overlap the
+#       relevant annotation
 rule classify_intragenic_peaks:
     input:
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
@@ -41,14 +43,15 @@ rule classify_intragenic_peaks:
         "logs/classify_peaks/classify_intragenic_peaks-{group}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
+         scripts/narrowpeak_paste_summit.sh | \
          bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -wo -s | \
+         cut --complement -f1-6 | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=summit-$12}} $6=="-"{{$17=$13-(summit+1)}} {{print $0}}' | \
-         cat <(echo -e "{peak_fields}\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
-         bedtools intersect -a stdin -b <(cut -f1-6 {input.orf_anno}) -u -s | \
+         cat <(echo -e "{peak_fields}\torf_chrom\torf_start\torf_end\torf_name\torf_score\torf_strand\tatg_to_peak_dist") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
 rule classify_antisense_peaks:
@@ -62,13 +65,15 @@ rule classify_antisense_peaks:
     log:
         "logs/classify_peaks/classify_antisense_peaks-{group}.log"
     shell: """
-        (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -wo -S | \
+         (scripts/narrowpeak_paste_summit.sh | \
+         bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -wo -S | \
+         cut --complement -f1-6 | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | \
-         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -u -S | \
+         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
 # 0.) exclude genic peaks
@@ -89,17 +94,18 @@ rule classify_convergent_peaks:
         "logs/classify_peaks/classify_convergent_peaks-{group}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
+         scripts/narrowpeak_paste_summit.sh | \
          bedtools intersect -a stdin -b {input.conv_anno} -wo -s | \
+         cut --complement -f1-6 | \
          sort -k14,14 | \
          join -1 14 -2 4 -t $'\t' -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,2.1,2.2,2.3,2.4,2.5,2.6 - <(sort -k4,4 {input.transcript_anno}) | \
          sort -k1,1 -k2,2n | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | \
-         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
-         bedtools intersect -a stdin -b {input.conv_anno} -u -s | \
+         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
 # 0.) exclude genic peaks
@@ -120,17 +126,18 @@ rule classify_divergent_peaks:
         "logs/classify_peaks/classify_divergent_peaks-{group}.log"
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
+         scripts/narrowpeak_paste_summit.sh | \
          bedtools intersect -a stdin -b {input.div_anno} -wo -s | \
+         cut --complement -f1-6 | \
          sort -k14,14 | \
          join -1 14 -2 4 -t $'\t' -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,2.1,2.2,2.3,2.4,2.5,2.6 - <(sort -k4,4 {input.transcript_anno}) | \
          sort -k1,1 -k2,2n | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=(summit+1)-$13}} $6=="-"{{$17=$12-summit}} {{print $0}}' | \
-         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b {input.genic_anno} -v -s | \
-         bedtools intersect -a stdin -b {input.div_anno} -u -s | \
+         cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
 rule classify_intergenic_peaks:
@@ -149,12 +156,11 @@ rule classify_intergenic_peaks:
     shell: """
         (bedtools intersect -a {input.peaks} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | \
          bedtools intersect -a stdin -b {input.intergenic_anno} -u | \
-         cat <(echo -e "{peak_fields}") - > {output.table}) &> {log}
-
-        (bedtools intersect -a {input.peaks} -b {input.transcript_anno} {input.orf_anno} {input.genic_anno} -v | \
-         bedtools intersect -a stdin -b {input.intergenic_anno} -u | \
+         cat <(echo -e "{peak_fields}") - | \
+         tee {output.table} | \
+         scripts/peak_tsv_to_unique_narrowpeak.sh | \
          tee {output.narrowpeak} | \
-         awk 'BEGIN{{FS=OFS="\t"}}{{start=$2+$10; print $1, start, start+1, $4, $5, $6}}' > {output.bed}) &>> {log}
+         scripts/peak_narrowpeak_to_summit_bed.sh > {output.bed}) &> {log}
         """
 
 rule plot_peak_stats:
