@@ -65,8 +65,9 @@ rule classify_antisense_peaks:
     log:
         "logs/classify_peaks/classify_antisense_peaks-{group}.log"
     shell: """
-         (scripts/narrowpeak_paste_summit.sh | \
-         bedtools intersect -a {input.peaks} -b <(cut -f1-6 {input.transcript_anno}) -wo -S | \
+        (cat {input.peaks} | \
+         scripts/narrowpeak_paste_summit.sh | \
+         bedtools intersect -a stdin -b <(cut -f1-6 {input.transcript_anno}) -wo -S | \
          cut --complement -f1-6 | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$10}} $6=="+"{{$17=$13-(summit+1)}} $6=="-"{{$17=summit-$12}} {{print $0}}' | \
          cat <(echo -e "{peak_fields}\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist") - | \
