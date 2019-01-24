@@ -5,14 +5,14 @@ localrules: plot_seqlogos, seqlogo_to_meme
 rule get_seqlogo_data:
     input:
         bam = lambda wc: expand("alignment/{sample}_tss-seq-noPCRduplicates-experimental.bam", sample=get_samples("passing", "libsizenorm", wc.group)),
-        bed = lambda wc: "peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.narrowpeak".format(**wc) if wc.category != "all" else [],
+        bed = lambda wc: "peakcalling/{group}/{category}/{group}-experimental-tss-seq-idrpeaks-{category}.narrowpeak".format(**wc) if wc.category != "all" else [],
         fasta = os.path.abspath(build_annotations(config["genome"]["fasta"]))
     output:
         seqlogo_data = "seq_logos/{group}/{group}-{category}-seqlogo.tsv",
     params:
         slop = int(config["consensus"]["window"]),
         windowsize = int(2*config["consensus"]["window"]+1),
-        intersect_cmd = lambda wc: "bedtools intersect -wa -s -a stdin -b peakcalling/{group}/{category}/{group}-experimental-idrpeaks-{category}.narrowpeak | ".format(**wc) if wc.category != "all" else ""
+        intersect_cmd = lambda wc: "bedtools intersect -wa -s -a stdin -b peakcalling/{group}/{category}/{group}-experimental-tss-seq-idrpeaks-{category}.narrowpeak | ".format(**wc) if wc.category != "all" else ""
     log:
         "logs/get_seqlogo_data/get_seqlogo_data-{group}-{category}.log"
     run:
