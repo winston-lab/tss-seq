@@ -269,7 +269,7 @@ def main(input_paths: List[str],
         df['strand'] = df["chrom"].apply(lambda x: "+" if x.endswith("-plus") else "-")
         df['logpadj'] = np.abs(np.log10(multipletests(np.power(10, -df['logp']),
                                                       alpha=1e-5,
-                                                      method='bonferroni')[1]))
+                                                      method='fdr_bh')[1]))
         # df = df[['chrom', 'start', 'end', 'name', 'entropy', \
         df = df[['chrom', 'start', 'end', 'name', 'counts', \
                 'strand', 'counts', 'logp', 'logpadj', 'peak']]
