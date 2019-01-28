@@ -138,8 +138,8 @@ rule bam_separate_species:
         "logs/bam_separate_species/bam_separate_species-{sample}-{species}.log"
     shell: """
         (samtools view -h {input.bam} $(faidx {input.fasta} -i chromsizes | \
-         grep {params.prefix}_ | \
-         awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | \
+                grep {params.prefix}_ | \
+                awk 'BEGIN{{FS="\t"; ORS=" "}}{{print $1}}') | \
          grep -v -e 'SN:{params.filterprefix}_' | \
          sed 's/{params.prefix}_//g' | \
          samtools view -bh -@ {threads} -o {output} -) &> {log}
