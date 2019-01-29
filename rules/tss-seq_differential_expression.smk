@@ -63,8 +63,8 @@ rule differential_expression:
         counts_rlog = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-counts-rlogtransformed.tsv",
         qc_plots = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-qc-plots.svg"
     params:
-        samples = lambda wc : get_samples("passing", wc.norm, [wc.control, wc.condition]),
-        groups = lambda wc : [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
+        samples = lambda wc: get_samples("passing", wc.norm, [wc.control, wc.condition]),
+        groups = lambda wc: [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
         alpha = config["deseq"]["fdr"],
         lfc = log2(config["deseq"]["fold-change-threshold"])
     conda:

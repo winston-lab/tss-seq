@@ -67,5 +67,10 @@ if __name__ == '__main__':
     parser.add_argument('-n', dest = 'narrowpeak_out', type=str, help='output path for narrowPeak file')
     parser.add_argument('-b', dest = 'bed_out', type=str, help='output path for BED file of summit positions')
     args = parser.parse_args()
-    main(args.condition_paths, args.control_paths, args.diffexp_path, args.narrowpeak_out, args.bed_out)
+
+    main(args.condition_paths,
+         args.control_paths,
+         args.diffexp_path,
+         args.narrowpeak_out,
+         args.bed_out)
 

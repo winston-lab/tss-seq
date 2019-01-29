@@ -43,7 +43,7 @@ align:
     mem : 500
 
 select_unique_mappers:
-    time : 6
+    time : 8
     n : 1
     mem : 1000
 
@@ -57,7 +57,7 @@ bam_separate_species:
 
 genome_coverage:
     time : 2
-    mem : 50
+    mem : 75
 
 normalize_genome_coverage:
     time : 3
@@ -93,7 +93,7 @@ plot_scatter_plots:
 
 call_tss_peaks:
     time: 15
-    mem: 400
+    mem: 500
 
 tss_peaks_idr:
     time: 5
@@ -105,7 +105,7 @@ differential_expression:
 
 diffexp_results_to_narrowpeak:
     time: 2
-    mem: 100
+    mem: 150
 
 summarise_diffexp_results:
     time: 4
