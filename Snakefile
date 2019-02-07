@@ -34,9 +34,6 @@ CATEGORIES = ["genic", "intragenic", "antisense", "convergent", "divergent", "in
 
 FIGURES = config["figures"]
 
-#get all motif names from motif databases, cleaning nasty characters in some motif names
-MOTIFS = set(subprocess.run(args="meme2meme " + " ".join(config["motifs"]["databases"]) + " | grep -e '^MOTIF' | cut -d ' ' -f2 | sed 's/\//_/g; s/&/_/g; s/{/[/g; s/}/]/g' ", shell=True, stdout=subprocess.PIPE, encoding='utf-8').stdout.split()) if config["motifs"]["run_motif_analyses"] else []
-
 wildcard_constraints:
     sample = "|".join(re.escape(x) for x in list(SAMPLES.keys())),
     group = "|".join(set(re.escape(v["group"]) for k,v in SAMPLES.items())),
@@ -47,7 +44,6 @@ wildcard_constraints:
     category = "|".join(CATEGORIES + ["all"]),
     figure = "|".join(re.escape(x) for x in list(FIGURES.keys())),
     annotation = "|".join(re.escape(x) for x in set(list(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES])) + ["peaks", "genic-nucleotides"])),
-    motif = "|".join(re.escape(x) for x in MOTIFS),
     status = "all|passing",
     counttype= "counts|sicounts",
     norm = "counts|sicounts|libsizenorm|spikenorm",
@@ -96,6 +92,7 @@ include: "rules/tss-seq_classify_peaks.smk"
 include: "rules/tss-seq_gene_ontology.smk"
 include: "rules/tss-seq_motifs.smk"
 include: "rules/tss-seq_sequence_logos.smk"
+include: "rules/tss-seq_major_genic_tss_changes.smk"
 
 onsuccess:
     shell("(./mogrify.sh) > mogrify.log")
@@ -162,8 +159,8 @@ rule all:
         expand("diff_exp/peaks/{condition}-v-{control}/libsizenorm/class_v_genic/{condition}-v-{control}_tss-seq-libsizenorm-class-v-genic.tsv", zip, condition=conditiongroups, control=controlgroups),
         expand("diff_exp/peaks/{condition}-v-{control}/spikenorm/class_v_genic/{condition}-v-{control}_tss-seq-spikenorm-class-v-genic.tsv", zip, condition=conditiongroups_si, control=controlgroups_si) if comparisons_si else[],
         #enrichment of known motifs
-        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] else [],
-        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] and comparisons_si else [],
+        expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] and config["motifs"]["dna_motif_databases"] else [],
+        expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{{negative}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-v-{{negative}}-motif_enrichment.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up","down"], negative=["unchanged", "random"], category=CATEGORIES) if config["motifs"]["run_motif_analyses"] and config["motifs"]["dna_motif_databases"] and comparisons_si else [],
         #gene ontology
         expand(expand("gene_ontology/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-{{category}}-{{direction}}-gene-ontology-enriched-all.svg", zip, condition=conditiongroups, control=controlgroups), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] else [],
         expand(expand("gene_ontology/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-{{category}}-{{direction}}-gene-ontology-enriched-all.svg", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["up", "down", "unchanged"], category=["genic", "intragenic", "antisense", "convergent", "divergent"]) if config["run_gene_ontology"] and comparisons_si else [],
@@ -173,6 +170,11 @@ rule all:
         # MEME-ChIP
         expand(expand("motifs/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/summary.tsv", zip, condition=conditiongroups, control=controlgroups), category=CATEGORIES, direction=["up", "down", "unchanged"]) if config["motifs"]["meme-chip"]["run-meme-chip"] else [],
         expand(expand("motifs/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-diffexp-results-{{category}}-{{direction}}-meme_chip/summary.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), category=CATEGORIES, direction=["up", "down", "unchanged"]) if config["motifs"]["meme-chip"]["run-meme-chip"] and comparisons_si else [],
+        # changes in major genic TSS
+        expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-libsizenorm-genic-nucleotide-changes.tsv", zip, condition=conditiongroups, control=controlgroups),
+        expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-spikenorm-genic-nucleotide-changes.tsv", zip, condition=conditiongroups_si, control=controlgroups_si) if comparisons_si else [],
+        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-libsizenorm-genic-utrs-{{change}}-rna-motifs.tsv", zip, condition=conditiongroups, control=controlgroups), change=["gained", "lost"]) if config["motifs"]["rna_motif_databases"] else [],
+        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-spikenorm-genic-utrs-{{change}}-rna-motifs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), change=["gained", "lost"]) if config["motifs"]["rna_motif_databases"] and comparisons_si else [],
 
 rule intragenic_position_bias:
     input:

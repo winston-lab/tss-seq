@@ -12,7 +12,7 @@ rule get_overlapping_motifs:
     input:
         peaks = "diff_exp/peaks/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{category}-{direction}.narrowpeak",
         fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
-        motifs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.bed")
+        motifs = build_annotations("motifs/" + config["genome"]["name"] + "_all_dna_motifs.bed")
     output:
         "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-{category}-{direction}-allFIMOresults.tsv.gz",
     params:
@@ -35,7 +35,7 @@ rule get_overlapping_motifs:
 rule get_random_motifs:
     input:
         fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
-        motifs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.bed")
+        motifs = build_annotations("motifs/" + config["genome"]["name"] + "_all_dna_motifs.bed")
     output:
         "motifs/random_sequences-allFIMOresults.tsv.gz"
     params:
@@ -96,11 +96,11 @@ rule meme_chip:
     input:
         seq = "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}.fa",
         genome_fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
-        dbs = build_annotations("motifs/" + config["genome"]["name"] + "_allmotifs.meme") if config["motifs"]["databases"] else []
+        dbs = build_annotations("motifs/" + config["genome"]["name"] + "_all_dna_motifs.meme") if config["motifs"]["dna_motif_databases"] else [],
     output:
         "motifs/{condition}-v-{control}/{norm}/{category}/{condition}-v-{control}_tss-seq-{norm}-diffexp-results-{category}-{direction}-meme_chip/summary.tsv"
     params:
-        db_command = "-db" if config["motifs"]["databases"] else [],
+        db_command = "-db" if config["motifs"]["dna_motif_databases"] else [],
         meme_mode = config["motifs"]["meme-chip"]["meme-mode"],
         meme_nmotifs = config["motifs"]["meme-chip"]["meme-nmotifs"],
     log:
