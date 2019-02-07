@@ -3,7 +3,10 @@
 localrules:
     get_gained_utr_bed,
     get_lost_utr_bed,
-    get_changed_utr_rna_motifs
+    get_changed_utr_rna_motifs,
+    get_longest_major_utr_sequences,
+    find_uorfs,
+    get_changed_uorfs
 
 rule get_major_genic_tss_changes:
     input:
@@ -45,8 +48,42 @@ rule get_changed_utr_rna_motifs:
         bedtools intersect -a {input.utrs} -b {input.motifs} -s -F 1 > {output}
         """
 
+rule get_longest_major_utr_sequences:
+    input:
+        genic_tss_changes = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-genic-nucleotide-changes.tsv",
+        orf_anno = os.path.abspath(build_annotations(config["genome"]["orf_annotation"])),
+    output:
+        "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-longest-5pUTR.bed",
+    shell: """
+        tail -n +2 {input.genic_tss_changes} | \
+        sort -k2,2 | \
+        join -1 2 -2 4 -t $'\t' - <(sort -k4,4 {input.orf_anno}) | \
+        scripts/get_longest_major_utr.sh | \
+        sort -k1,1 -k2,2n > {output}
+        """
 
+rule find_uorfs:
+    input:
+        utrs = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-longest-5pUTR.bed",
+        fasta = os.path.abspath(build_annotations(config["genome"]["fasta"])),
+    output:
+        "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs.bed"
+    conda:
+        "../envs/find_uorfs.yaml"
+    shell: """
+        python scripts/find_uorfs.py -f {input.fasta} -i {input.utrs} -o {output}
+        """
 
-
-
+rule get_changed_uorfs:
+    input:
+        uorfs = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs.bed",
+        utrs = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-genic-utrs-{change}.bed",
+    output:
+        "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs-{change}.bed"
+    shell: """
+        paste {input.uorfs} {input.uorfs} | \
+        awk 'BEGIN{{FS=OFS="\t"}} {{$6=="+" ? $3=$2+3 : $2=$3-3; print $0}}' | \
+        bedtools intersect -a stdin -b {input.utrs} -s | \
+        cut --complement -f1-6 > {output}
+        """
 
