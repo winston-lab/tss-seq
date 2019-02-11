@@ -78,12 +78,17 @@ rule get_changed_uorfs:
     input:
         uorfs = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs.bed",
         utrs = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-genic-utrs-{change}.bed",
+        genic_tss_changes = "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-genic-nucleotide-changes.tsv",
     output:
-        "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs-{change}.bed"
+        "diff_exp/genic-nucleotides/{condition}-v-{control}/{norm}/major-genic-tss-changes/{condition}-v-{control}_tss-seq-{norm}-uORFs-{change}.tsv"
     shell: """
         paste {input.uorfs} {input.uorfs} | \
         awk 'BEGIN{{FS=OFS="\t"}} {{$6=="+" ? $3=$2+3 : $2=$3-3; print $0}}' | \
-        bedtools intersect -a stdin -b {input.utrs} -s | \
-        cut --complement -f1-6 > {output}
+        bedtools intersect -a stdin -b {input.utrs} -s -wo | \
+        cut --complement -f1-6,19 | \
+        sort -k10,10 | \
+        join -1 10 -2 2 -t $'\t' - <(tail -n +2 {input.genic_tss_changes} | sort -k2,2) | \
+        awk 'BEGIN{{FS=OFS="\t"}}{{print $2, $3, $4, $5, $7, $1, $15, $16, $17, $18, $19}}' | \
+        cat <(echo "chrom\tuORF_start\tuORF_end\tuORF_name\tstrand\tgene\tcontrol_TSS\tcondition_TSS\tTSS_shift\tcontrol_expr\tcondition_expr\n") - > {output}
         """
 

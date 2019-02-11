@@ -176,8 +176,8 @@ rule all:
         expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-libsizenorm-genic-utrs-{{change}}-rna-motifs.tsv", zip, condition=conditiongroups, control=controlgroups), change=["gained", "lost"]) if config["motifs"]["rna_motif_databases"] else [],
         expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-spikenorm-genic-utrs-{{change}}-rna-motifs.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), change=["gained", "lost"]) if config["motifs"]["rna_motif_databases"] and comparisons_si else [],
         # uORFs gained or lost as a result of change in major genic TSSs
-        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-libsizenorm-uORFs-{{change}}.bed", zip, condition=conditiongroups, control=controlgroups), change=["gained", "lost"]),
-        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-spikenorm-uORFs-{{change}}.bed", zip, condition=conditiongroups_si, control=controlgroups_si), change=["gained", "lost"]) if comparisons_si else [],
+        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-libsizenorm-uORFs-{{change}}.tsv", zip, condition=conditiongroups, control=controlgroups), change=["gained", "lost"]),
+        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/major-genic-tss-changes/{condition}-v-{control}_tss-seq-spikenorm-uORFs-{{change}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), change=["gained", "lost"]) if comparisons_si else [],
 
 rule intragenic_position_bias:
     input:
