@@ -168,18 +168,24 @@ plot_ma = function(df_sig = results_df_filtered_significant,
     ggplot() +
         geom_hline(yintercept = 0, color="black", linetype="dashed") +
         geom_hline(yintercept = c(-lfc, lfc), color="grey70", linetype="dashed") +
-        geom_point(data = df_nonsig,
-                   aes(x=!!xvar, y=!!yvar),
-                   color="black", alpha=0.3, stroke=0, size=0.7) +
-        geom_point(data = df_sig,
-                   aes(x=!!xvar, y=!!yvar),
-                   color="red", alpha=0.3, stroke=0, size=0.7) +
+        stat_bin_hex(data = df_nonsig,
+                     geom="point",
+                     aes(x=!!xvar, y=!!yvar, alpha=..count..),
+                     binwidth = c(.01, 0.01),
+                     color="black", stroke=0, size=0.7) +
+        stat_bin_hex(data = df_sig,
+                     geom="point",
+                     aes(x=!!xvar, y=!!yvar, alpha=..count..),
+                     binwidth = c(.01, 0.01),
+                     color="red", stroke=0, size=0.7) +
         scale_x_log10(name="mean of normalized counts") +
+        scale_alpha_continuous(range = c(0.5, 1)) +
         ylab(bquote(log[2]~frac(.(condition),.(control)))) +
         theme_light() +
         theme(text = element_text(size=8, color="black"),
               axis.text = element_text(color = "black"),
-              axis.title.y = element_text(angle=0, hjust=1, vjust=0.5))
+              axis.title.y = element_text(angle=0, hjust=1, vjust=0.5),
+              legend.position = "none")
 }
 
 plot_volcano = function(df = results_df_filtered,
@@ -194,15 +200,19 @@ plot_volcano = function(df = results_df_filtered,
     ggplot() +
         geom_vline(xintercept = 0, color="black", linetype="dashed") +
         geom_vline(xintercept = c(-lfc, lfc), color="grey70", linetype="dashed") +
-        geom_point(data = df,
-                   aes(x = !!xvar, y = !!yvar),
-                   alpha=0.3, stroke=0, size=0.7) +
+        stat_bin_hex(data = df,
+                     geom = "point",
+                     aes(x = !!xvar, y = !!yvar, color=log10(..count..)),
+                     binwidth = c(0.01, 0.1),
+                     alpha=0.8, stroke=0, size=0.7) +
         geom_hline(yintercept = -log10(alpha), color="red", linetype="dashed") +
         xlab(bquote(log[2] ~ frac(.(condition), .(control)))) +
         ylab(expression(-log[10] ~ FDR)) +
+        scale_color_viridis(option="inferno") +
         theme_light() +
         theme(text = element_text(size=8),
-              axis.title.y = element_text(angle=0, hjust=1, vjust=0.5))
+              axis.title.y = element_text(angle=0, hjust=1, vjust=0.5),
+              legend.position = "none")
 }
 
 main = function(exp_table,
