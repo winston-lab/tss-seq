@@ -11,7 +11,13 @@ def main(fasta_path: str,
     stop_codon_regex = "TAA|TAG|TGA"
     bed = pd.read_csv(input_bed_path,
                       sep="\t",
-                      names=["chrom", "start", "end", "name", "score", "strand"])
+                      names=["chrom", "start", "end", "name", "score", "strand"],
+                      dtype={"chrom":object,
+                             "start":int,
+                             "end":int,
+                             "name":object,
+                             "score":float,
+                             "strand":object})
     fasta = SeqIO.to_dict(SeqIO.parse(fasta_path, "fasta"))
 
     with open(output_path, "w") as output_file:
