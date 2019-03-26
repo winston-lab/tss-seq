@@ -1,5 +1,4 @@
 library(tidyverse)
-library(forcats)
 library(magrittr)
 library(broom)
 library(ggrepel)
@@ -120,13 +119,13 @@ main = function(fdr_cutoff, direction, txn_category,
             mutate(log10_fdr = p.adjust(p.value, method="BH"),
                    condition_fraction = condition_withmotif/(condition_withmotif+condition_nomotif),
                    control_fraction = control_withmotif/(control_withmotif+control_nomotif)) %>%
-            mutate_at(vars(estimate, conf.low, conf.high), funs(log2(.))) %>%
+            mutate_at(vars(estimate, conf.low, conf.high), ~(log2(.))) %>%
             arrange(desc(log10_fdr), p.value, desc(estimate), desc(condition_withmotif)) %>%
             select(motif_id, motif_alt_id, log10_fdr, log2_odds_ratio=estimate,
                    conf_low=conf.low, conf_high=conf.high,
                    condition_withmotif, condition_nomotif, condition_fraction,
                    control_withmotif, control_nomotif, control_fraction) %>%
-            mutate_if(is_double, funs(signif(., digits=3))) %>%
+            mutate_if(is_double, ~(signif(., digits=3))) %>%
             write_tsv(out_path) %>%
             mutate(label=if_else(is.na(motif_alt_id), motif_id, motif_alt_id))
     } else {

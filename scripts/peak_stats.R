@@ -51,7 +51,7 @@ main = function(genic_path, intra_path, anti_path, conv_path, div_path, inter_pa
                   median_logqval = median(peak_logqval),
                   pct25_logqval = quantile(peak_logqval, probs=0.25),
                   pct75_logqval = quantile(peak_logqval, probs=0.75)) %>%
-        mutate_if(is.numeric, funs(signif(., 3))) %>%
+        mutate_if(is.numeric, ~(signif(., 3))) %>%
         write_tsv(table_out)
 
     size_plot = ggplot(data = df,
