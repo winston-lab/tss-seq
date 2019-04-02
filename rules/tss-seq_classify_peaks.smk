@@ -282,7 +282,7 @@ rule classify_convergent_diffexp_peaks:
          cut --complement -f1-6 | \
          sort -k19,19 | \
          join -1 19 -2 4 -t $'\t' -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,1.11,1.12,1.13,1.14,1.15,2.1,2.2,2.3,2.4,2.5,2.6 - <(sort -k4,4 {input.transcript_anno}) | \
-         sort -k11,11nr | \
+         sort -k11,11nr -k10,10nr | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=$18-(summit+1)}} $6=="-"{{$22=summit-$17}} {{print $0}}' | \
          cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - | \
          tee {output.results} | \
@@ -313,7 +313,7 @@ rule classify_divergent_diffexp_peaks:
          cut --complement -f1-6 | \
          sort -k19,19 | \
          join -1 19 -2 4 -t $'\t' -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,1.11,1.12,1.13,1.14,1.15,2.1,2.2,2.3,2.4,2.5,2.6 - <(sort -k4,4 {input.transcript_anno}) | \
-         sort -k11,11nr | \
+         sort -k11,11nr -k10,10nr | \
          awk 'BEGIN{{FS=OFS="\t"}} {{summit=$2+$15}} $6=="+"{{$22=(summit+1)-$18}} $6=="-"{{$22=$17-summit}} {{print $0}}' | \
          cat <(paste <(head -n 1 {input.results}) <(echo -e "peak_summit\ttranscript_chrom\ttranscript_start\ttranscript_end\ttranscript_name\ttranscript_score\ttranscript_strand\tsense_tss_to_peak_dist")) - | \
          tee {output.results} | \
