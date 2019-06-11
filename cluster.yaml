@@ -105,7 +105,7 @@ differential_expression:
 
 diffexp_results_to_narrowpeak:
     time: 2
-    mem: 150
+    mem: 300
 
 summarise_diffexp_results:
     time: 4
