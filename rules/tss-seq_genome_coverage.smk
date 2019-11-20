@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+localrules:
+    normalize_genome_coverage,
+    make_stranded_bedgraph,
+    bedgraph_to_bigwig
+
 rule genome_coverage:
     input:
         lambda wc: f"alignment/{wc.sample}_tss-seq-noPCRduplicates-" + ("experimental" if wc.counttype=="counts" else "spikein") + ".bam"

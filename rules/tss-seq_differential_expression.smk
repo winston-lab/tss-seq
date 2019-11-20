@@ -3,7 +3,8 @@
 localrules:
     map_counts_to_annotation,
     combine_annotation_counts,
-    aggregate_genic_tss
+    aggregate_genic_tss,
+    diffexp_results_to_narrowpeak
 
 rule aggregate_genic_tss:
     input:
@@ -71,7 +72,6 @@ rule differential_expression:
         "../envs/diff_exp.yaml"
     script:
         "../scripts/differential_expression.R"
-
 
 rule diffexp_results_to_narrowpeak:
     input:
