@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 localrules:
+    genome_coverage,
     normalize_genome_coverage,
     make_stranded_bedgraph,
     bedgraph_to_bigwig

@@ -8,22 +8,22 @@ __default__:
     err : "logs/cluster/{rule}.{wildcards}.err"
 
 fastqc_prealignment:
-    time : 6
+    time : 3
     n : 2
     mem : 200
 
 clean_reads:
-    time : 15
+    time : 5
     n: 4
     mem : 150
 
 extract_molecular_barcode:
-    time : 45
+    time : 15
     n : 1
     mem : 100
 
 fastqc_postalignment:
-    time : 6
+    time : 3
     n : 2
     mem : 200
 
@@ -38,18 +38,18 @@ plot_read_processing:
     mem: 300
 
 align:
-    time : 120
+    time : 25
     n : 8
     mem : 500
 
 select_unique_mappers:
-    time : 8
+    time : 3
     n : 1
     mem : 1000
 
 remove_PCR_duplicates:
-    time : 10
-    mem : 1000
+    time : 3
+    mem : 600
 
 bam_separate_species:
     time : 2
@@ -88,11 +88,11 @@ join_window_counts:
     mem: 100
 
 plot_scatter_plots:
-    time : 45
-    mem : 20000
+    time : 15
+    mem : 10000
 
 call_tss_peaks:
-    time: 15
+    time: 5
     mem: 500
 
 tss_peaks_idr:
@@ -108,7 +108,7 @@ diffexp_results_to_narrowpeak:
     mem: 300
 
 summarise_diffexp_results:
-    time: 4
+    time: 2
     mem: 700
 
 fimo:
@@ -137,17 +137,17 @@ gene_ontology:
     mem: 1G
 
 get_seqlogo_data:
-    time: 30
-    mem: 14000
+    time: 5
+    mem: 3000
     n : 1
 
 intragenic_position_bias:
-    time: 7
+    time: 2
     mem: 200
     n: 1
 
 antisense_position_bias:
-    time: 7
+    time: 2
     mem: 200
     n: 1
 

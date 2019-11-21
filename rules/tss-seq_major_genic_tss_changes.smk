@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 localrules:
+    get_major_genic_tss_changes,
     get_gained_utr_bed,
     get_lost_utr_bed,
     get_changed_utr_rna_motifs,
