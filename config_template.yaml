@@ -94,9 +94,11 @@ peakcalling:
     idr: 0.1  # [FLOAT in (0,1)] irreproducible discovery rate cutoff
 
 # DESeq2 differential expression settings
-deseq:
+differential_expression:
     fdr: 0.1  # [FLOAT in (0,1)] false discovery rate threshold
     fold-change-threshold: 1.5  # [FLOAT] fold-change for hypothesis. Absolute fold-change, NOT log2(FC).
+    annotations:
+        # example-annotation: diff_exp/peaks/ov-spt6-1004-37C-v-ov-WT-37C/ov-spt6-1004-37C-v-ov-WT-37C_experimental-peaks.bed
 
 # gene ontology settings
 run_gene_ontology: True  # [True|False] Run gene ontology analyses?

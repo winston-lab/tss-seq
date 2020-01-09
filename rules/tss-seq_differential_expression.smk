@@ -24,14 +24,14 @@ rule aggregate_genic_tss:
 
 rule map_counts_to_annotation:
     input:
-        bed = "diff_exp/{annotation}/{condition}-v-{control}/{condition}-v-{control}_{species}-{annotation}.bed",
+        bed = lambda wc: "diff_exp/{annotation}/{condition}-v-{control}/{condition}-v-{control}_{species}-{annotation}.bed" if wc.annotation in ["peaks", "genic-nucleotides"] else config["differential_expression"]["annotations"][wc.annotation],
         bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
     output:
         temp("diff_exp/{annotation}/{condition}-v-{control}/{sample}_tss-seq-{species}-counts-{annotation}.tsv")
     log:
         "logs/map_counts_to_annotation/map_counts_to_annotation-{condition}-v-{control}_{sample}-{species}-{annotation}.log"
     shell: """
-        (bedtools map -a {input.bed} -b {input.bg} -c 4 -o sum > {output}) &> {log}
+        (bedtools map -a <(cut -f1-6 {input.bed}) -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
 
 rule combine_annotation_counts:
@@ -66,8 +66,8 @@ rule differential_expression:
     params:
         samples = lambda wc: get_samples("passing", wc.norm, [wc.control, wc.condition]),
         groups = lambda wc: [PASSING[x]["group"] for x in get_samples("passing", wc.norm, [wc.control, wc.condition])],
-        alpha = config["deseq"]["fdr"],
-        lfc = log2(config["deseq"]["fold-change-threshold"])
+        alpha = config["differential_expression"]["fdr"],
+        lfc = log2(config["differential_expression"]["fold-change-threshold"])
     conda:
         "../envs/diff_exp.yaml"
     script:
@@ -105,8 +105,8 @@ rule summarise_diffexp_results:
         volcano = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-volcano.svg",
         volcano_free = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-volcano-freescale.svg",
     params:
-        lfc = config["deseq"]["fold-change-threshold"],
-        alpha = config["deseq"]["fdr"]
+        lfc = config["differential_expression"]["fold-change-threshold"],
+        alpha = config["differential_expression"]["fdr"]
     conda:
         "../envs/tidyverse.yaml"
     script:

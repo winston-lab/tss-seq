@@ -45,7 +45,7 @@ wildcard_constraints:
     read_status = "raw|cleaned|aligned_noPCRdup|unaligned",
     category = "|".join(CATEGORIES + ["all"]),
     figure = "|".join(re.escape(x) for x in list(FIGURES.keys())),
-    annotation = "|".join(re.escape(x) for x in set(list(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES])) + ["peaks", "genic-nucleotides"])),
+    annotation = "|".join(re.escape(x) for x in set(list(itertools.chain(*[FIGURES[figure]["annotations"].keys() for figure in FIGURES])) + list(config["differential_expression"]["annotations"].keys() if config["differential_expression"]["annotations"] else []) + ["peaks", "genic-nucleotides"])),
     status = "all|passing",
     counttype= "counts|sicounts",
     norm = "counts|sicounts|libsizenorm|spikenorm",
@@ -136,10 +136,10 @@ rule all:
         #some peak statistics (size, distance from sense TSS, ATG)
         expand("peakcalling/{group}/{group}-experimental-tss-seq-peak-stats.tsv", group=validgroups),
         #differential expression of peaks and genic nucleotides
+        expand(expand("diff_exp/{{annotation}}/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-{{annotation}}-diffexp-results-{{direction}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["all", "up", "unchanged", "down"], annotation=["peaks", "genic-nucleotides"] + (list(config["differential_expression"]["annotations"].keys()) if config["differential_expression"]["annotations"] else []) ) if comparisons else [],
+        expand(expand("diff_exp/{{annotation}}/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-{{annotation}}-diffexp-results-{{direction}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["all", "up", "unchanged", "down"], annotation=["peaks", "genic-nucleotides"] + (list(config["differential_expression"]["annotations"].keys()) if config["differential_expression"]["annotations"] else []) ) if comparisons_si else [],
         expand(expand("diff_exp/peaks/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-peaks-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups), direction=["all", "up", "unchanged", "down"]) if comparisons else [],
         expand(expand("diff_exp/peaks/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-peaks-diffexp-results-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["all", "up", "unchanged", "down"]) if comparisons_si else [],
-        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/libsizenorm/{condition}-v-{control}_tss-seq-libsizenorm-genic-nucleotides-diffexp-results-{{direction}}.tsv", zip, condition=conditiongroups, control=controlgroups), direction=["all", "up", "unchanged", "down"]) if comparisons else [],
-        expand(expand("diff_exp/genic-nucleotides/{condition}-v-{control}/spikenorm/{condition}-v-{control}_tss-seq-spikenorm-genic-nucleotides-diffexp-results-{{direction}}.tsv", zip, condition=conditiongroups_si, control=controlgroups_si), direction=["all", "up", "unchanged", "down"]) if comparisons_si else [],
         #categorize differentially expressed peaks
         expand(expand("diff_exp/peaks/{condition}-v-{control}/libsizenorm/{{category}}/{condition}-v-{control}_tss-seq-libsizenorm-peaks-diffexp-results-{{category}}-{{direction}}.narrowpeak", zip, condition=conditiongroups, control=controlgroups), direction = ["all","up","unchanged","down"], category=CATEGORIES) if comparisons else [],
         expand(expand("diff_exp/peaks/{condition}-v-{control}/spikenorm/{{category}}/{condition}-v-{control}_tss-seq-spikenorm-peaks-diffexp-results-{{category}}-{{direction}}.narrowpeak", zip, condition=conditiongroups_si, control=controlgroups_si), direction = ["all","up","unchanged","down"], category=CATEGORIES) if comparisons_si else [],
