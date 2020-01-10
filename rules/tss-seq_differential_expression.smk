@@ -22,16 +22,27 @@ rule aggregate_genic_tss:
         awk 'BEGIN{{FS=OFS="\t"}}{{$1 ~ /-plus$/ ? strand="+" : strand="-"; print $1, $2, $3, $4, 0, strand}}' > {output}
         """
 
+rule make_stranded_annotation_diffexp:
+    input:
+        lambda wc: config["differential_expression"]["annotations"][wc.annotation]
+    output:
+        "diff_exp/{annotation}/{annotation}_stranded.bed"
+    log:
+        "logs/make_stranded_annotation_diffexp/make_stranded_annotation_diffexp_{annotation}.log"
+    shell: """
+        (bash scripts/makeStrandedBed.sh {input} > {output}) &> {log}
+        """
+
 rule map_counts_to_annotation:
     input:
-        bed = lambda wc: "diff_exp/{annotation}/{condition}-v-{control}/{condition}-v-{control}_{species}-{annotation}.bed" if wc.annotation in ["peaks", "genic-nucleotides"] else config["differential_expression"]["annotations"][wc.annotation],
+        bed = lambda wc: "diff_exp/{annotation}/{condition}-v-{control}/{condition}-v-{control}_{species}-{annotation}.bed" if wc.annotation in ["peaks", "genic-nucleotides"] else "diff_exp/{annotation}/{annotation}_stranded.bed",
         bg = lambda wc: "coverage/counts/{sample}_tss-seq-counts-SENSE.bedgraph".format(**wc) if wc.species=="experimental" else "coverage/sicounts/{sample}_tss-seq-sicounts-SENSE.bedgraph".format(**wc)
     output:
         temp("diff_exp/{annotation}/{condition}-v-{control}/{sample}_tss-seq-{species}-counts-{annotation}.tsv")
     log:
         "logs/map_counts_to_annotation/map_counts_to_annotation-{condition}-v-{control}_{sample}-{species}-{annotation}.log"
     shell: """
-        (bedtools map -a <(cut -f1-6 {input.bed}) -b {input.bg} -c 4 -o sum > {output}) &> {log}
+        (bedtools map -a <(LC_COLLATE=C sort -k1,1 -k2,2n {input.bed}) -b {input.bg} -c 4 -o sum > {output}) &> {log}
         """
 
 rule combine_annotation_counts:
@@ -77,14 +88,14 @@ rule diffexp_results_to_narrowpeak:
     input:
         condition_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=get_samples("passing", wc.norm, wc.condition), norm=wc.norm),
         control_coverage = lambda wc: expand("coverage/{norm}/{sample}_tss-seq-{norm}-SENSE.bw", sample=get_samples("passing", wc.norm, wc.control), norm=wc.norm),
-        diffexp_results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        diffexp_results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        summit_bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}-summits.bed",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        summit_bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}-summits.bed",
     conda:
         "../envs/peakcalling.yaml"
     log:
-        "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/diffexp_results_to_narrowpeak/diffexp_results_to_narrowpeak-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (python scripts/diffexp_results_to_narrowpeak.py -i {input.condition_coverage} -j {input.control_coverage} -d {input.diffexp_results} -n {output.narrowpeak} -b {output.summit_bed}) &> {log}
         """
