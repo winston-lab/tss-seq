@@ -102,19 +102,19 @@ rule diffexp_results_to_narrowpeak:
 
 rule summarise_diffexp_results:
     input:
-        total = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-all.tsv",
-        genic = "diff_exp/peaks/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-genic-all.tsv",
-        intragenic = "diff_exp/peaks/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intragenic-all.tsv",
-        antisense = "diff_exp/peaks/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-antisense-all.tsv",
-        convergent = "diff_exp/peaks/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-convergent-all.tsv",
-        divergent = "diff_exp/peaks/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-divergent-all.tsv",
-        intergenic = "diff_exp/peaks/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intergenic-all.tsv",
+        total = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-all.tsv",
+        genic = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-genic-all.tsv",
+        intragenic = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intragenic-all.tsv",
+        antisense = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-antisense-all.tsv",
+        convergent = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-convergent-all.tsv",
+        divergent = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-divergent-all.tsv",
+        intergenic = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intergenic-all.tsv",
     output:
-        summary_table = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-summary.tsv",
-        mosaic = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-mosaic.svg",
-        maplot = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-maplot.svg",
-        volcano = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-volcano.svg",
-        volcano_free = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-volcano-freescale.svg",
+        summary_table = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-summary.tsv",
+        mosaic = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-mosaic.svg",
+        maplot = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-maplot.svg",
+        volcano = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-volcano.svg",
+        volcano_free = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-volcano-freescale.svg",
     params:
         lfc = config["differential_expression"]["fold-change-threshold"],
         alpha = config["differential_expression"]["fdr"]
