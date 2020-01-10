@@ -184,14 +184,14 @@ rule plot_peak_stats:
 rule classify_genic_diffexp_peaks:
     input:
         annotation = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-genic-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-genic-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-genic-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-genic-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-genic-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/genic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-genic-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_genic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_genic_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
@@ -208,14 +208,14 @@ rule classify_intragenic_diffexp_peaks:
     input:
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
         orf_anno = os.path.abspath(build_annotations(config["genome"]["orf_annotation"])),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intragenic-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intragenic-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intragenic-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intragenic-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intragenic-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intragenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intragenic-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_intragenic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_intragenic_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
@@ -234,14 +234,14 @@ rule classify_intragenic_diffexp_peaks:
 rule classify_antisense_diffexp_peaks:
     input:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-antisense-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-antisense-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-antisense-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-antisense-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-antisense-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/antisense/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-antisense-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_antisense_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_antisense_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
@@ -265,14 +265,14 @@ rule classify_convergent_diffexp_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         conv_anno = build_annotations("annotations/" + config["genome"]["name"] + "_convergent-regions.bed"),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-convergent-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-convergent-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-convergent-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-convergent-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-convergent-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/convergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-convergent-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_convergent_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_convergent_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
@@ -296,14 +296,14 @@ rule classify_divergent_diffexp_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         div_anno = build_annotations("annotations/" + config["genome"]["name"] + "_divergent-regions.bed"),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-divergent-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-divergent-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-divergent-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-divergent-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-divergent-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/divergent/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-divergent-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_divergent_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_divergent_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
@@ -328,14 +328,14 @@ rule classify_intergenic_diffexp_peaks:
         transcript_anno = os.path.abspath(build_annotations(config["genome"]["transcript_annotation"])),
         orf_anno = os.path.abspath(build_annotations(config["genome"]["orf_annotation"])),
         genic_anno = build_annotations("annotations/" + config["genome"]["name"] + "_genic-regions.bed"),
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.narrowpeak",
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.narrowpeak",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-{direction}.tsv",
     output:
-        results = "diff_exp/peaks/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intergenic-{direction}.tsv",
-        narrowpeak = "diff_exp/peaks/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intergenic-{direction}.narrowpeak",
-        bed = "diff_exp/peaks/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-peaks-diffexp-results-intergenic-{direction}-summits.bed",
+        results = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intergenic-{direction}.tsv",
+        narrowpeak = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intergenic-{direction}.narrowpeak",
+        bed = "diff_exp/{annotation}/{condition}-v-{control}/{norm}/intergenic/{condition}-v-{control}_tss-seq-{norm}-{annotation}-diffexp-results-intergenic-{direction}-summits.bed",
     log:
-        "logs/classify_diffexp_peaks/classify_intergenic_diffexp_peaks-{condition}-v-{control}_{norm}-{direction}.log"
+        "logs/classify_diffexp_peaks/classify_intergenic_diffexp_peaks-{annotation}_{condition}-v-{control}_{norm}-{direction}.log"
     shell: """
         (tail -n +2 {input.results} | \
          paste - <(cut -f10 {input.narrowpeak}) | \
