@@ -21,7 +21,8 @@ snakemake -p \
                         paste -d '' - <(echo cluster.yaml)) \
     --cluster-config cluster.yaml \
     --use-conda \
-    --jobs 9999 \
+    --conda-prefix ../conda \
+    --cores \
     --restart-times 1 \
     --cluster "sbatch -p {cluster.queue} -c {cluster.n} -t {cluster.time} --mem-per-cpu={cluster.mem} -J {cluster.name} -e {cluster.err} -o {cluster.log} --parsable" \
     --cluster-status "bash slurm_status.sh"
